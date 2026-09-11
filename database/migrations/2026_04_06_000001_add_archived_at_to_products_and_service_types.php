@@ -1,0 +1,40 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('products', function (Blueprint $table) {
+            if (! Schema::hasColumn('products', 'archived_at')) {
+                $table->timestamp('archived_at')->nullable()->after('is_active')->index();
+            }
+        });
+
+        Schema::table('service_types', function (Blueprint $table) {
+            if (! Schema::hasColumn('service_types', 'archived_at')) {
+                $table->timestamp('archived_at')->nullable()->after('is_active')->index();
+            }
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('products', function (Blueprint $table) {
+            if (Schema::hasColumn('products', 'archived_at')) {
+                $table->dropIndex(['archived_at']);
+                $table->dropColumn('archived_at');
+            }
+        });
+
+        Schema::table('service_types', function (Blueprint $table) {
+            if (Schema::hasColumn('service_types', 'archived_at')) {
+                $table->dropIndex(['archived_at']);
+                $table->dropColumn('archived_at');
+            }
+        });
+    }
+};

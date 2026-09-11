@@ -1,0 +1,21 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - phpstan-baseline.neon
+
+parameters:
+    paths:
+        - app
+        - database
+        - routes
+        - tests
+
+    # Level 5 catches the mistakes that actually bite in this codebase - wrong
+    # argument types, calls to methods that do not exist, unreachable branches -
+    # without demanding full generic annotations on every Eloquent builder.
+    # Raise it once the baseline below is empty.
+    level: 5
+
+    # Anything already failing is recorded in phpstan-baseline.neon so CI stays
+    # green on existing code while blocking NEW problems. Shrink that file over
+    # time; do not add to it.
+    reportUnmatchedIgnoredErrors: false

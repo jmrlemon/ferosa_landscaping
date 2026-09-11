@@ -1,0 +1,266 @@
+<mxfile host="app.diagrams.net" modified="2024-04-10T10:45:03.000Z" agent="Mozilla/5.0" version="22.1.20" type="device">
+  <diagram id="dfd-ferosa-example2" name="Level 0 DFD 3 Entities">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- BOUNDARY BOX -->
+        <mxCell id="boundary" value="Ferosa Landscaping System Boundary" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#000000;dashed=1;verticalAlign=top;align=left;spacingTop=10;spacingLeft=10;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="250" y="20" width="750" height="730" as="geometry" />
+        </mxCell>
+
+        <!-- EXTERNAL ENTITIES -->
+        <!-- USER -->
+        <mxCell id="entityUser" value="USER" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="50" y="150" width="120" height="60" as="geometry" />
+        </mxCell>
+        <!-- STAFF -->
+        <mxCell id="entityStaff" value="STAFF" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="50" y="450" width="120" height="60" as="geometry" />
+        </mxCell>
+        <!-- ADMIN -->
+        <mxCell id="entityAdmin" value="ADMIN" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="50" y="650" width="120" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- PROCESSES -->
+        <!-- 1.0 -->
+        <mxCell id="process1" value="&lt;b&gt;1.0&lt;/b&gt;&lt;br&gt;&lt;br&gt;Registration &amp; Login" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="400" y="50" width="160" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="process1_top" value="" style="line;strokeWidth=1;html=1;" vertex="1" parent="process1">
+          <mxGeometry y="20" width="160" height="10" as="geometry" />
+        </mxCell>
+
+        <!-- 2.0 -->
+        <mxCell id="process2" value="&lt;b&gt;2.0&lt;/b&gt;&lt;br&gt;&lt;br&gt;AR Visualizer &amp; Shop" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="400" y="150" width="160" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="process2_top" value="" style="line;strokeWidth=1;html=1;" vertex="1" parent="process2">
+          <mxGeometry y="20" width="160" height="10" as="geometry" />
+        </mxCell>
+
+        <!-- 3.0 -->
+        <mxCell id="process3" value="&lt;b&gt;3.0&lt;/b&gt;&lt;br&gt;&lt;br&gt;Order Processing" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="400" y="250" width="160" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="process3_top" value="" style="line;strokeWidth=1;html=1;" vertex="1" parent="process3">
+          <mxGeometry y="20" width="160" height="10" as="geometry" />
+        </mxCell>
+
+        <!-- 4.0 -->
+        <mxCell id="process4" value="&lt;b&gt;4.0&lt;/b&gt;&lt;br&gt;&lt;br&gt;Manage Appointment" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="400" y="350" width="160" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="process4_top" value="" style="line;strokeWidth=1;html=1;" vertex="1" parent="process4">
+          <mxGeometry y="20" width="160" height="10" as="geometry" />
+        </mxCell>
+
+        <!-- 5.0 -->
+        <mxCell id="process5" value="&lt;b&gt;5.0&lt;/b&gt;&lt;br&gt;&lt;br&gt;Account Management" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="400" y="450" width="160" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="process5_top" value="" style="line;strokeWidth=1;html=1;" vertex="1" parent="process5">
+          <mxGeometry y="20" width="160" height="10" as="geometry" />
+        </mxCell>
+
+        <!-- 6.0 -->
+        <mxCell id="process6" value="&lt;b&gt;6.0&lt;/b&gt;&lt;br&gt;&lt;br&gt;Operations Management" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="400" y="550" width="160" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="process6_top" value="" style="line;strokeWidth=1;html=1;" vertex="1" parent="process6">
+          <mxGeometry y="20" width="160" height="10" as="geometry" />
+        </mxCell>
+
+        <!-- 7.0 -->
+        <mxCell id="process7" value="&lt;b&gt;7.0&lt;/b&gt;&lt;br&gt;&lt;br&gt;System Administration" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="400" y="650" width="160" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="process7_top" value="" style="line;strokeWidth=1;html=1;" vertex="1" parent="process7">
+          <mxGeometry y="20" width="160" height="10" as="geometry" />
+        </mxCell>
+
+        <!-- DATA STORES -->
+        <!-- D1 Users -->
+        <mxCell id="store1" value="D1 : Users / Roles" style="shape=partialRectangle;right=0;left=0;bottom=1;top=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="800" y="80" width="140" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- D2 Products -->
+        <mxCell id="store2" value="D2 : Products" style="shape=partialRectangle;right=0;left=0;bottom=1;top=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="800" y="200" width="140" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- D3 Orders -->
+        <mxCell id="store3" value="D3 : Orders" style="shape=partialRectangle;right=0;left=0;bottom=1;top=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="800" y="320" width="140" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- D4 Services -->
+        <mxCell id="store4" value="D4 : Services" style="shape=partialRectangle;right=0;left=0;bottom=1;top=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="800" y="440" width="140" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- D5 Appointments -->
+        <mxCell id="store5" value="D5 : Appointments" style="shape=partialRectangle;right=0;left=0;bottom=1;top=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="800" y="560" width="140" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ARROWS / FLOWS -->
+
+        <!-- USER to Processes -->
+        <!-- P1 -->
+        <mxCell id="eU1" value="Registration / Login Data" style="endArrow=classic;html=1;exitX=1;exitY=0.25;entryX=0;entryY=0.25;edgeStyle=orthogonalEdgeStyle;fontSize=10;" edge="1" parent="1" source="entityUser" target="process1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eU1b" value="Session Tokens" style="endArrow=classic;html=1;exitX=0;exitY=0.75;entryX=1;entryY=0.75;edgeStyle=orthogonalEdgeStyle;fontSize=10;" edge="1" parent="1" source="process1" target="entityUser">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- P2 -->
+        <mxCell id="eU2" value="AR Camera Data, Layout Requests" style="endArrow=classic;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.25;edgeStyle=orthogonalEdgeStyle;fontSize=10;" edge="1" parent="1" source="entityUser" target="process2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eU2b" value="AR Environment, Catalog, Estimates" style="endArrow=classic;html=1;exitX=0;exitY=0.75;entryX=0.75;entryY=1;edgeStyle=orthogonalEdgeStyle;fontSize=10;" edge="1" parent="1" source="process2" target="entityUser">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- P3 -->
+        <mxCell id="eU3" value="Cart / Checkout Details" style="endArrow=classic;html=1;exitX=0.5;exitY=1;entryX=0;entryY=0.25;edgeStyle=orthogonalEdgeStyle;fontSize=10;" edge="1" parent="1" source="entityUser" target="process3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eU3b" value="Receipt / Order Confirm" style="endArrow=classic;html=1;exitX=0;exitY=0.75;entryX=0.25;entryY=1;edgeStyle=orthogonalEdgeStyle;fontSize=10;" edge="1" parent="1" source="process3" target="entityUser">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- P4 -->
+        <mxCell id="eU4" value="Booking Details" style="endArrow=classic;html=1;exitX=0.25;exitY=1;entryX=0;entryY=0.25;edgeStyle=orthogonalEdgeStyle;fontSize=10;" edge="1" parent="1" source="entityUser" target="process4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eU4b" value="Schedule Confirmation" style="endArrow=classic;html=1;exitX=0;exitY=0.75;entryX=0.1;entryY=1;edgeStyle=orthogonalEdgeStyle;fontSize=10;" edge="1" parent="1" source="process4" target="entityUser">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- P5 -->
+        <mxCell id="eU5" value="Updated Profile Data" style="endArrow=classic;html=1;exitX=0;exitY=0.5;entryX=0;entryY=0.25;edgeStyle=orthogonalEdgeStyle;fontSize=10;" edge="1" parent="1" source="entityUser" target="process5">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="20" y="180"/>
+              <mxPoint x="20" y="468"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- STAFF to Processes -->
+        <!-- P6 -->
+        <mxCell id="eS1" value="Updates (Products, Services, Appts)" style="endArrow=classic;html=1;exitX=1;exitY=0.25;entryX=0;entryY=0.25;edgeStyle=orthogonalEdgeStyle;fontSize=10;" edge="1" parent="1" source="entityStaff" target="process6">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="320" y="465"/>
+              <mxPoint x="320" y="568"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="eS1b" value="Reports Data / Alerts" style="endArrow=classic;html=1;exitX=0;exitY=0.75;entryX=1;entryY=0.75;edgeStyle=orthogonalEdgeStyle;fontSize=10;" edge="1" parent="1" source="process6" target="entityStaff">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="300" y="603"/>
+              <mxPoint x="300" y="495"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- ADMIN to Processes -->
+        <!-- P6 Admin Access -->
+        <mxCell id="eA1" value="Full Operations Setting" style="endArrow=classic;html=1;exitX=1;exitY=0.25;entryX=0.25;entryY=1;edgeStyle=orthogonalEdgeStyle;fontSize=10;" edge="1" parent="1" source="entityAdmin" target="process6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- P7 Admin Access -->
+        <mxCell id="eA2" value="System / Orders Management" style="endArrow=classic;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.25;edgeStyle=orthogonalEdgeStyle;fontSize=10;" edge="1" parent="1" source="entityAdmin" target="process7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eA2b" value="App Alerts, Master Logs" style="endArrow=classic;html=1;exitX=0;exitY=0.75;entryX=1;entryY=0.75;edgeStyle=orthogonalEdgeStyle;fontSize=10;" edge="1" parent="1" source="process7" target="entityAdmin">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+
+        <!-- PROCESSES to DATA STORES -->
+        <!-- P1 to D1 -->
+        <mxCell id="eP1_D1" value="New Account details" style="endArrow=classic;html=1;exitX=1;exitY=0.25;entryX=0;entryY=0.25;edgeStyle=orthogonalEdgeStyle;fontSize=10;" edge="1" parent="1" source="process1" target="store1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eP1_D1b" value="Login Verification" style="endArrow=classic;html=1;exitX=0;exitY=0.75;entryX=1;entryY=0.75;edgeStyle=orthogonalEdgeStyle;fontSize=10;" edge="1" parent="1" source="store1" target="process1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- P5 to D1 -->
+        <mxCell id="eP5_D1" value="Update Profile Info" style="endArrow=classic;html=1;exitX=1;exitY=0.25;entryX=0.25;entryY=1;edgeStyle=orthogonalEdgeStyle;fontSize=10;" edge="1" parent="1" source="process5" target="store1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- P2 to D2 / D4 -->
+        <mxCell id="eP2_D2" value="Product Availability" style="endArrow=classic;html=1;exitX=0;exitY=0.5;entryX=1;entryY=0.25;edgeStyle=orthogonalEdgeStyle;fontSize=10;" edge="1" parent="1" source="store2" target="process2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eP2_D4" value="Service List" style="endArrow=classic;html=1;exitX=0;exitY=0.25;entryX=1;entryY=0.75;edgeStyle=orthogonalEdgeStyle;fontSize=10;" edge="1" parent="1" source="store4" target="process2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- P3 to D3 / D2 -->
+        <mxCell id="eP3_D3" value="Save Order Details" style="endArrow=classic;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.25;edgeStyle=orthogonalEdgeStyle;fontSize=10;" edge="1" parent="1" source="process3" target="store3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eP3_D2" value="Deduct Stock" style="endArrow=classic;html=1;exitX=1;exitY=0.25;entryX=0.5;entryY=1;edgeStyle=orthogonalEdgeStyle;fontSize=10;" edge="1" parent="1" source="process3" target="store2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- P4 to D5 -->
+        <mxCell id="eP4_D5" value="Save Appointment" style="endArrow=classic;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.25;edgeStyle=orthogonalEdgeStyle;fontSize=10;" edge="1" parent="1" source="process4" target="store5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- P6 connects to D2, D4, D5, D3 (reports) -->
+        <mxCell id="eP6_D2" value="Save Products" style="endArrow=classic;html=1;exitX=1;exitY=0.2;entryX=0.75;entryY=1;edgeStyle=orthogonalEdgeStyle;fontSize=10;" edge="1" parent="1" source="process6" target="store2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="905" y="564"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="eP6_D4" value="Edit Services" style="endArrow=classic;html=1;exitX=1;exitY=0.5;entryX=0.5;entryY=1;edgeStyle=orthogonalEdgeStyle;fontSize=10;" edge="1" parent="1" source="process6" target="store4">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="870" y="585"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="eP6_D5" value="Status Update Appt" style="endArrow=classic;html=1;exitX=1;exitY=0.8;entryX=0.5;entryY=1;edgeStyle=orthogonalEdgeStyle;fontSize=10;" edge="1" parent="1" source="process6" target="store5">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="870" y="606"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- P7 connects to D3 (orders status), D1 (user roles) -->
+        <mxCell id="eP7_D3" value="Edit Order Status" style="endArrow=classic;html=1;exitX=1;exitY=0.25;entryX=0.75;entryY=1;edgeStyle=orthogonalEdgeStyle;fontSize=10;" edge="1" parent="1" source="process7" target="store3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="905" y="668"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="eP7_D1" value="Change User Roles" style="endArrow=classic;html=1;exitX=1;exitY=0.75;entryX=0.75;entryY=1;edgeStyle=orthogonalEdgeStyle;fontSize=10;" edge="1" parent="1" source="process7" target="store1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="940" y="703"/>
+              <mxPoint x="940" y="120"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,199 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Negated boolean expression is always true\.$#'
+			identifier: booleanNot.alwaysTrue
+			count: 1
+			path: app/Console/Commands/SecureChatAttachments.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Console/Commands/SecureChatAttachments.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\OrderItem\:\:\$total_qty\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/AdminController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$order_number\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/AdminController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/AdminController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$total_amount\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/AdminController.php
+
+		-
+			message: '#^Match arm comparison between mixed and ''completed'' is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Http/Controllers/AdminController.php
+
+		-
+			message: '#^Match arm comparison between mixed and ''delivered'' is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Http/Controllers/AdminController.php
+
+		-
+			message: '#^Match arm comparison between mixed and ''out_for_delivery'' is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Http/Controllers/AdminController.php
+
+		-
+			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, App\\Models\\ServiceType\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\ServiceType\>\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/PageController.php
+
+		-
+			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, string\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Http/Controllers/PageController.php
+
+		-
+			message: '#^Call to an undefined method Laravel\\Socialite\\Contracts\\User\:\:getRaw\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/SocialAuthController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\SocialAuthController\:\:redirect\(\) should return Illuminate\\Http\\RedirectResponse but returns Symfony\\Component\\HttpFoundation\\RedirectResponse\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/SocialAuthController.php
+
+		-
+			message: '#^Unsafe access to private property App\\Models\\AppSetting\:\:\$memo through static\:\:\.$#'
+			identifier: staticClassAccess.privateProperty
+			count: 5
+			path: app/Models/AppSetting.php
+
+		-
+			message: '#^Offset ''cancelled''\|''completed''\|''confirmed''\|''scheduled'' on array\{scheduled\: array\{''confirmed'', ''cancelled''\}, confirmed\: array\{''scheduled'', ''completed'', ''cancelled''\}, completed\: array\{\}, cancelled\: array\{\}\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/Appointment.php
+
+		-
+			message: '#^Call to function is_scalar\(\) with null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Models/AuditLog.php
+
+		-
+			message: '#^Offset ''name'' on array\{\}\|non\-falsy\-string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/AuditLog.php
+
+		-
+			message: '#^Offset ''order_number'' on array\{\}\|non\-falsy\-string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/AuditLog.php
+
+		-
+			message: '#^Offset ''payment_status''\|''status'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Models/AuditLog.php
+
+		-
+			message: '#^Offset ''title'' on array\{\}\|non\-falsy\-string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/AuditLog.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>qty" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/CartService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between null and null will always evaluate to false\.$#'
+			identifier: notIdentical.alwaysFalse
+			count: 1
+			path: app/Services/GlbValidator.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between int\<1, max\> and 0 will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/GlbValidator.php
+
+		-
+			message: '#^Offset ''category'' on array\{name\: ''Bermuda Grass'', category\: ''grass'', price\: 350, image_url\: string\}\|array\{name\: ''Carabao Grass'', category\: ''grass'', price\: 250, image_url\: string\}\|array\{name\: ''Decorative Stone…'', category\: ''stones'', price\: 900, image_url\: string\}\|array\{name\: ''Frog Grass'', category\: ''grass'', price\: 400, image_url\: string\}\|array\{name\: ''Fruit bearing plants'', category\: ''plants'', price\: 600, image_url\: string\}\|array\{name\: ''Garden Soil'', category\: ''soil'', price\: 150, image_url\: string\}\|array\{name\: ''Grass Paver'', category\: ''stones'', price\: 1100, image_url\: string\}\|array\{name\: ''Gravel'', category\: ''aggregates'', price\: 500, image_url\: string\}\|array\{name\: ''Monstera Deliciosa'', description\: ''Lush indoor foliage…'', price\: 1200, category\: ''plants'', is_active\: true, image_url\: string\}\|array\{name\: ''Natural Stones …'', category\: ''stones'', price\: 800, image_url\: string\}\|array\{name\: ''Plants \(Various\)'', category\: ''plants'', price\: 300, image_url\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: database/seeders/SystemSeeder.php
+
+		-
+			message: '#^Offset ''default_fee'' on array\{name\: ''Erosion Control'', default_fee\: 3500\}\|array\{name\: ''Fertilization &…'', default_fee\: 700\}\|array\{name\: ''Garden Design…''\|''Landscape Design…'', default_fee\: 1500\}\|array\{name\: ''Hardscaping Quote'', default_fee\: 0\}\|array\{name\: ''Hardscaping'', default_fee\: 3000\}\|array\{name\: ''Irrigation System''\|''Routine Maintenance'', default_fee\: 2500\}\|array\{name\: ''Irrigation System…'', default_fee\: 1200\}\|array\{name\: ''Lawn Care'', default_fee\: 800\}\|array\{name\: ''Lighting'', default_fee\: 1800\}\|array\{name\: ''Outdoor Living…'', default_fee\: 5000\}\|array\{name\: ''Pest & Disease…'', default_fee\: 900\}\|array\{name\: ''Planting'', default_fee\: 500\}\|array\{name\: ''Pruning & Trimming'', default_fee\: 600\}\|array\{name\: ''Sustainable…'', default_fee\: 2000\}\|array\{name\: ''Water Features'', default_fee\: 4000\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: database/seeders/SystemSeeder.php
+
+		-
+			message: '#^Offset ''image_url'' on array\{name\: ''Bermuda Grass'', category\: ''grass'', price\: 350, image_url\: string\}\|array\{name\: ''Carabao Grass'', category\: ''grass'', price\: 250, image_url\: string\}\|array\{name\: ''Decorative Stone…'', category\: ''stones'', price\: 900, image_url\: string\}\|array\{name\: ''Frog Grass'', category\: ''grass'', price\: 400, image_url\: string\}\|array\{name\: ''Fruit bearing plants'', category\: ''plants'', price\: 600, image_url\: string\}\|array\{name\: ''Garden Soil'', category\: ''soil'', price\: 150, image_url\: string\}\|array\{name\: ''Grass Paver'', category\: ''stones'', price\: 1100, image_url\: string\}\|array\{name\: ''Gravel'', category\: ''aggregates'', price\: 500, image_url\: string\}\|array\{name\: ''Monstera Deliciosa'', description\: ''Lush indoor foliage…'', price\: 1200, category\: ''plants'', is_active\: true, image_url\: string\}\|array\{name\: ''Natural Stones …'', category\: ''stones'', price\: 800, image_url\: string\}\|array\{name\: ''Plants \(Various\)'', category\: ''plants'', price\: 300, image_url\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: database/seeders/SystemSeeder.php
+
+		-
+			message: '#^Offset ''is_active'' on array\{name\: ''Erosion Control'', default_fee\: 3500\}\|array\{name\: ''Fertilization &…'', default_fee\: 700\}\|array\{name\: ''Garden Design…''\|''Landscape Design…'', default_fee\: 1500\}\|array\{name\: ''Hardscaping Quote'', default_fee\: 0\}\|array\{name\: ''Hardscaping'', default_fee\: 3000\}\|array\{name\: ''Irrigation System''\|''Routine Maintenance'', default_fee\: 2500\}\|array\{name\: ''Irrigation System…'', default_fee\: 1200\}\|array\{name\: ''Lawn Care'', default_fee\: 800\}\|array\{name\: ''Lighting'', default_fee\: 1800\}\|array\{name\: ''Outdoor Living…'', default_fee\: 5000\}\|array\{name\: ''Pest & Disease…'', default_fee\: 900\}\|array\{name\: ''Planting'', default_fee\: 500\}\|array\{name\: ''Pruning & Trimming'', default_fee\: 600\}\|array\{name\: ''Sustainable…'', default_fee\: 2000\}\|array\{name\: ''Water Features'', default_fee\: 4000\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: database/seeders/SystemSeeder.php
+
+		-
+			message: '#^Offset ''price'' on array\{name\: ''Bermuda Grass'', category\: ''grass'', price\: 350, image_url\: string\}\|array\{name\: ''Carabao Grass'', category\: ''grass'', price\: 250, image_url\: string\}\|array\{name\: ''Decorative Stone…'', category\: ''stones'', price\: 900, image_url\: string\}\|array\{name\: ''Frog Grass'', category\: ''grass'', price\: 400, image_url\: string\}\|array\{name\: ''Fruit bearing plants'', category\: ''plants'', price\: 600, image_url\: string\}\|array\{name\: ''Garden Soil'', category\: ''soil'', price\: 150, image_url\: string\}\|array\{name\: ''Grass Paver'', category\: ''stones'', price\: 1100, image_url\: string\}\|array\{name\: ''Gravel'', category\: ''aggregates'', price\: 500, image_url\: string\}\|array\{name\: ''Monstera Deliciosa'', description\: ''Lush indoor foliage…'', price\: 1200, category\: ''plants'', is_active\: true, image_url\: string\}\|array\{name\: ''Natural Stones …'', category\: ''stones'', price\: 800, image_url\: string\}\|array\{name\: ''Plants \(Various\)'', category\: ''plants'', price\: 300, image_url\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: database/seeders/SystemSeeder.php
+
+		-
+			message: '#^Offset ''stock_qty'' on array\{name\: ''Bermuda Grass'', category\: ''grass'', price\: 350, image_url\: string\}\|array\{name\: ''Carabao Grass'', category\: ''grass'', price\: 250, image_url\: string\}\|array\{name\: ''Decorative Stone…'', category\: ''stones'', price\: 900, image_url\: string\}\|array\{name\: ''Frog Grass'', category\: ''grass'', price\: 400, image_url\: string\}\|array\{name\: ''Fruit bearing plants'', category\: ''plants'', price\: 600, image_url\: string\}\|array\{name\: ''Garden Soil'', category\: ''soil'', price\: 150, image_url\: string\}\|array\{name\: ''Grass Paver'', category\: ''stones'', price\: 1100, image_url\: string\}\|array\{name\: ''Gravel'', category\: ''aggregates'', price\: 500, image_url\: string\}\|array\{name\: ''Monstera Deliciosa'', description\: ''Lush indoor foliage…'', price\: 1200, category\: ''plants'', is_active\: true, image_url\: string\}\|array\{name\: ''Natural Stones …'', category\: ''stones'', price\: 800, image_url\: string\}\|array\{name\: ''Plants \(Various\)'', category\: ''plants'', price\: 300, image_url\: string\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: database/seeders/SystemSeeder.php
+
+		-
+			message: '#^Call to method PHPUnit\\Framework\\Assert\:\:assertNotNull\(\) with App\\Models\\User will always evaluate to true\.$#'
+			identifier: method.alreadyNarrowedType
+			count: 1
+			path: tests/Feature/SecurityPaymentWorkflowTest.php
+
+		-
+			message: '#^Cannot access property \$attempts on array\<mixed\>\|object\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: tests/Feature/SecurityPaymentWorkflowTest.php
+
+		-
+			message: '#^Cannot access property \$locked_at on array\<mixed\>\|object\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: tests/Feature/SecurityPaymentWorkflowTest.php
+
+		-
+			message: '#^Call to method PHPUnit\\Framework\\Assert\:\:assertTrue\(\) with true will always evaluate to true\.$#'
+			identifier: method.alreadyNarrowedType
+			count: 1
+			path: tests/Unit/ExampleTest.php

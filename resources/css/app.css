@@ -1,0 +1,42 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@theme {
+    --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-display: 'Fraunces', Georgia, serif;
+
+    --color-brand-50: #eef7f1;
+    --color-brand-100: #d8ecdf;
+    --color-brand-200: #b2d9c0;
+    --color-brand-300: #82bd98;
+    --color-brand-400: #559e74;
+    --color-brand-500: #347f57;
+    --color-brand-600: #236746;
+    --color-brand-650: #1f5d40;
+    --color-brand-700: #1b5239;
+    --color-brand-800: #17422f;
+    --color-brand-900: #123426;
+    --color-brand-950: #081d15;
+
+    --color-surface-0: #ffffff;
+    --color-surface-50: #f8f7f3;
+    --color-surface-100: #f0eee8;
+    --color-surface-200: #e2ded4;
+    --color-surface-300: #cec8bb;
+    --color-surface-350: #948e83;
+    --color-surface-400: #746f65;
+    --color-surface-500: #706b61;
+    --color-surface-600: #514d46;
+    --color-surface-700: #3b3833;
+    --color-surface-800: #272522;
+    --color-surface-900: #181714;
+    --color-surface-950: #0d0c0b;
+
+    --shadow-soft: 0 1px 2px rgb(18 52 38 / 0.04), 0 6px 22px rgb(18 52 38 / 0.05);
+    --shadow-card: 0 1px 2px rgb(18 52 38 / 0.04), 0 12px 36px rgb(18 52 38 / 0.07);
+}

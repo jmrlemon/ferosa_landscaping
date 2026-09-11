@@ -1,0 +1,93 @@
+# The parent ../.htaccess denies the whole application tree so that .env,
+# storage/ and vendor/ cannot be fetched when DocumentRoot is htdocs. This is
+# the one directory that is meant to be served, so it re-grants itself.
+<IfModule mod_authz_core.c>
+    Require all granted
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Allow from all
+</IfModule>
+
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
+    RewriteEngine On
+
+    # Handle Authorization Header
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Handle X-XSRF-Token Header
+    RewriteCond %{HTTP:x-xsrf-token} .
+    RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
+
+    # Redirect Trailing Slashes If Not A Folder...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} (.+)/$
+    RewriteRule ^ %1 [L,R=301]
+
+    # Send Requests To Front Controller...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+<IfModule mod_php.c>
+    php_value upload_max_filesize 100M
+    php_value post_max_size 110M
+    php_value memory_limit 256M
+    php_value max_execution_time 300
+    php_value max_input_time 300
+</IfModule>
+
+# ── Compression ────────────────────────────────────────────────────────────
+# Text assets were being sent uncompressed; the built stylesheet alone is
+# ~104 KB raw versus ~18 KB gzipped, which matters a lot over mobile data.
+# AddOutputFilterByType comes from mod_filter, not mod_deflate, so both have to
+# be loaded before these lines are legal - an unguarded one 500s every request.
+<IfModule mod_deflate.c>
+<IfModule mod_filter.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css text/xml
+    AddOutputFilterByType DEFLATE text/javascript application/javascript
+    AddOutputFilterByType DEFLATE application/json application/xml
+    AddOutputFilterByType DEFLATE image/svg+xml
+    # Fonts and images (jpg/png/webp) are already compressed - recompressing
+    # them just burns CPU for no gain.
+</IfModule>
+</IfModule>
+
+# ── Static asset caching ───────────────────────────────────────────────────
+# Without an explicit lifetime every asset had to be revalidated on each page
+# view: a round trip per file just to be told "not modified".
+<IfModule mod_expires.c>
+    ExpiresActive On
+
+    # Vite writes a content hash into built filenames, so these can be held
+    # for a long time - a new build produces a new URL.
+    <FilesMatch "\.(css|js)$">
+        ExpiresDefault "access plus 1 year"
+    </FilesMatch>
+
+    # Self-hosted fonts never change under the same name either.
+    <FilesMatch "\.(woff2?|ttf|otf|eot)$">
+        ExpiresDefault "access plus 1 year"
+    </FilesMatch>
+
+    # Uploads keep their name if a product image is replaced, so keep this
+    # short enough that a swapped photo shows up the same day.
+    <FilesMatch "\.(jpg|jpeg|png|gif|webp|svg|ico)$">
+        ExpiresDefault "access plus 7 days"
+    </FilesMatch>
+</IfModule>
+
+<IfModule mod_headers.c>
+    <FilesMatch "\.(css|js|woff2?|ttf|otf|eot)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+    <FilesMatch "\.(jpg|jpeg|png|gif|webp|svg|ico)$">
+        Header set Cache-Control "public, max-age=604800"
+    </FilesMatch>
+</IfModule>

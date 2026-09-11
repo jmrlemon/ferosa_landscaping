@@ -1,0 +1,86 @@
+<mxfile host="app.diagrams.net" type="device">
+  <diagram id="context-diagram-styled" name="Context Diagram">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- 0. Main System Process -->
+        <mxCell id="mainSystem" value="&lt;b&gt;0&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;br&gt;Ferosa Landscaping:&lt;br&gt;Your Comprehensive Plant &amp; Service Application&lt;br&gt;with Augmented Reality Technology" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;spacingTop=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="350" y="200" width="280" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="mainSystem_top" value="" style="line;strokeWidth=1;html=1;" vertex="1" parent="mainSystem">
+          <mxGeometry y="25" width="280" height="10" as="geometry" />
+        </mxCell>
+
+        <!-- External Entities -->
+        <mxCell id="entityUser" value="&lt;b&gt;USER&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="50" y="260" width="120" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="entityAdmin" value="&lt;b&gt;ADMINISTRATOR&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="850" y="150" width="160" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="entityStaff" value="&lt;b&gt;STAFF&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="850" y="360" width="160" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- =================== USER to SYSTEM (Outputs) =================== -->
+        <mxCell id="uPath1" value="Registration &amp; User Details" style="endArrow=classic;html=1;edgeStyle=orthogonalEdgeStyle;verticalAlign=bottom;fontSize=11;exitX=0.2;exitY=1;entryX=0;entryY=0.6;" edge="1" parent="1" source="entityUser" target="mainSystem">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="74" y="320"/><mxPoint x="350" y="320"/></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="uPath2" value="AR Camera Environment Data" style="endArrow=classic;html=1;edgeStyle=orthogonalEdgeStyle;verticalAlign=bottom;fontSize=11;exitX=0.4;exitY=1;entryX=0;entryY=0.7;" edge="1" parent="1" source="entityUser" target="mainSystem">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="98" y="345"/><mxPoint x="350" y="345"/></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="uPath3" value="Shopping Cart &amp; Checkout Details" style="endArrow=classic;html=1;edgeStyle=orthogonalEdgeStyle;verticalAlign=bottom;fontSize=11;exitX=0.6;exitY=1;entryX=0;entryY=0.8;" edge="1" parent="1" source="entityUser" target="mainSystem">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="122" y="370"/><mxPoint x="350" y="370"/></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="uPath4" value="Schedule Request Details" style="endArrow=classic;html=1;edgeStyle=orthogonalEdgeStyle;verticalAlign=bottom;fontSize=11;exitX=0.8;exitY=1;entryX=0;entryY=0.9;" edge="1" parent="1" source="entityUser" target="mainSystem">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="146" y="395"/><mxPoint x="350" y="395"/></Array></mxGeometry>
+        </mxCell>
+
+        <!-- =================== SYSTEM to USER (Inputs) =================== -->
+        <mxCell id="sysPath1" value="Booking Confirmations" style="endArrow=classic;html=1;edgeStyle=orthogonalEdgeStyle;verticalAlign=bottom;fontSize=11;exitX=0.1;exitY=0;entryX=0.8;entryY=0;" edge="1" parent="1" source="mainSystem" target="entityUser">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="378" y="190"/><mxPoint x="146" y="190"/></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="sysPath2" value="Order Receipts" style="endArrow=classic;html=1;edgeStyle=orthogonalEdgeStyle;verticalAlign=bottom;fontSize=11;exitX=0.2;exitY=0;entryX=0.6;entryY=0;" edge="1" parent="1" source="mainSystem" target="entityUser">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="406" y="160"/><mxPoint x="122" y="160"/></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="sysPath3" value="Processed AR Projections &amp; Estimates" style="endArrow=classic;html=1;edgeStyle=orthogonalEdgeStyle;verticalAlign=bottom;fontSize=11;exitX=0.3;exitY=0;entryX=0.4;entryY=0;" edge="1" parent="1" source="mainSystem" target="entityUser">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="434" y="130"/><mxPoint x="98" y="130"/></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="sysPath4" value="Products Catalog &amp; Custom Service Procedures" style="endArrow=classic;html=1;edgeStyle=orthogonalEdgeStyle;verticalAlign=bottom;fontSize=11;exitX=0.4;exitY=0;entryX=0.2;entryY=0;" edge="1" parent="1" source="mainSystem" target="entityUser">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="462" y="100"/><mxPoint x="74" y="100"/></Array></mxGeometry>
+        </mxCell>
+
+        <!-- =================== ADMIN to SYSTEM (Outputs) =================== -->
+        <mxCell id="aPath1" value="System Configuration &amp; Access Details" style="endArrow=classic;html=1;edgeStyle=orthogonalEdgeStyle;verticalAlign=bottom;fontSize=11;exitX=0;exitY=0.25;entryX=1;entryY=0.1;" edge="1" parent="1" source="entityAdmin" target="mainSystem">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="750" y="160"/><mxPoint x="750" y="220"/></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="aPath2" value="Order Cancellations &amp; User Roles" style="endArrow=classic;html=1;edgeStyle=orthogonalEdgeStyle;verticalAlign=bottom;fontSize=11;exitX=0;exitY=0.75;entryX=1;entryY=0.25;" edge="1" parent="1" source="entityAdmin" target="mainSystem">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="710" y="180"/><mxPoint x="710" y="250"/></Array></mxGeometry>
+        </mxCell>
+
+        <!-- =================== SYSTEM to ADMIN (Inputs) =================== -->
+        <mxCell id="sysPathA1" value="Master Action Logs &amp; Global System Reports" style="endArrow=classic;html=1;edgeStyle=orthogonalEdgeStyle;verticalAlign=bottom;fontSize=11;exitX=0.6;exitY=0;entryX=0.5;entryY=0;" edge="1" parent="1" source="mainSystem" target="entityAdmin">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="518" y="70"/><mxPoint x="930" y="70"/></Array></mxGeometry>
+        </mxCell>
+
+        <!-- =================== STAFF to SYSTEM (Outputs) =================== -->
+        <mxCell id="sPath1" value="Submitted Product Data &amp; Service Settings" style="endArrow=classic;html=1;edgeStyle=orthogonalEdgeStyle;verticalAlign=bottom;fontSize=11;exitX=0;exitY=0.25;entryX=1;entryY=0.6;" edge="1" parent="1" source="entityStaff" target="mainSystem">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="720" y="370"/><mxPoint x="720" y="320"/></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="sPath2" value="Appointments Approvals &amp; Status Updates" style="endArrow=classic;html=1;edgeStyle=orthogonalEdgeStyle;verticalAlign=bottom;fontSize=11;exitX=0;exitY=0.75;entryX=1;entryY=0.8;" edge="1" parent="1" source="entityStaff" target="mainSystem">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="680" y="390"/><mxPoint x="680" y="360"/></Array></mxGeometry>
+        </mxCell>
+
+        <!-- =================== SYSTEM to STAFF (Inputs) =================== -->
+        <mxCell id="sysPathS1" value="Real-time Operations Dashboards &amp; Metrics" style="endArrow=classic;html=1;edgeStyle=orthogonalEdgeStyle;verticalAlign=bottom;fontSize=11;exitX=0.8;exitY=1;entryX=0.5;entryY=1;" edge="1" parent="1" source="mainSystem" target="entityStaff">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="574" y="440"/><mxPoint x="930" y="440"/></Array></mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

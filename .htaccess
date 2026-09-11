@@ -1,0 +1,17 @@
+# ── Deny everything above the front controller ─────────────────────────────
+# Apache's DocumentRoot is htdocs, not this project's public/ directory, so
+# the whole Laravel tree is reachable over HTTP: .env (APP_KEY, DB and mail
+# passwords, OAuth secrets, the TextBee key), storage/logs, storage/app/private
+# payment proofs, vendor/, and every source file were all fetchable directly.
+#
+# This denies the entire directory; public/.htaccess re-grants itself, which is
+# the only path that should ever be served. Moving the vhost DocumentRoot to
+# .../ferosa-laravel/public is still the correct fix - this is the seatbelt for
+# when it is not, and for anyone who deploys by copying the folder into htdocs.
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>
