@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\AddSecurityHeaders;
 use App\Http\Middleware\EnsureAdmin;
 use App\Http\Middleware\EnsureStaff;
 use App\Http\Middleware\PreventBackHistory;
@@ -18,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
             PreventBackHistory::class,
+            AddSecurityHeaders::class,
         ]);
 
         $middleware->alias([
