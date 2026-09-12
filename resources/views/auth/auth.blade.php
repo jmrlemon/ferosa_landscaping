@@ -930,11 +930,13 @@ html, body {
         <p class="form-subtitle">Sign in to plan, book, and follow your landscaping projects.</p>
       </div>
 
+      <form id="login-form" method="POST" action="{{ route('login.submit') }}">
+      @csrf
       <div class="field">
         <label class="field-label" for="login-email">Email Address</label>
         <div class="input-wrap">
           <span class="input-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></span>
-          <input id="login-email" type="text" inputmode="email" placeholder="you@example.com" dir="ltr" autocomplete="email" autocorrect="off" autocapitalize="off" spellcheck="false">
+          <input id="login-email" name="email" type="email" inputmode="email" placeholder="you@example.com" dir="ltr" autocomplete="email" autocorrect="off" autocapitalize="off" spellcheck="false" required>
         </div>
       </div>
 
@@ -945,15 +947,16 @@ html, body {
         </div>
         <div class="input-wrap has-eye">
           <span class="input-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
-          <input id="login-password" type="password" placeholder="••••••••" dir="ltr" autocomplete="current-password">
+          <input id="login-password" name="password" type="password" placeholder="••••••••" dir="ltr" autocomplete="current-password" required>
           <button type="button" class="input-eye" onclick="togglePw(this)" aria-label="Show or hide password"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button>
         </div>
       </div>
 
-      <button type="button" id="login-btn" class="cta-btn" style="margin-top:8px" onclick="handleLogin()">
+      <button type="submit" id="login-btn" class="cta-btn" style="margin-top:8px">
         Sign In
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
       </button>
+      </form>
 
       <p class="bottom-link">Don't have an account? <button type="button" onclick="switchTo('signup')">Sign up</button></p>
       <p class="secure-note">
@@ -971,61 +974,63 @@ html, body {
         <p class="form-subtitle">Join Ferosa Landscaping and start designing your dream garden</p>
       </div>
 
+      <form id="signup-form" method="POST" action="{{ route('register.submit') }}">
+      @csrf
       <div class="field">
-        <label class="field-label">Last Name / Surname</label>
+        <label class="field-label" for="signup-last-name">Last Name / Surname</label>
         <div class="input-wrap">
           <span class="input-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
-          <input id="signup-last-name" type="text" placeholder="Dela Cruz" dir="ltr" autocomplete="family-name" autocorrect="off" autocapitalize="words" spellcheck="false">
+          <input id="signup-last-name" name="last_name" type="text" placeholder="Dela Cruz" dir="ltr" autocomplete="family-name" autocorrect="off" autocapitalize="words" spellcheck="false" required>
         </div>
       </div>
 
       <div class="field">
-        <label class="field-label">First Name</label>
+        <label class="field-label" for="signup-first-name">First Name</label>
         <div class="input-wrap">
           <span class="input-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
-          <input id="signup-first-name" type="text" placeholder="Juan" dir="ltr" autocomplete="given-name" autocorrect="off" autocapitalize="words" spellcheck="false">
+          <input id="signup-first-name" name="first_name" type="text" placeholder="Juan" dir="ltr" autocomplete="given-name" autocorrect="off" autocapitalize="words" spellcheck="false" required>
         </div>
       </div>
 
       <div class="field">
-        <label class="field-label">Middle Name <span style="font-weight:400;color:#a8a196">(Optional)</span></label>
+        <label class="field-label" for="signup-middle-name">Middle Name <span style="font-weight:400;color:#a8a196">(Optional)</span></label>
         <div class="input-wrap">
           <span class="input-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
-          <input id="signup-middle-name" type="text" placeholder="Santos" dir="ltr" autocomplete="additional-name" autocorrect="off" autocapitalize="words" spellcheck="false">
+          <input id="signup-middle-name" name="middle_name" type="text" placeholder="Santos" dir="ltr" autocomplete="additional-name" autocorrect="off" autocapitalize="words" spellcheck="false">
         </div>
       </div>
 
       <div class="field">
-        <label class="field-label">Email Address</label>
+        <label class="field-label" for="signup-email">Email Address</label>
         <div class="input-wrap">
           <span class="input-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></span>
-          <input id="signup-email" type="text" inputmode="email" placeholder="you@example.com" dir="ltr" autocomplete="email" autocorrect="off" autocapitalize="off" spellcheck="false">
+          <input id="signup-email" name="email" type="email" inputmode="email" placeholder="you@example.com" dir="ltr" autocomplete="email" autocorrect="off" autocapitalize="off" spellcheck="false" required>
         </div>
       </div>
 
       <div class="field">
-        <label class="field-label">Mobile Number</label>
+        <label class="field-label" for="signup-phone">Mobile Number</label>
         <div class="input-wrap">
           <span class="input-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></span>
-          <input id="signup-phone" type="text" inputmode="tel" placeholder="+63 912 345 6789" dir="ltr" autocomplete="tel" autocorrect="off" autocapitalize="off" spellcheck="false">
+          <input id="signup-phone" name="phone_number" type="tel" inputmode="tel" placeholder="+63 912 345 6789" dir="ltr" autocomplete="tel" autocorrect="off" autocapitalize="off" spellcheck="false" required>
         </div>
       </div>
 
       <div class="field">
-        <label class="field-label">Password</label>
+        <label class="field-label" for="signup-password">Password</label>
         <div class="input-wrap has-eye">
           <span class="input-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
-          <input id="signup-password" type="password" placeholder="••••••••" dir="ltr" autocomplete="new-password">
-          <span class="input-eye" onclick="togglePw(this)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+          <input id="signup-password" name="password" type="password" placeholder="••••••••" dir="ltr" autocomplete="new-password" required>
+          <button type="button" class="input-eye" onclick="togglePw(this)" aria-label="Show or hide password"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button>
         </div>
       </div>
 
       <div class="field">
-        <label class="field-label">Confirm Password</label>
+        <label class="field-label" for="signup-password-confirm">Confirm Password</label>
         <div class="input-wrap has-eye">
           <span class="input-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
-          <input id="signup-password-confirm" type="password" placeholder="••••••••" dir="ltr" autocomplete="new-password">
-          <span class="input-eye" onclick="togglePw(this)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+          <input id="signup-password-confirm" name="password_confirmation" type="password" placeholder="••••••••" dir="ltr" autocomplete="new-password" required>
+          <button type="button" class="input-eye" onclick="togglePw(this)" aria-label="Show or hide password confirmation"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button>
         </div>
       </div>
 
@@ -1106,14 +1111,15 @@ html, body {
       </div>
 
       <div class="terms-check">
-        <input id="signup-terms" type="checkbox" value="1">
+        <input id="signup-terms" name="terms_accepted" type="checkbox" value="1" required>
         <label for="signup-terms">I have read and agree to the Ferosa Landscaping <span class="terms-link" role="button" tabindex="0" onclick="openTermsModal(event)" onkeydown="openTermsModalFromKey(event)">Terms and Conditions</span>.</label>
       </div>
 
-      <button id="signup-btn" class="cta-btn" onclick="handleSignup()">
+      <button id="signup-btn" type="submit" class="cta-btn">
         Create Account
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
       </button>
+      </form>
 
       <p class="bottom-link">Already have an account? <a onclick="switchTo('login')">Sign in</a></p>
     </div>
@@ -1616,12 +1622,14 @@ function handleSignOut() {
   showToast('Please sign out from the dashboard.', 'info');
 }
 
-document.addEventListener('keydown', e => {
-  if (e.key !== 'Enter') return;
-  const loginPage = document.getElementById('page-login');
-  const signupPage = document.getElementById('page-signup');
-  if (loginPage && loginPage.classList.contains('active')) handleLogin();
-  if (signupPage && signupPage.classList.contains('active')) handleSignup();
+document.getElementById('login-form').addEventListener('submit', event => {
+  event.preventDefault();
+  handleLogin();
+});
+
+document.getElementById('signup-form').addEventListener('submit', event => {
+  event.preventDefault();
+  handleSignup();
 });
 </script>
 </body>
