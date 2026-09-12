@@ -307,7 +307,7 @@
             </div>
             <h3 class="mt-5 text-[15px] font-bold text-surface-900">{{ $service->name }}</h3>
             <p class="mt-2 text-[13px] leading-5 text-surface-500">Professional on-site care tailored to your space.</p>
-            <p class="mt-5 text-xs font-bold text-brand-700">From PHP {{ number_format((float) $service->default_fee, 0) }}</p>
+            <p class="mt-5 text-xs font-bold text-brand-700">{{ $service->customerPriceLabel() }}</p>
           </a>
         @endforeach
       </div>

@@ -228,8 +228,7 @@
                   </svg>
                 </span>
                 <h3 class="mt-4 font-display text-lg font-bold leading-snug text-surface-950">{{ $service->name }}</h3>
-                <p class="mt-auto pt-4 text-xs font-bold uppercase tracking-wider text-surface-400">Starts at</p>
-                <p class="font-display text-xl font-bold text-brand-700">&#8369;{{ number_format((float) $service->default_fee, 2) }}</p>
+                <p class="mt-auto pt-4 font-display text-lg font-bold text-brand-700">{{ $service->customerPriceLabel() }}</p>
               </article>
             @endforeach
           </div>

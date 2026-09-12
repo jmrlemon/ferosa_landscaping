@@ -28,4 +28,13 @@ class ServiceType extends Model
     {
         return $this->hasMany(Appointment::class);
     }
+
+    public function customerPriceLabel(): string
+    {
+        if ((float) $this->default_fee <= 0) {
+            return 'Quote after site assessment';
+        }
+
+        return 'From PHP '.number_format((float) $this->default_fee, 0);
+    }
 }

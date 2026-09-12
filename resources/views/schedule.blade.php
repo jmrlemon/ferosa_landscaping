@@ -147,7 +147,7 @@
                   @selected($rescheduling
                     ? (int) $rescheduling->service_type_id === (int) $st->id
                     : (string) request('service') === (string) $st->id)>
-                  {{ $st->name }} - from PHP {{ number_format((float) $st->default_fee, 0) }}
+                  {{ $st->name }} - {{ $st->customerPriceLabel() }}
                 </option>
               @empty
                 <option value="">No services available</option>
