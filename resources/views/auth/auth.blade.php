@@ -1020,7 +1020,7 @@ html, body {
         <label class="field-label" for="signup-password">Password</label>
         <div class="input-wrap has-eye">
           <span class="input-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
-          <input id="signup-password" name="password" type="password" placeholder="••••••••" dir="ltr" autocomplete="new-password" required>
+          <input id="signup-password" name="password" type="password" minlength="12" placeholder="••••••••" dir="ltr" autocomplete="new-password" required>
           <button type="button" class="input-eye" onclick="togglePw(this)" aria-label="Show or hide password"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button>
         </div>
       </div>
@@ -1029,7 +1029,7 @@ html, body {
         <label class="field-label" for="signup-password-confirm">Confirm Password</label>
         <div class="input-wrap has-eye">
           <span class="input-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
-          <input id="signup-password-confirm" name="password_confirmation" type="password" placeholder="••••••••" dir="ltr" autocomplete="new-password" required>
+          <input id="signup-password-confirm" name="password_confirmation" type="password" minlength="12" placeholder="••••••••" dir="ltr" autocomplete="new-password" required>
           <button type="button" class="input-eye" onclick="togglePw(this)" aria-label="Show or hide password confirmation"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button>
         </div>
       </div>
@@ -1460,7 +1460,7 @@ async function handleSignup() {
   if (!phone) return showToast('Please enter your mobile number.', 'error');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showToast('Please enter a valid email address.', 'error');
   if (!password) return showToast('Please create a password.', 'error');
-  if (password.length < 8) return showToast('Password must be at least 8 characters.', 'error');
+  if (password.length < 12) return showToast('Use at least 12 characters with uppercase, lowercase, a number, and a symbol.', 'error');
   if (password !== passwordConfirm) return showToast('Passwords do not match.', 'error');
   if (!termsAccepted) return showToast('Please read and accept the Terms and Conditions before creating an account.', 'error');
 
@@ -1582,7 +1582,7 @@ async function resetPassword() {
   const password = document.getElementById('new-password').value;
   const passwordConfirm = document.getElementById('new-password-confirm').value;
   if (!password) return showToast('Please enter a new password.', 'error');
-  if (password.length < 8) return showToast('Password must be at least 8 characters.', 'error');
+  if (password.length < 12) return showToast('Use at least 12 characters with uppercase, lowercase, a number, and a symbol.', 'error');
   if (password !== passwordConfirm) return showToast('Passwords do not match.', 'error');
 
   setLoading('newpw-btn', true);

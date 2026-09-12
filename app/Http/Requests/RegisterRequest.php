@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\User;
+use App\Support\PasswordRules;
 use App\Support\PhoneNumber;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -23,7 +24,7 @@ class RegisterRequest extends FormRequest
             'middle_name' => ['nullable', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'phone_number' => ['required', 'string', 'max:20', 'regex:/^\+639\d{9}$/', Rule::unique('users', 'phone_number')],
-            'password' => ['required', 'string', 'min:8', 'max:255', 'confirmed'],
+            'password' => PasswordRules::required(),
             'terms_accepted' => ['accepted'],
         ];
     }

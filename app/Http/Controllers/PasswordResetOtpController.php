@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\SmsService;
+use App\Support\PasswordRules;
 use App\Support\PhoneNumber;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -99,7 +100,7 @@ class PasswordResetOtpController extends Controller
         $data = $request->validate([
             'phone_number' => ['required', 'string', 'max:20'],
             'otp' => ['required', 'string', 'size:6', 'regex:/^\d{6}$/'],
-            'password' => ['required', 'string', 'min:8', 'max:255', 'confirmed'],
+            'password' => PasswordRules::required(),
         ]);
 
         $candidates = PhoneNumber::lookupCandidates($data['phone_number']);

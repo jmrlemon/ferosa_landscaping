@@ -70,8 +70,8 @@ class CustomerAccountTest extends TestCase
                 'name' => $customer->name,
                 'email' => $customer->email,
                 'current_password' => 'not-the-password',
-                'password' => 'a-brand-new-one',
-                'password_confirmation' => 'a-brand-new-one',
+                'password' => 'BrandNewPassword1!',
+                'password_confirmation' => 'BrandNewPassword1!',
             ])
             ->assertSessionHasErrors('current_password');
 
@@ -82,12 +82,12 @@ class CustomerAccountTest extends TestCase
                 'name' => $customer->name,
                 'email' => $customer->email,
                 'current_password' => 'correct-horse',
-                'password' => 'a-brand-new-one',
-                'password_confirmation' => 'a-brand-new-one',
+                'password' => 'BrandNewPassword1!',
+                'password_confirmation' => 'BrandNewPassword1!',
             ])
             ->assertSessionHasNoErrors();
 
-        $this->assertTrue(Hash::check('a-brand-new-one', $customer->refresh()->password));
+        $this->assertTrue(Hash::check('BrandNewPassword1!', $customer->refresh()->password));
     }
 
     public function test_an_email_already_in_use_is_refused(): void

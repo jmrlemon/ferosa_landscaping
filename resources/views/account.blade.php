@@ -188,11 +188,12 @@
           </div>
           <div>
             <label for="password" class="field-label">New password</label>
-            <input type="password" name="password" id="password" class="field" autocomplete="new-password">
+            <input type="password" name="password" id="password" class="field" autocomplete="new-password" minlength="12">
+            <p class="mt-1 text-xs text-surface-500">Use at least 12 characters with uppercase, lowercase, a number, and a symbol.</p>
           </div>
           <div>
             <label for="password_confirmation" class="field-label">Confirm password</label>
-            <input type="password" name="password_confirmation" id="password_confirmation" class="field" autocomplete="new-password">
+            <input type="password" name="password_confirmation" id="password_confirmation" class="field" autocomplete="new-password" minlength="12">
           </div>
         </div>
       </div>

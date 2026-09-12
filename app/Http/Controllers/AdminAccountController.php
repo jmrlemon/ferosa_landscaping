@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\PasswordRules;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -30,7 +31,7 @@ class AdminAccountController extends Controller
             ],
             'phone_number' => ['nullable', 'string', 'max:20'],
             'current_password' => ['nullable', 'required_with:password', 'current_password'],
-            'password' => ['nullable', 'string', 'min:8', 'max:255', 'confirmed'],
+            'password' => PasswordRules::optional(),
         ]);
 
         $user->name = $data['name'];

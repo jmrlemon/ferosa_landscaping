@@ -94,11 +94,12 @@
             </label>
             <label class="block text-sm font-semibold text-surface-700">
               New password
-              <input autocomplete="new-password" type="password" name="password" class="mt-2 w-full rounded-xl border border-surface-200 px-3 py-2 text-base font-normal outline-none focus:border-brand-500">
+              <input autocomplete="new-password" type="password" name="password" minlength="12" class="mt-2 w-full rounded-xl border border-surface-200 px-3 py-2 text-base font-normal outline-none focus:border-brand-500">
+              <span class="mt-1 block text-xs font-normal text-surface-500">Use at least 12 characters with uppercase, lowercase, a number, and a symbol.</span>
             </label>
             <label class="block text-sm font-semibold text-surface-700">
               Confirm new password
-              <input autocomplete="new-password" type="password" name="password_confirmation" class="mt-2 w-full rounded-xl border border-surface-200 px-3 py-2 text-base font-normal outline-none focus:border-brand-500">
+              <input autocomplete="new-password" type="password" name="password_confirmation" minlength="12" class="mt-2 w-full rounded-xl border border-surface-200 px-3 py-2 text-base font-normal outline-none focus:border-brand-500">
             </label>
           </div>
         </section>

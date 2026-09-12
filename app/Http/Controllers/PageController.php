@@ -21,6 +21,7 @@ use App\Notifications\WorkCreatedNotice;
 use App\Services\CartService;
 use App\Services\InventoryService;
 use App\Support\Audit;
+use App\Support\PasswordRules;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -984,7 +985,7 @@ class PageController extends Controller
             'email' => ['required', 'email', 'max:255', 'unique:users,email,'.$user->id],
             'phone_number' => ['nullable', 'string', 'max:20'],
             'current_password' => ['nullable', 'required_with:password', 'current_password'],
-            'password' => ['nullable', 'string', 'min:8', 'max:255', 'confirmed'],
+            'password' => PasswordRules::optional(),
         ]);
 
         $user->name = $data['name'];
