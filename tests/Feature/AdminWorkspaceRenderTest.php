@@ -140,6 +140,31 @@ class AdminWorkspaceRenderTest extends TestCase
         }
     }
 
+    public function test_each_dashboard_tab_has_an_explicit_server_rendered_visibility_state(): void
+    {
+        $this->seedWorkload();
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $tabs = array_values(array_diff(self::TABS, ['messages']));
+
+        foreach ($tabs as $activeTab) {
+            $html = $this->get('/admin?tab='.$activeTab)->getContent();
+            $document = new \DOMDocument;
+            $document->loadHTML($html, LIBXML_NOERROR | LIBXML_NOWARNING);
+
+            foreach ($tabs as $tab) {
+                $panel = $document->getElementById('tab-'.$tab);
+
+                $this->assertNotNull($panel, "Tab panel '{$tab}' is missing.");
+                $this->assertSame(
+                    $tab === $activeTab ? 'display:block' : 'display:none',
+                    $panel->getAttribute('style'),
+                    "Tab '{$tab}' has the wrong visibility while '{$activeTab}' is active."
+                );
+            }
+        }
+    }
+
     public function test_admin_can_render_every_workspace_page(): void
     {
         $data = $this->seedWorkload();

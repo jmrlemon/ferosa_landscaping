@@ -144,6 +144,7 @@
     // data; the fallback keeps the view renderable on its own.
     $activeTab = $activeTab ?? $routeTab ?? (in_array(request('tab'), $availableTabs, true) ? request('tab') : 'overview');
     $tabClass = fn (string $tab, string $extra = '') => trim('tab-content '.$extra.' '.($activeTab === $tab ? 'active' : ''));
+    $tabStyle = fn (string $tab) => $activeTab === $tab ? 'display:block' : 'display:none';
     // Tabs navigate server-side: the controller loads only the active tab's
     // data, so switching client-side would show empty tables.
     $tabUrl = fn (string $tab) => match ($tab) {
@@ -330,7 +331,7 @@
     <div id="admin-toast-stack" class="fixed top-4 right-4 z-[70] space-y-2 pointer-events-none" aria-live="polite" aria-atomic="true"></div>
 
     <!-- OVERVIEW TAB -->
-    <div id="tab-overview" class="{{ $tabClass('overview', 'space-y-5') }}">
+    <div id="tab-overview" class="{{ $tabClass('overview', 'space-y-5') }}" style="{{ $tabStyle('overview') }}">
       @php
         $adminName = trim((string) auth()->user()?->name);
         $adminFirstName = $adminName !== '' ? explode(' ', $adminName)[0] : 'there';
@@ -821,7 +822,7 @@
       @endif
 
     <!-- APPOINTMENTS TAB -->
-    <div id="tab-appointments" class="{{ $tabClass('appointments') }}">
+    <div id="tab-appointments" class="{{ $tabClass('appointments') }}" style="{{ $tabStyle('appointments') }}">
       <div class="bg-white rounded-xl border border-surface-100 overflow-hidden">
         <div class="p-5 border-b border-surface-100">
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
@@ -1019,7 +1020,7 @@
     </div>
 
     <!-- ORDERS TAB -->
-    <div id="tab-orders" class="{{ $tabClass('orders') }}">
+    <div id="tab-orders" class="{{ $tabClass('orders') }}" style="{{ $tabStyle('orders') }}">
       <div class="bg-white rounded-xl border border-surface-100 overflow-hidden">
         <div class="p-5 border-b border-surface-100">
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
@@ -1340,7 +1341,7 @@
     </div>
 
     <!-- SERVICES TAB -->
-    <div id="tab-services" class="{{ $tabClass('services') }}">
+    <div id="tab-services" class="{{ $tabClass('services') }}" style="{{ $tabStyle('services') }}">
       <div class="space-y-5">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -1434,7 +1435,7 @@
       </div>
     </div>
     <!-- PRODUCTS TAB -->
-    <div id="tab-products" class="{{ $tabClass('products') }}">
+    <div id="tab-products" class="{{ $tabClass('products') }}" style="{{ $tabStyle('products') }}">
       <div class="space-y-5">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -1558,7 +1559,7 @@
 
     <!-- BILLING TAB -->
     @if($isAdmin)
-    <div id="tab-payment" class="{{ $tabClass('payment') }}">
+    <div id="tab-payment" class="{{ $tabClass('payment') }}" style="{{ $tabStyle('payment') }}">
       <div class="space-y-5">
         <div>
           <h1 class="text-2xl font-bold text-surface-900">Billing</h1>
@@ -1645,7 +1646,7 @@
 
     @if($isAdmin)
     <!-- ARCHIVED TAB -->
-    <div id="tab-archived" class="{{ $tabClass('archived', 'space-y-5') }}">
+    <div id="tab-archived" class="{{ $tabClass('archived', 'space-y-5') }}" style="{{ $tabStyle('archived') }}">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <!-- Archived Inventory -->
         <div class="bg-white rounded-xl border border-surface-100 overflow-hidden flex flex-col">
@@ -1768,7 +1769,7 @@
     </div>
 
     <!-- AUDIT TAB -->
-    <div id="tab-audit" class="{{ $tabClass('audit') }}">
+    <div id="tab-audit" class="{{ $tabClass('audit') }}" style="{{ $tabStyle('audit') }}">
       <div class="bg-white rounded-xl border border-surface-100 overflow-hidden">
         <div class="p-5 border-b border-surface-100 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
           <div>
@@ -1852,7 +1853,7 @@
 
     <!-- USERS TAB -->
     @if($isAdmin)
-    <div id="tab-users" class="{{ $tabClass('users') }}">
+    <div id="tab-users" class="{{ $tabClass('users') }}" style="{{ $tabStyle('users') }}">
       <div class="bg-white rounded-xl border border-surface-100 overflow-hidden">
         <div class="px-5 py-4 border-b border-surface-100">
           <h2 class="text-sm font-semibold text-surface-900">User Directory</h2>
@@ -1934,7 +1935,7 @@
     @endif
 
     {{-- ─── Feedbacks Tab ─────────────────────────────────────────────── --}}
-    <div id="tab-feedbacks" class="{{ $tabClass('feedbacks') }}">
+    <div id="tab-feedbacks" class="{{ $tabClass('feedbacks') }}" style="{{ $tabStyle('feedbacks') }}">
       <div class="bg-white rounded-xl border border-surface-100 overflow-hidden mb-4">
         <div class="px-5 py-4 border-b border-surface-100 flex items-center justify-between gap-4 flex-wrap">
           <div>
