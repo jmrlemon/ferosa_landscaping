@@ -17,4 +17,11 @@ require __DIR__.'/../vendor/autoload.php';
 /** @var Application $app */
 $app = require_once __DIR__.'/../bootstrap/app.php';
 
+// Hostinger keeps production secrets outside the Git checkout in laravel_app.
+// Reuse that environment file without copying it into the public web tree.
+$sharedEnvironmentPath = dirname(__DIR__, 2).DIRECTORY_SEPARATOR.'laravel_app';
+if (is_file($sharedEnvironmentPath.DIRECTORY_SEPARATOR.'.env')) {
+    $app->useEnvironmentPath($sharedEnvironmentPath);
+}
+
 $app->handleRequest(Request::capture());
