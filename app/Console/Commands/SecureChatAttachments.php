@@ -54,11 +54,9 @@ class SecureChatAttachments extends Command
                     continue;
                 }
 
-                // Copy first, verify, then remove the public original - a failed
-                // move must never leave the attachment unreadable.
-                $to->put($path, $from->get($path));
-
-                if (! $to->exists($path)) {
+                // Copy first, then remove the public original only after the
+                // destination filesystem confirms the write succeeded.
+                if (! $to->put($path, $from->get($path))) {
                     $this->error("copy failed, left in place: {$path}");
 
                     continue;
@@ -89,12 +87,6 @@ class SecureChatAttachments extends Command
             $contents = file_get_contents($candidate);
             if ($contents === false || ! $to->put($path, $contents)) {
                 $this->error("recovery failed, source left untouched: {$path}");
-
-                continue;
-            }
-
-            if (! $to->exists($path)) {
-                $this->error("recovery could not be verified, source left untouched: {$path}");
 
                 continue;
             }

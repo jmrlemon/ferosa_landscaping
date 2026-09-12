@@ -1,18 +1,6 @@
 parameters:
 	ignoreErrors:
 		-
-			message: '#^Negated boolean expression is always true\.$#'
-			identifier: booleanNot.alwaysTrue
-			count: 1
-			path: app/Console/Commands/SecureChatAttachments.php
-
-		-
-			message: '#^Unreachable statement \- code above always terminates\.$#'
-			identifier: deadCode.unreachable
-			count: 1
-			path: app/Console/Commands/SecureChatAttachments.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\OrderItem\:\:\$total_qty\.$#'
 			identifier: property.notFound
 			count: 1
