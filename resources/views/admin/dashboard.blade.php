@@ -820,6 +820,7 @@
         </div>
       </div>
       @endif
+    </div>
 
     <!-- APPOINTMENTS TAB -->
     <div id="tab-appointments" class="{{ $tabClass('appointments') }}" style="{{ $tabStyle('appointments') }}">

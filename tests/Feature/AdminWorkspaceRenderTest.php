@@ -161,6 +161,11 @@ class AdminWorkspaceRenderTest extends TestCase
                     $panel->getAttribute('style'),
                     "Tab '{$tab}' has the wrong visibility while '{$activeTab}' is active."
                 );
+                $this->assertSame(
+                    'admin-main',
+                    $panel->parentNode?->attributes?->getNamedItem('id')?->nodeValue,
+                    "Tab '{$tab}' is nested inside another panel instead of the main workspace."
+                );
             }
         }
     }
