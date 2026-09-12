@@ -21,6 +21,21 @@
 7. Start a supervised `php artisan queue:work --tries=3` process.
 8. Run `php artisan schedule:run` every minute from the operating system scheduler.
 
+For the current production deployment, the URL setting must be:
+
+```dotenv
+APP_URL=https://ferosa.store
+```
+
+After changing production environment values or deploying notification code,
+rebuild Laravel's caches and restart the long-running queue workers:
+
+```sh
+php artisan optimize:clear
+php artisan optimize
+php artisan queue:restart
+```
+
 ## Android builds
 
 Do not edit `Constants.kt` for each server. For a local physical Android device, put the machine-specific URL in the ignored `ferosa_mobile/local.properties` file:

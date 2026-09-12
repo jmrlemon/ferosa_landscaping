@@ -73,9 +73,10 @@ function renderAdminNotifications(items) {
       const unread = !n.read_at;
       const message = escapeHtml(n.data?.message || 'Notification');
       const createdAt = escapeHtml(n.created_at || '');
-      const url = String(n.data?.url || '').replace(/'/g, '&#39;');
+      const id = escapeHtml(n.id || '');
+      const url = escapeHtml(n.data?.url || '');
 
-      return `<button type="button" class="w-full text-left px-4 py-3 flex items-start gap-3 ${unread ? 'bg-brand-50' : ''} hover:bg-surface-50 transition-colors" onclick="readAdminNotification('${n.id}', '${url}', this)">
+      return `<button type="button" data-notification-id="${id}" data-notification-url="${url}" class="w-full text-left px-4 py-3 flex items-start gap-3 ${unread ? 'bg-brand-50' : ''} hover:bg-surface-50 transition-colors">
           <span class="flex-shrink-0 mt-1.5 w-2 h-2 rounded-full ${unread ? 'bg-red-500' : 'bg-surface-200'}"></span>
           <span class="flex-1 min-w-0">
             <span class="block text-xs text-surface-800 leading-snug">${message}</span>
@@ -85,6 +86,19 @@ function renderAdminNotifications(items) {
     })
     .join('');
 }
+
+document.getElementById('admin-notif-list')?.addEventListener('click', function (event) {
+  if (!(event.target instanceof Element)) return;
+
+  const button = event.target.closest('[data-notification-id]');
+  if (!button || !this.contains(button)) return;
+
+  readAdminNotification(
+    button.dataset.notificationId,
+    button.dataset.notificationUrl,
+    button
+  );
+});
 
 function clearAdminNotifCount() {
   document.getElementById('admin-notif-count')?.remove();

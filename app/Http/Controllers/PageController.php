@@ -451,7 +451,7 @@ class PageController extends Controller
             Notification::send($operationsTeam, new WorkCreatedNotice(
                 type: 'order_created',
                 message: 'New order '.$order->order_number.' from '.$order->user->name.' needs review.',
-                url: route('admin.orders.show', $order),
+                url: route('admin.orders.show', $order, absolute: false),
                 orderId: $order->id,
             ));
         }
@@ -586,7 +586,7 @@ class PageController extends Controller
                 message: $isPickupOrder
                     ? 'Customer confirmed pickup of order '.$order->order_number.'.'
                     : 'Customer confirmed receipt of order '.$order->order_number.'.',
-                url: route('admin.orders.show', $order),
+                url: route('admin.orders.show', $order, absolute: false),
                 orderId: $order->id,
             ));
         }
@@ -738,7 +738,7 @@ class PageController extends Controller
             Notification::send($operationsTeam, new WorkCreatedNotice(
                 type: 'appointment_created',
                 message: 'New '.$appointment->serviceType->name.' booking from '.$appointment->user->name.' needs review.',
-                url: route('admin.appointments.show', $appointment),
+                url: route('admin.appointments.show', $appointment, absolute: false),
                 appointmentId: $appointment->id,
             ));
         }
@@ -836,7 +836,7 @@ class PageController extends Controller
                 type: 'appointment_rescheduled',
                 message: $request->user()->name.' moved their '.($appointment->serviceType->name ?? 'service')
                     .' visit from '.$previousAt->format('M d, Y g:i A').' to '.$appointmentAt->format('M d, Y g:i A').'.',
-                url: route('admin.appointments.show', $appointment),
+                url: route('admin.appointments.show', $appointment, absolute: false),
                 appointmentId: $appointment->id,
             ));
         }
@@ -1119,24 +1119,30 @@ class PageController extends Controller
 
     private function normalizeNotificationUrl(?string $url): string
     {
+        $fallback = route('home', absolute: false);
+
         if (! $url) {
-            return route('home');
+            return $fallback;
         }
 
-        // If it's already a full URL, return as-is
-        if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
-            return $url;
+        $parts = parse_url($url);
+        if ($parts === false) {
+            return $fallback;
         }
 
-        $path = parse_url($url, PHP_URL_PATH);
-        $query = parse_url($url, PHP_URL_QUERY);
+        $path = $parts['path'] ?? null;
+        $query = $parts['query'] ?? null;
 
-        if (! $path || ! str_starts_with($path, '/')) {
-            return route('home');
+        // Notification destinations are internal application routes. Returning
+        // only the path makes legacy records written with localhost resolve on
+        // the current deployment and prevents a stored external redirect.
+        if (! is_string($path)
+            || ! str_starts_with($path, '/')
+            || str_starts_with($path, '//')) {
+            return $fallback;
         }
 
-        // Build full URL using the app URL base
-        return url($path).($query ? '?'.$query : '');
+        return $path.(is_string($query) && $query !== '' ? '?'.$query : '');
     }
 
     public function cancelAppointment(Request $request, Appointment $appointment): RedirectResponse
