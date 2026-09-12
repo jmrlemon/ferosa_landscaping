@@ -43,11 +43,11 @@ class ForgotFromAccountTest extends TestCase
             'name' => $user->name,
             'email' => $user->email,
             'current_password' => 'old-password-123',
-            'password' => 'brand-new-pass-1',
-            'password_confirmation' => 'brand-new-pass-1',
+            'password' => 'Brand-New-Pass-1!',
+            'password_confirmation' => 'Brand-New-Pass-1!',
         ])->assertSessionHasNoErrors();
 
-        $this->assertTrue(\Hash::check('brand-new-pass-1', $user->fresh()->password));
+        $this->assertTrue(\Hash::check('Brand-New-Pass-1!', $user->fresh()->password));
     }
 
     public function test_contact_only_save_still_works_without_password_fields(): void
