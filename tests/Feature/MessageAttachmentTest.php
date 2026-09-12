@@ -232,6 +232,29 @@ class MessageAttachmentTest extends TestCase
         $this->get($url)->assertRedirect(route('login'));
     }
 
+    public function test_a_missing_attachment_is_reported_instead_of_rendering_a_broken_image(): void
+    {
+        Storage::fake(MessageAttachment::DISK);
+        Storage::fake(MessageAttachment::LEGACY_DISK);
+        $customer = $this->customer();
+        $conversation = Conversation::create(['customer_id' => $customer->id, 'last_message_at' => now()]);
+        $message = $conversation->messages()->create([
+            'sender_id' => $customer->id,
+            'attachment_path' => 'messages/missing.jpg',
+            'attachment_name' => 'missing.jpg',
+            'attachment_mime' => 'image/jpeg',
+            'attachment_size' => 1024,
+        ]);
+
+        $this->assertFalse($message->attachmentPayload()['available']);
+
+        $this->actingAs($customer)
+            ->get(route('messages'))
+            ->assertOk()
+            ->assertSee('Attachment unavailable')
+            ->assertDontSee('src="'.$message->attachmentUrl().'"', false);
+    }
+
     public function test_plain_text_messages_still_work(): void
     {
         $customer = $this->customer();

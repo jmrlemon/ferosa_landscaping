@@ -146,7 +146,12 @@
               <span class="text-[10px] font-semibold text-brand-600 px-2 mb-0.5">Ferosa Support</span>
             @endif
             @if($msg->hasAttachment())
-              @if($msg->attachmentIsImage())
+              @if(!$msg->attachmentAvailable())
+                <div role="status" class="flex max-w-[240px] items-center gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-amber-800">
+                  <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.3 3.9 2.4 17.6A2 2 0 0 0 4.1 20h15.8a2 2 0 0 0 1.7-2.4L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+                  <span class="min-w-0"><span class="block text-[12px] font-semibold">Attachment unavailable</span><span class="block truncate text-[10px]">{{ $msg->attachment_name }}</span></span>
+                </div>
+              @elseif($msg->attachmentIsImage())
                 <a href="{{ $msg->attachmentUrl() }}" target="_blank" rel="noopener" data-lightbox
                    class="block overflow-hidden rounded-2xl border border-surface-200 max-w-[240px]">
                   <img src="{{ $msg->attachmentUrl() }}" alt="{{ $msg->attachment_name }}"
@@ -294,7 +299,28 @@
 
   // Same rule as the bubble text: filenames are user-supplied, so they go in
   // through textContent, never innerHTML.
+  function buildUnavailableAttachment(att) {
+    const notice = document.createElement('div');
+    notice.className = 'flex max-w-[240px] items-center gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-amber-800';
+    notice.setAttribute('role', 'status');
+
+    const title = document.createElement('span');
+    title.className = 'block text-[12px] font-semibold';
+    title.textContent = 'Attachment unavailable';
+    const name = document.createElement('span');
+    name.className = 'block max-w-[190px] truncate text-[10px]';
+    name.textContent = att.name || 'The saved file could not be found.';
+    const text = document.createElement('span');
+    text.className = 'min-w-0';
+    text.append(title, name);
+    notice.appendChild(text);
+
+    return notice;
+  }
+
   function buildAttachment(att) {
+    if (att.available === false) return buildUnavailableAttachment(att);
+
     const link = document.createElement('a');
     link.href = att.url;
     link.target = '_blank';

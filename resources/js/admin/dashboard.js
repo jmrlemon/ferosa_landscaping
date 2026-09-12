@@ -626,6 +626,22 @@ const ADMIN = JSON.parse(
     // Filenames come from customers, so they are set with textContent rather
     // than interpolated into markup.
     function buildAdminAttachment(att) {
+      if (att.available === false) {
+        const notice = document.createElement('div');
+        notice.className = 'max-w-[220px] rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-amber-800';
+        notice.setAttribute('role', 'status');
+
+        const title = document.createElement('span');
+        title.className = 'block text-[12px] font-semibold';
+        title.textContent = 'Attachment unavailable';
+        const name = document.createElement('span');
+        name.className = 'block truncate text-[10px]';
+        name.textContent = att.name || 'The saved file could not be found.';
+        notice.append(title, name);
+
+        return notice;
+      }
+
       const link = document.createElement('a');
       link.href = att.url;
       link.target = '_blank';

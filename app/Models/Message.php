@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\MessageAttachment;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -48,6 +49,12 @@ class Message extends Model
         return $this->hasAttachment() && str_starts_with((string) $this->attachment_mime, 'image/');
     }
 
+    public function attachmentAvailable(): bool
+    {
+        return $this->hasAttachment()
+            && MessageAttachment::diskFor((string) $this->attachment_path) !== null;
+    }
+
     /**
      * Attachments are on the private disk, so this points at the route that
      * checks who is asking rather than straight at a public file.
@@ -89,6 +96,7 @@ class Message extends Model
             'mime' => $this->attachment_mime,
             'is_image' => $this->attachmentIsImage(),
             'size_label' => $this->attachmentSizeLabel(),
+            'available' => $this->attachmentAvailable(),
         ];
     }
 }
