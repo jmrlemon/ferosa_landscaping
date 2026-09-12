@@ -170,6 +170,26 @@ class AdminWorkspaceRenderTest extends TestCase
         }
     }
 
+    public function test_each_dashboard_tab_has_a_page_level_heading(): void
+    {
+        $this->seedWorkload();
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        foreach (self::TABS as $tab) {
+            $html = $this->get('/admin?tab='.$tab)->getContent();
+            $document = new \DOMDocument;
+            $document->loadHTML($html, LIBXML_NOERROR | LIBXML_NOWARNING);
+            $panel = $document->getElementById('tab-'.$tab);
+
+            $this->assertNotNull($panel, "Tab panel '{$tab}' is missing.");
+            $this->assertGreaterThanOrEqual(
+                1,
+                $panel->getElementsByTagName('h1')->length,
+                "Tab '{$tab}' does not have a page-level heading."
+            );
+        }
+    }
+
     public function test_admin_can_render_every_workspace_page(): void
     {
         $data = $this->seedWorkload();

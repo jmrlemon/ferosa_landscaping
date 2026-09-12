@@ -184,7 +184,7 @@
         {{-- Left: Conversation list --}}
         <div class="admin-conversation-list w-80 min-w-0 border-r border-surface-100 flex flex-col bg-white flex-shrink-0">
           <div class="px-5 py-4 border-b border-surface-100 flex-shrink-0">
-            <h2 class="text-sm font-semibold text-surface-900">Messages</h2>
+            <h1 class="text-sm font-semibold text-surface-900">Messages</h1>
             <p class="text-xs text-surface-400 mt-0.5">{{ $conversations->count() }} conversation{{ $conversations->count() !== 1 ? 's' : '' }}</p>
           </div>
           <div class="overflow-y-auto flex-1">
@@ -828,7 +828,7 @@
         <div class="p-5 border-b border-surface-100">
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <div>
-              <h2 class="text-sm font-semibold text-surface-900">Appointments</h2>
+              <h1 class="text-sm font-semibold text-surface-900">Appointments</h1>
               <p class="text-xs text-surface-400 mt-0.5">Confirm new bookings first, then manage upcoming visits and completed work.</p>
             </div>
           </div>
@@ -1026,7 +1026,7 @@
         <div class="p-5 border-b border-surface-100">
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <div>
-              <h2 class="text-sm font-semibold text-surface-900">Orders &amp; Delivery</h2>
+              <h1 class="text-sm font-semibold text-surface-900">Orders &amp; Delivery</h1>
               <p class="text-xs text-surface-400 mt-0.5">Process new orders, assign delivery, and record fulfilment proof.</p>
             </div>
             @if($isAdmin)
@@ -1648,6 +1648,7 @@
     @if($isAdmin)
     <!-- ARCHIVED TAB -->
     <div id="tab-archived" class="{{ $tabClass('archived', 'space-y-5') }}" style="{{ $tabStyle('archived') }}">
+      <h1 class="sr-only">Archived items</h1>
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <!-- Archived Inventory -->
         <div class="bg-white rounded-xl border border-surface-100 overflow-hidden flex flex-col">
@@ -1774,7 +1775,7 @@
       <div class="bg-white rounded-xl border border-surface-100 overflow-hidden">
         <div class="p-5 border-b border-surface-100 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
           <div>
-            <h2 class="text-sm font-semibold text-surface-900">Audit Logs</h2>
+            <h1 class="text-sm font-semibold text-surface-900">Audit Logs</h1>
             <p class="text-xs text-surface-400 mt-0.5">See who changed a record, what they did, and when it happened.</p>
           </div>
           <form method="GET" action="{{ route('admin.dashboard') }}" class="flex items-end gap-2">
@@ -1857,7 +1858,7 @@
     <div id="tab-users" class="{{ $tabClass('users') }}" style="{{ $tabStyle('users') }}">
       <div class="bg-white rounded-xl border border-surface-100 overflow-hidden">
         <div class="px-5 py-4 border-b border-surface-100">
-          <h2 class="text-sm font-semibold text-surface-900">User Directory</h2>
+          <h1 class="text-sm font-semibold text-surface-900">User Directory</h1>
           <p class="text-xs text-surface-400 mt-0.5">Manage system access roles for all users.</p>
         </div>
         <div class="overflow-x-auto">
@@ -1940,7 +1941,7 @@
       <div class="bg-white rounded-xl border border-surface-100 overflow-hidden mb-4">
         <div class="px-5 py-4 border-b border-surface-100 flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <h2 class="text-sm font-semibold text-surface-900">Customer Feedback</h2>
+            <h1 class="text-sm font-semibold text-surface-900">Customer Feedback</h1>
             <p class="text-xs text-surface-400 mt-0.5">
               {{ $feedbacks->total() }} submission{{ $feedbacks->total() !== 1 ? 's' : '' }}
               @if($avgRating)
