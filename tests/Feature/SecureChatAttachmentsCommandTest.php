@@ -66,6 +66,26 @@ class SecureChatAttachmentsCommandTest extends TestCase
         $this->assertStringContainsString('would recover:', Artisan::output());
     }
 
+    public function test_recovery_rejects_attachment_paths_that_escape_the_source_root(): void
+    {
+        $outsideName = 'ferosa-outside-'.Str::uuid().'.jpg';
+        $outsidePath = dirname($this->sourceRoot).DIRECTORY_SEPARATOR.$outsideName;
+        $this->messageWithAttachment('../'.$outsideName);
+        File::put($outsidePath, 'must-not-copy');
+
+        try {
+            $exitCode = Artisan::call('messages:secure-attachments', [
+                '--source' => [$this->sourceRoot],
+            ]);
+
+            $this->assertSame(0, $exitCode);
+            $this->assertSame([], Storage::disk(MessageAttachment::DISK)->allFiles());
+            $this->assertStringContainsString('invalid attachment path:', Artisan::output());
+        } finally {
+            File::delete($outsidePath);
+        }
+    }
+
     private function messageWithAttachment(string $path): Message
     {
         $customer = User::factory()->create();

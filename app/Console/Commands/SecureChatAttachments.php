@@ -42,6 +42,13 @@ class SecureChatAttachments extends Command
         foreach ($messages as $message) {
             $path = $message->attachment_path;
 
+            if (! $this->isSafeAttachmentPath($path)) {
+                $this->warn("invalid attachment path: {$path} (message #{$message->id})");
+                $missing++;
+
+                continue;
+            }
+
             if ($to->exists($path)) {
                 continue; // already private
             }
@@ -125,17 +132,17 @@ class SecureChatAttachments extends Command
     /** @param list<string> $sourceRoots */
     private function findRecoveryCandidate(array $sourceRoots, string $path): ?string
     {
-        $normalizedPath = str_replace('\\', '/', $path);
-        if (str_starts_with($normalizedPath, '/') || in_array('..', explode('/', $normalizedPath), true)) {
+        if (! $this->isSafeAttachmentPath($path)) {
             return null;
         }
 
+        $normalizedPath = str_replace('\\', '/', $path);
+
         foreach ($sourceRoots as $root) {
             $candidate = realpath($root.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $normalizedPath));
-            $rootPrefix = strtolower($root.DIRECTORY_SEPARATOR);
 
             if ($candidate !== false
-                && str_starts_with(strtolower($candidate), $rootPrefix)
+                && str_starts_with($candidate, $root.DIRECTORY_SEPARATOR)
                 && is_file($candidate)
                 && is_readable($candidate)) {
                 return $candidate;
@@ -143,5 +150,14 @@ class SecureChatAttachments extends Command
         }
 
         return null;
+    }
+
+    private function isSafeAttachmentPath(string $path): bool
+    {
+        $normalizedPath = str_replace('\\', '/', $path);
+
+        return $normalizedPath !== ''
+            && ! str_starts_with($normalizedPath, '/')
+            && ! in_array('..', explode('/', $normalizedPath), true);
     }
 }
