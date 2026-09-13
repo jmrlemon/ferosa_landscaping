@@ -226,16 +226,34 @@ class FunctionalWorkflowTest extends TestCase
                 && str_contains($message, (string) strlen($warningGlb).' bytes');
         });
 
+        $complexModelResponse = $this->actingAs($admin)->post(route('admin.ar-models.upload', $product), [
+            'ar_model' => UploadedFile::fake()->createWithContent(
+                'complex-agave.glb',
+                $this->budgetGlb(triangleCount: 3_103_142)
+            ),
+            'height_cm' => 120,
+        ])->assertSessionHasNoErrors();
+
+        $complexModelResponse->assertSessionHas('ar_model_warnings', function (array $warnings): bool {
+            $message = implode('\n', $warnings);
+
+            return str_contains($message, '3103142 triangles')
+                && str_contains($message, 'accepted')
+                && str_contains($message, 'some phones');
+        });
+
+        $this->assertSame('complex-agave.glb', $product->fresh()->plantModel->file_name);
+
         $this->actingAs($admin)->post(route('admin.ar-models.upload', $product), [
             'ar_model' => UploadedFile::fake()->createWithContent(
-                'too-many-triangles.glb',
-                $this->budgetGlb(triangleCount: 250_001)
+                'extreme-model.glb',
+                $this->budgetGlb(triangleCount: 5_000_001)
             ),
             'height_cm' => 120,
         ])->assertSessionHasErrors('ar_model')
             ->assertSessionHas('errors', function ($errors): bool {
-                return str_contains($errors->first('ar_model'), '250001 triangles')
-                    && str_contains($errors->first('ar_model'), '250000');
+                return str_contains($errors->first('ar_model'), '5000001 triangles')
+                    && str_contains($errors->first('ar_model'), '5000000');
             });
 
         $this->actingAs($admin)->post(route('admin.ar-models.upload', $product), [
@@ -644,6 +662,24 @@ class FunctionalWorkflowTest extends TestCase
         $this->assertNull($order->dispatch_proof_url);
         $this->assertNotNull($order->dispatched_at);
 
+        Storage::disk('public')->put('dispatch-proofs/dispatched.png', 'dispatch proof');
+        $order->update([
+            'dispatch_proof_url' => 'http://192.168.254.171/ferosa/ferosa-laravel/public/storage/dispatch-proofs/dispatched.png',
+        ]);
+
+        $dispatchProofUrl = route('orders.dispatch-proof', $order);
+        $this->actingAs($customer)
+            ->get($dispatchProofUrl)
+            ->assertOk();
+        $this->actingAs($otherCustomer)
+            ->get($dispatchProofUrl)
+            ->assertForbidden();
+        $this->actingAs($customer)
+            ->get(route('orders'))
+            ->assertOk()
+            ->assertSee('data-proof-src="'.$dispatchProofUrl.'"', false)
+            ->assertDontSee('href="'.$order->dispatch_proof_url.'"', false);
+
         $this->actingAs($admin)->put(route('admin.orders.status', $order), [
             'status' => 'delivered',
             'payment_status' => 'paid',
@@ -679,7 +715,9 @@ class FunctionalWorkflowTest extends TestCase
             ->assertOk()
             ->assertSee('id="delivery-proof-modal"', false)
             ->assertSee('data-proof-src="'.$proofUrl.'"', false)
-            ->assertDontSee('href="'.$order->delivery_proof_url.'"', false);
+            ->assertSee('href="'.$dispatchProofUrl.'"', false)
+            ->assertDontSee('href="'.$order->delivery_proof_url.'"', false)
+            ->assertDontSee('href="'.$order->dispatch_proof_url.'"', false);
         $this->actingAs($customer)
             ->get(route('orders'))
             ->assertOk()
@@ -688,7 +726,8 @@ class FunctionalWorkflowTest extends TestCase
         $this->actingAs($customer)
             ->postJson(route('orders.track'), ['order_number' => $order->order_number])
             ->assertOk()
-            ->assertJsonPath('delivery_proof_url', $proofUrl);
+            ->assertJsonPath('delivery_proof_url', $proofUrl)
+            ->assertJsonPath('dispatch_proof_url', $dispatchProofUrl);
 
         $this->actingAs($customer)
             ->post(route('orders.confirm-received', $order))

@@ -12,10 +12,13 @@ class AddSecurityHeaders
     {
         $response = $next($request);
 
-        $response->headers->set(
-            'Content-Security-Policy',
-            "base-uri 'self'; frame-ancestors 'self'; object-src 'none'; upgrade-insecure-requests"
-        );
+        $contentSecurityPolicy = "base-uri 'self'; frame-ancestors 'self'; object-src 'none'";
+
+        if ($request->isSecure()) {
+            $contentSecurityPolicy .= '; upgrade-insecure-requests';
+        }
+
+        $response->headers->set('Content-Security-Policy', $contentSecurityPolicy);
         $response->headers->set('Permissions-Policy', 'camera=(), geolocation=(), microphone=()');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $response->headers->set('X-Content-Type-Options', 'nosniff');

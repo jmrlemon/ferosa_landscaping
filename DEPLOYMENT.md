@@ -44,13 +44,40 @@ Do not edit `Constants.kt` for each server. For a local physical Android device,
 FEROSA_SERVER_URL=http://YOUR_COMPUTER_LAN_IP/ferosa/ferosa-laravel/public
 ```
 
-For CI and release builds, pass the server explicitly at build time:
+Release APKs must use the real deployed HTTPS URL and the same long-lived private
+signing key for every version. Copy `ferosa_mobile/keystore.properties.example`
+to the ignored `ferosa_mobile/keystore.properties`, point it at the backed-up
+release keystore, and fill in the passwords. Never commit either file.
+
+Then run the full Android gate and build the signed APK:
 
 ```powershell
-.\gradlew.bat assembleRelease -PFEROSA_SERVER_URL=https://your-ferosa-domain.example
+cd ferosa_mobile
+.\gradlew.bat testDebugUnitTest lintDebug
+.\gradlew.bat assembleRelease -PFEROSA_SERVER_URL=https://ferosa.store
 ```
 
-Release builds reject cleartext HTTP. Development builds default to the Android emulator host and may use HTTP locally.
+`assembleRelease` automatically runs the server-URL and signing checks.
+
+The installable artifact is `ferosa_mobile/app/build/outputs/apk/release/app-release.apk`.
+Verify it before copying it to the defense phone:
+
+```powershell
+& "$env:LOCALAPPDATA\Android\Sdk\build-tools\36.0.0\apksigner.bat" verify --verbose --print-certs app\build\outputs\apk\release\app-release.apk
+```
+
+Release builds fail when signing is missing or the server uses cleartext HTTP.
+Development builds default to the Android emulator host and may use HTTP locally.
+Back up the release keystore and its passwords: losing them prevents future APK
+updates from replacing the installed app.
+
+The current SceneView 2.x/Filament AR stack requests Android's supported 16 KB
+page compatibility mode. That keeps direct APK installs runnable on 16 KB devices,
+but it is not native 16 KB ELF alignment, and preview Android images may still show
+the platform compatibility warning.
+Before a Google Play submission, migrate SceneView and its matching material files
+together, then verify every bundled `.so` against Android's 16 KB guidance. Do not
+force-upgrade Filament alone: SceneView's compiled material format must match it.
 
 ## Backups
 

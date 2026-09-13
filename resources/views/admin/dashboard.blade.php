@@ -1197,7 +1197,7 @@
                           'delivery_address'=> $order->delivery_address,
                           'delivery_city'   => $order->delivery_city,
                           'delivery_notes'  => $order->delivery_notes,
-                          'delivery_proof_url' => $order->delivery_proof_url,
+                          'delivery_proof_url' => $order->delivery_proof_url ? route('orders.delivery-proof', $order) : null,
                           'delivered_at' => optional($order->delivered_at)->format('M d, Y h:i A'),
                           'customer_confirmed_at' => optional($order->customer_confirmed_at)->format('M d, Y h:i A'),
                           'cancel_reason' => $order->cancel_reason,

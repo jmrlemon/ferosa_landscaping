@@ -66,6 +66,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/orders/{order}/invoice', [BillingController::class, 'orderInvoice'])->name('orders.invoice');
     Route::get('/appointments/{appointment}/invoice', [BillingController::class, 'appointmentInvoice'])->name('appointments.invoice');
     Route::get('/orders/{order}/payment-proof', [PageController::class, 'paymentProof'])->name('orders.payment-proof');
+    Route::get('/orders/{order}/dispatch-proof', [PageController::class, 'dispatchProof'])->name('orders.dispatch-proof');
     Route::get('/orders/{order}/delivery-proof', [PageController::class, 'deliveryProof'])->name('orders.delivery-proof');
     Route::get('/orders', [PageController::class, 'orders'])->name('orders');
     Route::get('/appointments', [PageController::class, 'appointments'])->name('appointments');

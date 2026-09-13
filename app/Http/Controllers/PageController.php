@@ -543,7 +543,9 @@ class PageController extends Controller
             'delivery_proof_url' => $order->delivery_proof_url
                 ? route('orders.delivery-proof', $order)
                 : null,
-            'dispatch_proof_url' => $order->dispatch_proof_url,
+            'dispatch_proof_url' => $order->dispatch_proof_url
+                ? route('orders.dispatch-proof', $order)
+                : null,
             'dispatched_at' => optional($order->dispatched_at)->format('M d, Y h:i A'),
             'driver_name' => $order->driver_name,
             'driver_phone' => $order->driver_phone,
@@ -891,14 +893,33 @@ class PageController extends Controller
             (int) $order->user_id === (int) $request->user()->id || $request->user()->isStaffOrAdmin(),
             403
         );
-        abort_unless($order->delivery_proof_url, 404);
 
-        $urlPath = parse_url($order->delivery_proof_url, PHP_URL_PATH);
+        return $this->publicOrderProof($order->delivery_proof_url, 'delivery-proofs');
+    }
+
+    public function dispatchProof(Request $request, Order $order): StreamedResponse
+    {
+        abort_unless(
+            (int) $order->user_id === (int) $request->user()->id || $request->user()->isStaffOrAdmin(),
+            403
+        );
+
+        return $this->publicOrderProof($order->dispatch_proof_url, 'dispatch-proofs');
+    }
+
+    private function publicOrderProof(?string $proofUrl, string $directory): StreamedResponse
+    {
+        abort_unless($proofUrl, 404);
+
+        $urlPath = parse_url($proofUrl, PHP_URL_PATH);
         $normalizedPath = is_string($urlPath) ? '/'.ltrim(str_replace('\\', '/', $urlPath), '/') : '';
         abort_unless(Str::contains($normalizedPath, '/storage/'), 404);
 
         $storagePath = Str::afterLast($normalizedPath, '/storage/');
-        abort_unless($storagePath !== '' && ! Str::contains($storagePath, '..'), 404);
+        abort_unless(
+            Str::startsWith($storagePath, $directory.'/') && ! Str::contains($storagePath, '..'),
+            404
+        );
         abort_unless(Storage::disk('public')->exists($storagePath), 404);
 
         return Storage::disk('public')->response($storagePath, null, [

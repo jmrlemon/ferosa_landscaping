@@ -193,9 +193,9 @@
                   @if($order->driver_phone)<p class="text-xs text-surface-500">Contact: {{ $order->driver_phone }}</p>@endif
                   @if($order->dispatch_notes)<p class="mt-1 text-xs text-surface-600">{{ $order->dispatch_notes }}</p>@endif
                 </div>
-                <a href="{{ $order->dispatch_proof_url }}" target="_blank" class="rounded-lg border border-indigo-300 px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50">View Full</a>
+                <a href="{{ route('orders.dispatch-proof', $order) }}" target="_blank" class="rounded-lg border border-indigo-300 px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50">View Full</a>
               </div>
-              <img src="{{ $order->dispatch_proof_url }}" alt="Dispatch proof" class="mt-3 max-h-72 rounded-lg border border-surface-200 object-contain">
+              <img src="{{ route('orders.dispatch-proof', $order) }}" alt="Dispatch proof" class="mt-3 max-h-72 rounded-lg border border-surface-200 object-contain">
             </div>
           @endif
           @if($order->delivery_proof_url)

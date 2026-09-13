@@ -25,6 +25,10 @@ class SecurityHeadersTest extends TestCase
     {
         $this->get('/')
             ->assertOk()
+            ->assertHeader(
+                'Content-Security-Policy',
+                "base-uri 'self'; frame-ancestors 'self'; object-src 'none'"
+            )
             ->assertHeaderMissing('Strict-Transport-Security');
     }
 }

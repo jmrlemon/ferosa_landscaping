@@ -77,9 +77,10 @@ class SmsService
         try {
             $response = Http::timeout(10)->retry(2, 250)
                 ->withHeaders(['x-api-key' => $apiKey])
-                ->post("https://api.textbee.dev/api/v1/gateway/devices/{$deviceId}/sendSMS", [
-                    'receivers' => [$number],
+                ->post('https://api.textbee.dev/api/v1/gateway/send-sms', [
+                    'recipients' => [$number],
                     'message' => $message,
+                    'deviceId' => $deviceId,
                 ]);
         } catch (\Throwable $e) {
             report($e);
@@ -88,7 +89,7 @@ class SmsService
         }
 
         if (! $response->successful()) {
-            Log::error('TextBee SMS failed', ['status' => $response->status(), 'body' => $response->body()]);
+            Log::error('TextBee SMS failed', ['status' => $response->status()]);
         }
 
         return $response->successful();

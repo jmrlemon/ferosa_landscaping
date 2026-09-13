@@ -1231,8 +1231,12 @@ class AdminController extends Controller
                 'status_label' => ucfirst(str_replace('_', ' ', $order->status)),
                 'payment_status' => $order->payment_status ?? 'unpaid',
                 'payment_label' => ucfirst(str_replace('_', ' ', $order->payment_status ?? 'unpaid')),
-                'delivery_proof_url' => $order->delivery_proof_url,
-                'dispatch_proof_url' => $order->dispatch_proof_url,
+                'delivery_proof_url' => $order->delivery_proof_url
+                    ? route('orders.delivery-proof', $order)
+                    : null,
+                'dispatch_proof_url' => $order->dispatch_proof_url
+                    ? route('orders.dispatch-proof', $order)
+                    : null,
                 'dispatched_at' => optional($order->dispatched_at)->format('M d, Y h:i A'),
                 'driver_name' => $order->driver_name,
                 'delivery_recipient_name' => $order->delivery_recipient_name,

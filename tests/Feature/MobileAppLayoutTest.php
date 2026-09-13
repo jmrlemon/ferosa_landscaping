@@ -129,4 +129,13 @@ class MobileAppLayoutTest extends TestCase
             $this->assertStringContainsString('loading="lazy"', $tag);
         }
     }
+
+    public function test_mobile_font_stylesheet_uses_deployment_relative_urls(): void
+    {
+        $fonts = file_get_contents(public_path('fonts/ferosa-fonts.css'));
+
+        $this->assertNotFalse($fonts);
+        $this->assertStringNotContainsString('/ferosa/ferosa-laravel/public/', $fonts);
+        $this->assertStringContainsString("url('./", $fonts);
+    }
 }

@@ -44,7 +44,7 @@
                  accept=".glb,model/gltf-binary"
                  {{ $product->plantModel ? '' : 'required' }}
                  class="mt-2 h-10 w-full rounded-lg border border-surface-200 bg-white text-sm text-surface-600 file:mr-3 file:h-full file:border-0 file:bg-surface-100 file:px-3 file:text-sm file:text-surface-700">
-          <span class="mt-1 block text-xs font-normal text-surface-400">Accepted: self-contained .glb, up to 100 MB, with visible mesh geometry. Export with Y up; Ferosa aligns the model bottom to the ground.</span>
+          <span class="mt-1 block text-xs font-normal text-surface-400">Accepted: self-contained .glb, up to 100 MB and 5 million triangles, with visible mesh geometry. Models over 250,000 triangles are accepted with a performance warning. Export with Y up; Ferosa aligns the model bottom to the ground.</span>
         </label>
 
         <label class="block text-sm font-medium text-surface-800">

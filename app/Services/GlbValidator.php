@@ -37,7 +37,9 @@ class GlbValidator
 
     private const TRIANGLE_WARN_LIMIT = 100000;
 
-    private const TRIANGLE_HARD_LIMIT = 250000;
+    private const TRIANGLE_CAUTION_LIMIT = 250000;
+
+    private const TRIANGLE_HARD_LIMIT = 5000000;
 
     private const TEXTURE_WARN_EDGE = 2048;
 
@@ -730,7 +732,9 @@ class GlbValidator
             return "The GLB contains {$triangleCount} triangles, above the hard limit of ".self::TRIANGLE_HARD_LIMIT.'. Reduce the mesh before uploading.';
         }
 
-        if ($triangleCount > self::TRIANGLE_WARN_LIMIT) {
+        if ($triangleCount > self::TRIANGLE_CAUTION_LIMIT) {
+            $warnings[] = "The GLB contains {$triangleCount} triangles. It was accepted, but very complex models may load slowly or fail on some phones. Optimize it to ".self::TRIANGLE_CAUTION_LIMIT.' triangles or fewer for reliable AR.';
+        } elseif ($triangleCount > self::TRIANGLE_WARN_LIMIT) {
             $warnings[] = "The GLB contains {$triangleCount} triangles; the recommended budget is ".self::TRIANGLE_WARN_LIMIT.'.';
         }
 

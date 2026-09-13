@@ -279,9 +279,15 @@
               @if($order->dispatch_proof_url)
                 <div class="rounded-lg border border-indigo-100 bg-indigo-50/50 p-3 text-xs">
                   <p class="font-semibold text-indigo-700 mb-1.5">Dispatch Information</p>
-                  <a href="{{ $order->dispatch_proof_url }}" class="block overflow-hidden rounded-lg border border-indigo-100 bg-white mb-2">
-                    <img src="{{ $order->dispatch_proof_url }}" alt="Dispatch proof for order {{ $order->order_number }}" loading="lazy" decoding="async" class="w-full h-32 object-cover">
-                  </a>
+                  <button type="button"
+                    data-proof-src="{{ route('orders.dispatch-proof', $order) }}"
+                    data-proof-alt="Dispatch proof for order {{ $order->order_number }}"
+                    data-proof-title="Dispatch Proof"
+                    onclick="openDeliveryProof(this.dataset.proofSrc, this.dataset.proofAlt, this.dataset.proofTitle)"
+                    class="block w-full overflow-hidden rounded-lg border border-indigo-100 bg-white mb-2 text-left cursor-zoom-in"
+                    aria-label="View dispatch proof for order {{ $order->order_number }}">
+                    <img src="{{ route('orders.dispatch-proof', $order) }}" alt="Dispatch proof for order {{ $order->order_number }}" loading="lazy" decoding="async" class="w-full h-32 object-cover">
+                  </button>
                   <p class="text-surface-500">Dispatched: {{ optional($order->dispatched_at)->format('M d, Y h:i A') ?? 'Pending timestamp' }}</p>
                   <p class="text-surface-500">Driver: {{ $order->driver_name ?: 'Not recorded' }}{{ $order->driver_phone ? ' · '.$order->driver_phone : '' }}</p>
                 </div>
@@ -605,11 +611,13 @@
 
   const deliveryProofModal = document.getElementById('delivery-proof-modal');
   const deliveryProofImage = document.getElementById('delivery-proof-modal-image');
+  const deliveryProofTitle = document.getElementById('delivery-proof-title');
 
-  function openDeliveryProof(src, alt) {
+  function openDeliveryProof(src, alt, title = 'Delivery Proof') {
     if (!src) return;
     deliveryProofImage.src = src;
     deliveryProofImage.alt = alt || 'Delivery proof';
+    deliveryProofTitle.textContent = title;
     deliveryProofModal.classList.remove('hidden');
     deliveryProofModal.classList.add('flex');
     document.body.style.overflow = 'hidden';

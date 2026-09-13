@@ -101,7 +101,7 @@
                 <input name="stock_qty" type="number" min="0" value="{{ old('stock_qty', 0) }}" class="mt-2 h-10 w-full rounded-lg border border-surface-200 px-3 text-base font-normal outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
               </label>
               <label class="block text-sm font-medium text-surface-800">Product Image
-                <input name="image" type="file" accept="image/*" class="mt-2 h-10 w-full rounded-lg border border-surface-200 bg-white text-sm text-surface-600 file:mr-3 file:h-full file:border-0 file:bg-surface-100 file:px-3 file:text-sm file:text-surface-700">
+                <input id="product-image-input" name="image" type="file" accept="image/*" aria-describedby="product-image-preview-status" class="mt-2 h-10 w-full rounded-lg border border-surface-200 bg-white text-sm text-surface-600 file:mr-3 file:h-full file:border-0 file:bg-surface-100 file:px-3 file:text-sm file:text-surface-700">
               </label>
               <label class="flex items-center gap-2 text-sm font-medium text-surface-700 lg:col-span-3">
                 <input type="checkbox" name="is_active" value="1" {{ old('is_active', true) ? 'checked' : '' }} class="h-4 w-4 rounded border-surface-300 text-brand-600 focus:ring-brand-500">
@@ -113,9 +113,13 @@
       </div>
 
       <aside class="h-fit rounded-xl border border-surface-100 bg-white p-4 shadow-sm">
-        <div class="flex h-44 items-center justify-center rounded-lg bg-brand-50">
-          <svg class="h-12 w-12 text-brand-200" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 19.5h16.5A1.5 1.5 0 0 0 21.75 18V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Z"/></svg>
+        <div class="flex h-44 items-center justify-center overflow-hidden rounded-lg bg-brand-50">
+          <img id="product-image-preview" alt="" aria-hidden="true" class="hidden h-full w-full object-contain">
+          <div id="product-image-preview-placeholder" class="flex h-full w-full items-center justify-center">
+            <svg class="h-12 w-12 text-brand-200" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 19.5h16.5A1.5 1.5 0 0 0 21.75 18V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Z"/></svg>
+          </div>
         </div>
+        <p id="product-image-preview-status" role="status" aria-live="polite" class="sr-only"></p>
         <div class="mt-4 rounded-lg border border-brand-100 bg-brand-50 px-3 py-3">
           <p class="text-sm font-semibold text-brand-800">Before Saving</p>
           <p class="mt-1 text-xs leading-5 text-brand-700">Use a clear product photo and a short category name so customers can browse faster.</p>
@@ -212,6 +216,60 @@
           close();
         }
       });
+    })();
+  </script>
+  <script>
+    (function () {
+      const input = document.getElementById('product-image-input');
+      const preview = document.getElementById('product-image-preview');
+      const placeholder = document.getElementById('product-image-preview-placeholder');
+      const status = document.getElementById('product-image-preview-status');
+      if (!input || !preview || !placeholder || !status) {
+        return;
+      }
+
+      let previewUrl = null;
+
+      function revokePreviewUrl() {
+        if (previewUrl) {
+          URL.revokeObjectURL(previewUrl);
+          previewUrl = null;
+        }
+      }
+
+      function showPlaceholder(message) {
+        preview.removeAttribute('src');
+        preview.alt = '';
+        preview.classList.add('hidden');
+        preview.setAttribute('aria-hidden', 'true');
+        placeholder.classList.remove('hidden');
+        status.textContent = message;
+      }
+
+      input.addEventListener('change', function () {
+        const file = input.files && input.files[0];
+        revokePreviewUrl();
+
+        if (!file) {
+          showPlaceholder('No product image selected.');
+          return;
+        }
+
+        previewUrl = URL.createObjectURL(file);
+        preview.src = previewUrl;
+        preview.alt = 'Selected product image preview';
+        preview.classList.remove('hidden');
+        preview.setAttribute('aria-hidden', 'false');
+        placeholder.classList.add('hidden');
+        status.textContent = 'Previewing selected product image.';
+      });
+
+      preview.addEventListener('error', function () {
+        revokePreviewUrl();
+        showPlaceholder('The selected file could not be previewed. Please choose an image.');
+      });
+
+      window.addEventListener('pagehide', revokePreviewUrl);
     })();
   </script>
 </body>
