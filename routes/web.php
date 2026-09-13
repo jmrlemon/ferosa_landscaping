@@ -11,6 +11,7 @@ use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\PasswordResetOtpController;
+use App\Http\Controllers\ProductImageController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\SocialAuthController;
 use Illuminate\Support\Facades\Route;
@@ -25,6 +26,13 @@ Route::get('/', function () {
     // sign-in flow is unaffected.
     return app(PageController::class)->landing();
 })->name('landing');
+
+// Shared hosts can deploy without preserving Laravel's public/storage
+// symlink. Keep product photos available through the same URLs already stored
+// in the database, while exposing only validated public product image names.
+Route::get('/storage/products/{filename}', [ProductImageController::class, 'show'])
+    ->where('filename', '[A-Za-z0-9_-]+\.(?:jpe?g|png|gif|bmp|webp)')
+    ->name('product-images.show');
 
 // ── Public storefront ────────────────────────────────────────────────────
 // Browsing the catalogue and the finished-work portfolio needs no account;

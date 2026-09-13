@@ -38,7 +38,9 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -836,40 +838,43 @@ class AdminController extends Controller
             'is_active' => ['nullable', 'boolean'],
         ]);
 
-        $imageUrl = null;
-        if ($request->hasFile('image')) {
-            $imageUrl = Storage::disk('public')->url(
-                $request->file('image')->store('products', 'public')
-            );
-        }
+        [$imagePath, $imageUrl] = $this->storeProductImage($request);
 
         $openingStock = (int) ($data['stock_qty'] ?? 0);
 
         // The product row and its opening stock movement commit together, so a
         // failed movement can never leave a product with phantom stock.
-        $product = DB::transaction(function () use ($data, $imageUrl, $openingStock, $inventory, $request): Product {
-            $product = Product::query()->create([
-                'name' => $data['name'],
-                'description' => $data['description'] ?? '',
-                'image_url' => $imageUrl,
-                'price' => $data['price'],
-                // Created at zero so the opening stock is booked through the ledger
-                // rather than appearing from nowhere.
-                'stock_qty' => 0,
-                'category' => strtolower(trim($data['category'])),
-                'is_active' => (bool) ($data['is_active'] ?? false),
-                'archived_at' => null,
-            ]);
-
-            if ($openingStock > 0) {
-                $inventory->record($product, StockMovement::TYPE_OPENING, $openingStock, [
-                    'user_id' => $request->user()->id,
-                    'note' => 'Opening stock entered when the product was created.',
+        try {
+            $product = DB::transaction(function () use ($data, $imageUrl, $openingStock, $inventory, $request): Product {
+                $product = Product::query()->create([
+                    'name' => $data['name'],
+                    'description' => $data['description'] ?? '',
+                    'image_url' => $imageUrl,
+                    'price' => $data['price'],
+                    // Created at zero so the opening stock is booked through the ledger
+                    // rather than appearing from nowhere.
+                    'stock_qty' => 0,
+                    'category' => strtolower(trim($data['category'])),
+                    'is_active' => (bool) ($data['is_active'] ?? false),
+                    'archived_at' => null,
                 ]);
+
+                if ($openingStock > 0) {
+                    $inventory->record($product, StockMovement::TYPE_OPENING, $openingStock, [
+                        'user_id' => $request->user()->id,
+                        'note' => 'Opening stock entered when the product was created.',
+                    ]);
+                }
+
+                return $product;
+            }, 3);
+        } catch (\Throwable $exception) {
+            if ($imagePath) {
+                Storage::disk('public')->delete($imagePath);
             }
 
-            return $product;
-        }, 3);
+            throw $exception;
+        }
 
         Audit::log(
             $request,
@@ -927,21 +932,30 @@ class AdminController extends Controller
             'is_active' => ['nullable', 'boolean'],
         ]);
 
-        $imageUrl = $product->image_url;
-        if ($request->hasFile('image')) {
-            $imageUrl = Storage::disk('public')->url(
-                $request->file('image')->store('products', 'public')
-            );
+        $previousImageUrl = $product->image_url;
+        [$newImagePath, $newImageUrl] = $this->storeProductImage($request);
+        $imageUrl = $newImageUrl ?? $previousImageUrl;
+
+        try {
+            $product->update([
+                'name' => $data['name'],
+                'description' => $data['description'] ?? '',
+                'image_url' => $imageUrl,
+                'price' => $data['price'],
+                'category' => strtolower(trim($data['category'])),
+                'is_active' => (bool) ($data['is_active'] ?? false),
+            ]);
+        } catch (\Throwable $exception) {
+            if ($newImagePath) {
+                Storage::disk('public')->delete($newImagePath);
+            }
+
+            throw $exception;
         }
 
-        $product->update([
-            'name' => $data['name'],
-            'description' => $data['description'] ?? '',
-            'image_url' => $imageUrl,
-            'price' => $data['price'],
-            'category' => strtolower(trim($data['category'])),
-            'is_active' => (bool) ($data['is_active'] ?? false),
-        ]);
+        if ($newImagePath) {
+            $this->deleteProductImage($previousImageUrl);
+        }
 
         Cache::forget('shop_products_active');
 
@@ -961,6 +975,48 @@ class AdminController extends Controller
 
         return redirect()->route('admin.dashboard', ['tab' => 'products'])
             ->with('status', 'Product updated successfully.');
+    }
+
+    /** @return array{0: ?string, 1: ?string} */
+    private function storeProductImage(Request $request): array
+    {
+        if (! $request->hasFile('image')) {
+            return [null, null];
+        }
+
+        $path = $request->file('image')->store('products', 'public');
+
+        if (! is_string($path) || $path === '') {
+            throw ValidationException::withMessages([
+                'image' => 'The product image could not be saved. Please try again.',
+            ]);
+        }
+
+        return [$path, Storage::disk('public')->url($path)];
+    }
+
+    private function deleteProductImage(?string $imageUrl): void
+    {
+        if (! $imageUrl) {
+            return;
+        }
+
+        $urlPath = parse_url($imageUrl, PHP_URL_PATH);
+        if (! is_string($urlPath)) {
+            return;
+        }
+
+        $normalizedPath = '/'.ltrim(str_replace('\\', '/', $urlPath), '/');
+        if (! Str::contains($normalizedPath, '/storage/products/')) {
+            return;
+        }
+
+        $filename = Str::afterLast($normalizedPath, '/storage/products/');
+        if (! preg_match('/\A[A-Za-z0-9_-]+\.(?:jpe?g|png|gif|bmp|webp)\z/i', $filename)) {
+            return;
+        }
+
+        Storage::disk('public')->delete('products/'.$filename);
     }
 
     public function deleteProduct(Request $request, Product $product): RedirectResponse

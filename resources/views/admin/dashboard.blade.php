@@ -1503,10 +1503,11 @@
             <article class="group overflow-hidden rounded-xl border border-surface-100 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-100 hover:shadow-md">
               <div class="relative flex h-44 items-center justify-center bg-brand-50">
                 @if($product->image_url)
-                  <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]">
-                @else
-                  <svg class="h-12 w-12 text-brand-200" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 19.5h16.5A1.5 1.5 0 0 0 21.75 18V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Z"/></svg>
+                  <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="product-card-image h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]">
                 @endif
+                <div class="product-card-image-placeholder {{ $product->image_url ? 'hidden' : 'flex' }} h-full w-full items-center justify-center" aria-hidden="true">
+                  <svg class="h-12 w-12 text-brand-200" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 19.5h16.5A1.5 1.5 0 0 0 21.75 18V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Z"/></svg>
+                </div>
                 <span class="absolute left-3 top-3 rounded-full border border-white/70 bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-surface-700 shadow-sm">{{ ucfirst($product->category) }}</span>
               </div>
               <div class="p-4">

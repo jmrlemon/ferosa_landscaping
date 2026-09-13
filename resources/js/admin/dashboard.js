@@ -37,6 +37,23 @@ const ADMIN = JSON.parse(
       if (seen >= current) badge.remove();
     }
 
+    function enhanceProductImages() {
+      document.querySelectorAll('.product-card-image').forEach(image => {
+        if (image.dataset.fallbackEnhanced === 'true') return;
+        image.dataset.fallbackEnhanced = 'true';
+
+        const showFallback = () => {
+          image.classList.add('hidden');
+          image.setAttribute('aria-hidden', 'true');
+          image.nextElementSibling?.classList.remove('hidden');
+          image.nextElementSibling?.classList.add('flex');
+        };
+
+        image.addEventListener('error', showFallback);
+        if (image.complete && image.naturalWidth === 0) showFallback();
+      });
+    }
+
     /* Tabs are server-rendered: AdminController loads only the active tab's data
        and every tab control is a real link, so there is no client-side switch. */
 
@@ -136,6 +153,7 @@ const ADMIN = JSON.parse(
 
     document.addEventListener('DOMContentLoaded', () => {
       restoreFeedbackBadgeState();
+      enhanceProductImages();
       enhanceServiceCards();
       enhanceStatusControls();
 
@@ -841,6 +859,7 @@ Object.assign(window, {
   closeMobileConversation,
   closeOrderDetail,
   enhanceServiceCards,
+  enhanceProductImages,
   enhanceStatusControls,
   escapeAdminHtml,
   loadThread,

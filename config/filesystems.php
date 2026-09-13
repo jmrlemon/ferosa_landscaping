@@ -33,7 +33,11 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            // Private files are delivered only by ownership-checking controller
+            // actions. Laravel's generic /storage/{path} route would otherwise
+            // intercept public product image URLs when a host cannot make the
+            // public/storage symlink.
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],

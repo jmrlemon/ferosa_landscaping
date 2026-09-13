@@ -98,7 +98,7 @@
                 <span class="mt-1 block text-xs font-normal text-surface-400">Changed through restock, wastage or correction.</span>
               </div>
               <label class="block text-sm font-medium text-surface-800">New Image (optional)
-                <input name="image" type="file" accept="image/*" {{ $isStaffOrAdmin ? '' : 'disabled' }} class="mt-2 h-10 w-full rounded-lg border border-surface-200 bg-white text-sm text-surface-600 file:mr-3 file:h-full file:border-0 file:bg-surface-100 file:px-3 file:text-sm file:text-surface-700">
+                <input id="product-image-input" name="image" type="file" accept="image/*" aria-describedby="product-image-preview-status" {{ $isStaffOrAdmin ? '' : 'disabled' }} class="mt-2 h-10 w-full rounded-lg border border-surface-200 bg-white text-sm text-surface-600 file:mr-3 file:h-full file:border-0 file:bg-surface-100 file:px-3 file:text-sm file:text-surface-700">
               </label>
               <label class="flex items-center gap-2 text-sm font-medium text-surface-700 lg:col-span-3">
                 <input type="checkbox" name="is_active" value="1" {{ old('is_active', $product->is_active) ? 'checked' : '' }} {{ $isStaffOrAdmin ? '' : 'disabled' }} class="h-4 w-4 rounded border-surface-300 text-brand-600 focus:ring-brand-500">
@@ -123,12 +123,18 @@
 
       <aside class="h-fit rounded-xl border border-surface-100 bg-white p-4 shadow-sm">
         <div class="flex h-44 items-center justify-center overflow-hidden rounded-lg bg-brand-50">
-          @if($product->image_url)
-            <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="h-full w-full object-contain">
-          @else
+          <img id="product-image-preview"
+               src="{{ $product->image_url ?: '' }}"
+               alt="{{ $product->image_url ? $product->name : '' }}"
+               aria-hidden="{{ $product->image_url ? 'false' : 'true' }}"
+               data-current-src="{{ $product->image_url ?: '' }}"
+               data-current-alt="{{ $product->name }}"
+               class="{{ $product->image_url ? '' : 'hidden' }} h-full w-full object-contain">
+          <div id="product-image-preview-placeholder" class="{{ $product->image_url ? 'hidden' : 'flex' }} h-full w-full items-center justify-center">
             <svg class="h-12 w-12 text-brand-200" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 19.5h16.5A1.5 1.5 0 0 0 21.75 18V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Z"/></svg>
-          @endif
+          </div>
         </div>
+        <p id="product-image-preview-status" role="status" aria-live="polite" class="sr-only"></p>
         <div class="mt-4 grid grid-cols-2 gap-2">
           <div class="rounded-lg border border-surface-100 bg-surface-50 p-3">
             <p class="text-[10px] font-semibold uppercase tracking-wide text-surface-400">Price</p>
@@ -148,4 +154,6 @@
         <a href="{{ route('admin.dashboard', ['tab' => 'products']) }}" class="mt-2 flex w-full items-center justify-center rounded-lg border border-surface-400 py-2.5 text-base font-medium text-surface-600 transition-colors hover:bg-surface-50">Cancel</a>
       </aside>
     </div>
+
+    @include('admin.partials.product-image-preview-script')
 @endsection
