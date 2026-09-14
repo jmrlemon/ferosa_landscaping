@@ -497,11 +497,10 @@
                       onclick="openPackageZoom()"
                       aria-label="Open a larger view of the selected package visualization"
                       class="group relative mx-auto block aspect-[3/4] w-full max-w-xs cursor-zoom-in overflow-hidden bg-surface-200 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500">
-                <img id="package-visual-sprite"
-                     src="{{ asset('images/tier-package-visuals.png') }}"
+                <img id="package-visual-image"
+                     src="{{ asset('images/quality-tier-standard.png') }}"
                      alt="Standard starter garden package visualization"
-                     class="absolute inset-y-0 left-0 h-auto min-h-full w-[300%] max-w-none object-cover transition-transform duration-500 ease-out"
-                     style="transform: translateX(0%);">
+                     class="absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ease-out">
                 <span class="absolute right-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full border border-white/40 bg-black/55 px-2.5 py-1.5 text-[10px] font-semibold text-white shadow-sm backdrop-blur-sm transition group-hover:bg-black/70" aria-hidden="true">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="11" cy="11" r="7"/>
@@ -583,10 +582,9 @@
   <div class="relative overflow-hidden rounded-2xl border border-white/20 bg-surface-900 shadow-2xl"
        style="height: min(82vh, calc(92vw * 1.3333)); aspect-ratio: 3 / 4;">
     <img id="package-zoom-image"
-         src="{{ asset('images/tier-package-visuals.png') }}"
+         src="{{ asset('images/quality-tier-standard.png') }}"
          alt="Standard starter garden package visualization"
-         class="absolute inset-y-0 left-0 h-auto min-h-full w-[300%] max-w-none object-cover transition-transform duration-500 ease-out"
-         style="transform: translateX(0%);">
+         class="absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ease-out">
     <button id="package-zoom-close"
             type="button"
             onclick="closePackageZoom()"
@@ -618,7 +616,7 @@
   /** Object.fromEntries is Chrome 73+; some Android 7 WebViews are older. */
   function mapValues(source, pick) {
     const out = {};
-    Object.keys(source).forEach(function (key) { out[key] = pick(source[key]); });
+    Object.keys(source).forEach(function (key) { out[key] = pick(source[key], key); });
     return out;
   }
 
@@ -629,12 +627,16 @@
   const TIER_NAME = mapValues(RATE_CARD.tiers, t => t.label);
   const TIER_LABEL = mapValues(RATE_CARD.tiers, t => `${t.label} (${t.multiplier}×)`);
   const TIER_EXAMPLES = mapValues(RATE_CARD.tiers, t => t.examples);
-  const TIER_VISUALS = mapValues(RATE_CARD.tiers, t => ({
+  const TIER_VISUAL_SOURCES = {
+    standard: @json(asset('images/quality-tier-standard.png')),
+    premium: @json(asset('images/quality-tier-premium.png')),
+    luxury: @json(asset('images/quality-tier-luxury.png')),
+  };
+  const TIER_VISUALS = mapValues(RATE_CARD.tiers, (t, key) => ({
     title: t.package_title,
     caption: t.caption,
     alt: `${t.label} ${t.package_title.toLowerCase()} package visualization`,
-    // The sprite is three panels wide, so panel n starts at -(n × 100/3)%.
-    position: -(t.visual_index * (100 / 3)),
+    src: TIER_VISUAL_SOURCES[key],
   }));
 
   // ─── Helpers ─────────────────────────────────────────────────────────────
@@ -784,11 +786,11 @@
     document.getElementById('package-item-count').textContent = `${itemCount} item${itemCount === 1 ? '' : 's'}`;
 
     const visual = TIER_VISUALS[data.tier] || TIER_VISUALS.standard;
-    const visualImage = document.getElementById('package-visual-sprite');
-    visualImage.style.transform = `translateX(${visual.position}%)`;
+    const visualImage = document.getElementById('package-visual-image');
+    visualImage.src = visual.src;
     visualImage.alt = `${tierName} ${packageName.toLowerCase()} concept visualization`;
     const zoomImage = document.getElementById('package-zoom-image');
-    zoomImage.style.transform = `translateX(${visual.position}%)`;
+    zoomImage.src = visual.src;
     zoomImage.alt = visualImage.alt;
     document.getElementById('package-visual-title').textContent = packageName;
     document.getElementById('package-visual-caption').textContent = packageCopy?.caption || visual.caption;

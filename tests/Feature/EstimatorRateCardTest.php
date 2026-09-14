@@ -96,6 +96,7 @@ class EstimatorRateCardTest extends TestCase
 
         $this->assertStringContainsString('visualImage.src = visual.src;', $html);
         $this->assertStringContainsString('zoomImage.src = visual.src;', $html);
+        $this->assertStringNotContainsString('tier-package-visuals.png', $html);
     }
 
     public function test_every_quick_size_the_config_lists_is_offered_on_the_web_page(): void
