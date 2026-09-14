@@ -78,6 +78,26 @@ class EstimatorRateCardTest extends TestCase
         $this->assertStringContainsString('+ ₱81,234', $html);
     }
 
+    public function test_each_quality_tier_has_its_own_web_visual(): void
+    {
+        $customer = User::factory()->create(['role' => 'user']);
+        $expectedVisuals = [
+            'standard' => 'images/quality-tier-standard.png',
+            'premium' => 'images/quality-tier-premium.png',
+            'luxury' => 'images/quality-tier-luxury.png',
+        ];
+
+        $html = $this->actingAs($customer)->get('/estimator')->assertOk()->getContent();
+
+        foreach ($expectedVisuals as $path) {
+            $this->assertFileExists(public_path($path));
+            $this->assertStringContainsString(json_encode(asset($path), JSON_THROW_ON_ERROR), $html);
+        }
+
+        $this->assertStringContainsString('visualImage.src = visual.src;', $html);
+        $this->assertStringContainsString('zoomImage.src = visual.src;', $html);
+    }
+
     public function test_every_quick_size_the_config_lists_is_offered_on_the_web_page(): void
     {
         $customer = User::factory()->create(['role' => 'user']);
