@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\ArAssetBudgets;
 use Illuminate\Http\UploadedFile;
 use JsonException;
 
@@ -34,20 +35,6 @@ class GlbValidator
 
     /** Below this the model has no usable height and cannot be scaled. */
     private const MIN_HEIGHT_UNITS = 0.000001;
-
-    private const TRIANGLE_WARN_LIMIT = 100000;
-
-    private const TRIANGLE_CAUTION_LIMIT = 250000;
-
-    private const TRIANGLE_HARD_LIMIT = 5000000;
-
-    private const TEXTURE_WARN_EDGE = 2048;
-
-    private const TEXTURE_HARD_EDGE = 4096;
-
-    private const TEXTURE_WARN_DECODED_BYTES = 48 * 1024 * 1024;
-
-    private const FILE_WARN_BYTES = 8 * 1024 * 1024;
 
     /** @var list<string> */
     private const SUPPORTED_REQUIRED_EXTENSIONS = [
@@ -261,8 +248,8 @@ class GlbValidator
         int $fileSize,
         array &$warnings = [],
     ): ?string {
-        if ($fileSize > self::FILE_WARN_BYTES) {
-            $warnings[] = "The GLB file is {$fileSize} bytes; the recommended budget is ".self::FILE_WARN_BYTES.' bytes.';
+        if ($fileSize > ArAssetBudgets::RECOMMENDED_FILE_BYTES) {
+            $warnings[] = "The GLB file is {$fileSize} bytes; the recommended budget is ".ArAssetBudgets::RECOMMENDED_FILE_BYTES.' bytes (8 MiB).';
         }
 
         $assetVersion = data_get($document, 'asset.version');
@@ -403,25 +390,36 @@ class GlbValidator
 
             [$width, $height] = $dimensions;
             $largestTextureEdge = max($largestTextureEdge, $width, $height);
-            if ($largestTextureEdge > self::TEXTURE_HARD_EDGE) {
-                return "The GLB texture {$imageIndex} is {$width}x{$height}px; the maximum supported edge is ".self::TEXTURE_HARD_EDGE.'px. Resize it before uploading.';
+            if ($largestTextureEdge > ArAssetBudgets::MAX_TEXTURE_EDGE) {
+                return "The GLB texture {$imageIndex} is {$width}x{$height}px; the maximum supported edge is ".ArAssetBudgets::MAX_TEXTURE_EDGE.'px. Resize it before uploading.';
             }
 
             $decodedTextureBytes += ((float) $width * $height * 4 * 4) / 3;
         }
 
-        if ($largestTextureEdge > self::TEXTURE_WARN_EDGE) {
-            $warnings[] = "The largest GLB texture edge is {$largestTextureEdge}px; the recommended budget is ".self::TEXTURE_WARN_EDGE.'px.';
+        if ($largestTextureEdge > ArAssetBudgets::RECOMMENDED_TEXTURE_EDGE) {
+            $warnings[] = "The largest GLB texture edge is {$largestTextureEdge}px; the recommended budget is ".ArAssetBudgets::RECOMMENDED_TEXTURE_EDGE.'px.';
         }
 
-        if ($decodedTextureBytes > self::TEXTURE_WARN_DECODED_BYTES) {
+        if ($decodedTextureBytes > ArAssetBudgets::MAX_DECODED_TEXTURE_BYTES) {
+            $decodedMebibytes = number_format(
+                $decodedTextureBytes / (1024 * 1024),
+                2,
+                '.',
+                '',
+            );
+
+            return "The GLB textures require approximately {$decodedMebibytes} MiB decoded memory; the maximum supported budget is 48 MiB. Reduce the texture count or dimensions before uploading.";
+        }
+
+        if ($decodedTextureBytes > ArAssetBudgets::RECOMMENDED_DECODED_TEXTURE_BYTES) {
             $decodedMegabytes = number_format(
                 $decodedTextureBytes / (1024 * 1024),
                 2,
                 '.',
                 '',
             );
-            $warnings[] = "The GLB textures require approximately {$decodedMegabytes} MB decoded memory; the recommended budget is 48 MB.";
+            $warnings[] = "The GLB textures require approximately {$decodedMegabytes} MiB decoded memory; the recommended budget is 24 MiB.";
         }
 
         return null;
@@ -728,14 +726,12 @@ class GlbValidator
             return 'The GLB has no measurable height. Export it with Y as the up axis.';
         }
 
-        if ($triangleCount > self::TRIANGLE_HARD_LIMIT) {
-            return "The GLB contains {$triangleCount} triangles, above the hard limit of ".self::TRIANGLE_HARD_LIMIT.'. Reduce the mesh before uploading.';
+        if ($triangleCount > ArAssetBudgets::MAX_TRIANGLES) {
+            return "The GLB contains {$triangleCount} triangles, above the hard limit of ".ArAssetBudgets::MAX_TRIANGLES.'. Reduce the mesh before uploading.';
         }
 
-        if ($triangleCount > self::TRIANGLE_CAUTION_LIMIT) {
-            $warnings[] = "The GLB contains {$triangleCount} triangles. It was accepted, but very complex models may load slowly or fail on some phones. Optimize it to ".self::TRIANGLE_CAUTION_LIMIT.' triangles or fewer for reliable AR.';
-        } elseif ($triangleCount > self::TRIANGLE_WARN_LIMIT) {
-            $warnings[] = "The GLB contains {$triangleCount} triangles; the recommended budget is ".self::TRIANGLE_WARN_LIMIT.'.';
+        if ($triangleCount > ArAssetBudgets::RECOMMENDED_TRIANGLES) {
+            $warnings[] = "The GLB contains {$triangleCount} triangles; the recommended budget is ".ArAssetBudgets::RECOMMENDED_TRIANGLES.'.';
         }
 
         return null;

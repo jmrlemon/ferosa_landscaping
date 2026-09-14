@@ -51,7 +51,16 @@ class FunctionalWorkflowTest extends TestCase
             ->assertOk()
             ->assertSeeText('AR 3D Model')
             ->assertSee('name="ar_model"', false)
-            ->assertSee('name="height_cm"', false);
+            ->assertSee('name="height_cm"', false)
+            ->assertSeeText('Recommended: 8 MiB or less')
+            ->assertSeeText('maximum: 20 MiB')
+            ->assertSeeText('250,000 triangles')
+            ->assertSee('id="ar-model-input"', false)
+            ->assertSee('data-max-bytes="20971520"', false)
+            ->assertSee('id="ar-model-file-status"', false)
+            ->assertSee('aria-live="polite"', false)
+            ->assertSee('id="ar-model-upload-cancel"', false)
+            ->assertSee('Upload progress', false);
 
         $this->actingAs($admin)->post(route('admin.ar-models.upload', $product), [
             'ar_model' => UploadedFile::fake()->createWithContent(
@@ -205,8 +214,8 @@ class FunctionalWorkflowTest extends TestCase
         $product = $this->product(stock: 5);
         $warningGlb = $this->budgetGlb(
             triangleCount: 100_001,
-            textureWidth: 3000,
-            textureHeight: 3000,
+            textureWidth: 1500,
+            textureHeight: 1500,
             textureCopies: 2,
             filePaddingBytes: 8 * 1024 * 1024,
             textureMime: 'image/jpeg',
@@ -221,52 +230,78 @@ class FunctionalWorkflowTest extends TestCase
             $message = implode('\n', $warnings);
 
             return str_contains($message, '100001 triangles')
-                && str_contains($message, '3000px')
-                && str_contains($message, '48 MB')
+                && str_contains($message, '1500px')
                 && str_contains($message, (string) strlen($warningGlb).' bytes');
         });
 
-        $complexModelResponse = $this->actingAs($admin)->post(route('admin.ar-models.upload', $product), [
+        $decodedTextureWarning = $this->actingAs($admin)->post(route('admin.ar-models.upload', $product), [
             'ar_model' => UploadedFile::fake()->createWithContent(
-                'complex-agave.glb',
-                $this->budgetGlb(triangleCount: 3_103_142)
+                'texture-memory-warning.glb',
+                $this->budgetGlb(textureWidth: 2048, textureHeight: 2048, textureCopies: 2)
             ),
             'height_cm' => 120,
         ])->assertSessionHasNoErrors();
 
-        $complexModelResponse->assertSessionHas('ar_model_warnings', function (array $warnings): bool {
+        $decodedTextureWarning->assertSessionHas('ar_model_warnings', function (array $warnings): bool {
             $message = implode('\n', $warnings);
 
-            return str_contains($message, '3103142 triangles')
-                && str_contains($message, 'accepted')
-                && str_contains($message, 'some phones');
+            return str_contains($message, 'decoded memory')
+                && str_contains($message, '24 MiB');
         });
-
-        $this->assertSame('complex-agave.glb', $product->fresh()->plantModel->file_name);
 
         $this->actingAs($admin)->post(route('admin.ar-models.upload', $product), [
             'ar_model' => UploadedFile::fake()->createWithContent(
                 'extreme-model.glb',
-                $this->budgetGlb(triangleCount: 5_000_001)
+                $this->budgetGlb(triangleCount: 250_001)
             ),
             'height_cm' => 120,
         ])->assertSessionHasErrors('ar_model')
             ->assertSessionHas('errors', function ($errors): bool {
-                return str_contains($errors->first('ar_model'), '5000001 triangles')
-                    && str_contains($errors->first('ar_model'), '5000000');
+                return str_contains($errors->first('ar_model'), '250001 triangles')
+                    && str_contains($errors->first('ar_model'), '250000');
             });
 
         $this->actingAs($admin)->post(route('admin.ar-models.upload', $product), [
             'ar_model' => UploadedFile::fake()->createWithContent(
                 'texture-too-large.glb',
-                $this->budgetGlb(textureWidth: 4097, textureHeight: 4097, textureCopies: 1)
+                $this->budgetGlb(textureWidth: 2049, textureHeight: 2049, textureCopies: 1)
             ),
             'height_cm' => 120,
         ])->assertSessionHasErrors('ar_model')
             ->assertSessionHas('errors', function ($errors): bool {
-                return str_contains($errors->first('ar_model'), '4097px')
-                    && str_contains($errors->first('ar_model'), '4096px');
+                return str_contains($errors->first('ar_model'), '2049px')
+                    && str_contains($errors->first('ar_model'), '2048px');
             });
+
+        $this->actingAs($admin)->post(route('admin.ar-models.upload', $product), [
+            'ar_model' => UploadedFile::fake()->createWithContent(
+                'texture-memory-too-large.glb',
+                $this->budgetGlb(textureWidth: 2048, textureHeight: 2048, textureCopies: 3)
+            ),
+            'height_cm' => 120,
+        ])->assertSessionHasErrors('ar_model')
+            ->assertSessionHas('errors', function ($errors): bool {
+                return str_contains($errors->first('ar_model'), 'decoded memory')
+                    && str_contains($errors->first('ar_model'), '48 MiB');
+            });
+    }
+
+    public function test_ar_model_upload_rejects_files_above_twenty_mibibytes(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create(['role' => 'admin']);
+        $product = $this->product(stock: 5);
+
+        $this->actingAs($admin)->post(route('admin.ar-models.upload', $product), [
+            'ar_model' => UploadedFile::fake()->create('too-large.glb', 20 * 1024 + 1),
+            'height_cm' => 120,
+        ])->assertSessionHasErrors('ar_model')
+            ->assertSessionHas('errors', function ($errors): bool {
+                return str_contains($errors->first('ar_model'), '20480 kilobytes');
+            });
+
+        $this->assertNull($product->fresh()->plantModel);
+        $this->assertSame([], Storage::disk('public')->allFiles('ar-models'));
     }
 
     public function test_glbs_without_reachable_geometry_or_measurable_height_are_rejected(): void

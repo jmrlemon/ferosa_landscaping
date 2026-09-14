@@ -25,6 +25,7 @@ use App\Notifications\OrderStatusChanged;
 use App\Services\BillingService;
 use App\Services\GlbValidator;
 use App\Services\InventoryService;
+use App\Support\ArAssetBudgets;
 use App\Support\Audit;
 use App\Support\MessageAttachment;
 use Illuminate\Database\Eloquent\Builder;
@@ -46,8 +47,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AdminController extends Controller
 {
-    private const AR_MODEL_MAX_KB = 102400;
-
     public function archiveOrder(Request $request, Order $order): RedirectResponse
     {
         $before = Audit::snapshot($order, ['status', 'total_amount', 'archived_at']);
@@ -2132,9 +2131,9 @@ class AdminController extends Controller
 
         // File is required only when no existing model (new upload)
         if (! $product->plantModel) {
-            $rules['ar_model'] = ['required', 'file', 'max:'.self::AR_MODEL_MAX_KB];
+            $rules['ar_model'] = ['required', 'file', 'max:'.ArAssetBudgets::MAX_FILE_KILOBYTES];
         } else {
-            $rules['ar_model'] = ['nullable', 'file', 'max:'.self::AR_MODEL_MAX_KB];
+            $rules['ar_model'] = ['nullable', 'file', 'max:'.ArAssetBudgets::MAX_FILE_KILOBYTES];
         }
 
         $data = $request->validate($rules);

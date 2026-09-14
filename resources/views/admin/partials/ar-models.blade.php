@@ -34,22 +34,28 @@
       </div>
     @endif
 
-    <form method="POST" action="{{ route('admin.ar-models.upload', $product) }}" enctype="multipart/form-data" class="space-y-4">
+    <form id="ar-model-upload-form" method="POST" action="{{ route('admin.ar-models.upload', $product) }}" enctype="multipart/form-data" class="space-y-4">
       @csrf
       <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <label class="block text-sm font-medium text-surface-800">
           {{ $product->plantModel ? 'Replace 3D Model (optional)' : '3D Model File *' }}
-          <input name="ar_model"
+          <input id="ar-model-input"
+                 name="ar_model"
                  type="file"
                  accept=".glb,model/gltf-binary"
+                 data-recommended-bytes="{{ \App\Support\ArAssetBudgets::RECOMMENDED_FILE_BYTES }}"
+                 data-max-bytes="{{ \App\Support\ArAssetBudgets::MAX_FILE_BYTES }}"
+                 aria-describedby="ar-model-file-help ar-model-file-status"
                  {{ $product->plantModel ? '' : 'required' }}
                  class="mt-2 h-10 w-full rounded-lg border border-surface-200 bg-white text-sm text-surface-600 file:mr-3 file:h-full file:border-0 file:bg-surface-100 file:px-3 file:text-sm file:text-surface-700">
-          <span class="mt-1 block text-xs font-normal text-surface-400">Accepted: self-contained .glb, up to 100 MB and 5 million triangles, with visible mesh geometry. Models over 250,000 triangles are accepted with a performance warning. Export with Y up; Ferosa aligns the model bottom to the ground.</span>
+          <span id="ar-model-file-help" class="mt-1 block text-xs font-normal text-surface-400">Recommended: 8 MiB or less and 100,000 triangles or fewer; maximum: 20 MiB and 250,000 triangles. Use a self-contained GLB with textures no larger than 2,048 px. Export with Y up; Ferosa aligns the model bottom to the ground.</span>
+          <span id="ar-model-file-status" role="status" aria-live="polite" class="mt-2 block text-xs font-semibold text-surface-600">{{ $product->plantModel ? 'No replacement selected. The current model will be kept.' : 'Choose a GLB model to inspect its download size.' }}</span>
         </label>
 
         <label class="block text-sm font-medium text-surface-800">
           Real-world Height (cm) *
-          <input name="height_cm"
+          <input id="ar-model-height"
+                 name="height_cm"
                  type="number"
                  step="0.1"
                  min="1"
@@ -57,21 +63,31 @@
                  required
                  value="{{ old('height_cm', $product->plantModel?->height_cm) }}"
                  placeholder="Example: 45.0"
+                 aria-describedby="ar-model-height-help ar-model-height-conversion"
                  class="mt-2 h-10 w-full rounded-lg border border-surface-200 px-3 text-base font-normal outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
-          <span class="mt-1 block text-xs font-normal text-surface-400">Used to scale the object correctly in AR.</span>
+          <span id="ar-model-height-help" class="mt-1 block text-xs font-normal text-surface-400">Used as one uniform scale, so the model's width and depth remain proportional.</span>
+          <span id="ar-model-height-conversion" class="mt-1 block text-xs font-semibold text-surface-600"></span>
         </label>
       </div>
 
       <div class="flex flex-wrap items-center gap-3">
-        <button type="submit" data-saving-label="Uploading..." class="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-800">
+        <button type="submit" data-saving-label="Uploading..." class="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-800 disabled:cursor-wait disabled:opacity-70">
           <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/>
           </svg>
           {{ $product->plantModel ? 'Update AR Model' : 'Upload AR Model' }}
         </button>
+        <button id="ar-model-upload-cancel" type="button" hidden class="rounded-lg border border-surface-300 px-4 py-2.5 text-sm font-semibold text-surface-700 transition-colors hover:bg-surface-50">Cancel upload</button>
         @if($product->plantModel)
           <span class="text-xs text-surface-400">Leave the file empty to update only the height.</span>
         @endif
+      </div>
+      <div id="ar-model-upload-progress-wrap" hidden class="space-y-1">
+        <div class="flex items-center justify-between gap-3 text-xs text-surface-600">
+          <span>Upload progress</span>
+          <span id="ar-model-upload-percent">0%</span>
+        </div>
+        <progress id="ar-model-upload-progress" max="100" value="0" class="h-2 w-full accent-brand-700" aria-label="Upload progress">0%</progress>
       </div>
     </form>
 

@@ -156,4 +156,5 @@
     </div>
 
     @include('admin.partials.product-image-preview-script')
+    @include('admin.partials.ar-model-upload-script')
 @endsection
