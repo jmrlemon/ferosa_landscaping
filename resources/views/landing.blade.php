@@ -94,7 +94,9 @@
       <nav class="hidden items-center justify-self-center gap-1 md:flex" aria-label="Primary">
         <a href="{{ route('shop') }}" class="rounded-lg px-3 py-2 text-sm font-semibold text-surface-600 transition hover:bg-brand-50 hover:text-brand-700">Shop</a>
         <a href="#services" class="rounded-lg px-3 py-2 text-sm font-semibold text-surface-600 transition hover:bg-brand-50 hover:text-brand-700">Services</a>
-        <a href="{{ route('projects.index') }}" class="rounded-lg px-3 py-2 text-sm font-semibold text-surface-600 transition hover:bg-brand-50 hover:text-brand-700">Our work</a>
+        @if ($stats['projects'] > 0)
+          <a href="{{ route('projects.index') }}" class="rounded-lg px-3 py-2 text-sm font-semibold text-surface-600 transition hover:bg-brand-50 hover:text-brand-700">Our work</a>
+        @endif
         <a href="#contact" class="rounded-lg px-3 py-2 text-sm font-semibold text-surface-600 transition hover:bg-brand-50 hover:text-brand-700">Contact</a>
       </nav>
 
@@ -452,6 +454,15 @@
                 <dd class="mt-2"><a href="mailto:{{ $businessProfile['business_email'] }}" class="break-all text-sm font-bold text-brand-700 underline underline-offset-4">{{ $businessProfile['business_email'] }}</a></dd>
               </div>
             @endif
+            @if (! $businessProfile['business_hours'] && ! $phoneDigits && ! $businessProfile['business_email'])
+              <div>
+                <dt class="text-[10px] font-bold uppercase tracking-wider text-surface-400">Online</dt>
+                <dd class="mt-2 text-sm leading-6 text-surface-700">
+                  <a href="{{ route('login') }}" class="font-bold text-brand-700 underline underline-offset-4">Message the team</a>
+                  through your Ferosa account.
+                </dd>
+              </div>
+            @endif
           </dl>
 
           @if ($businessProfile['cancellation_policy'])
@@ -486,7 +497,9 @@
       </div>
       <nav class="flex flex-wrap gap-x-5 gap-y-2 text-xs font-semibold text-surface-500" aria-label="Footer">
         <a href="{{ route('shop') }}" class="transition hover:text-brand-700">Shop</a>
-        <a href="{{ route('projects.index') }}" class="transition hover:text-brand-700">Our work</a>
+        @if ($stats['projects'] > 0)
+          <a href="{{ route('projects.index') }}" class="transition hover:text-brand-700">Our work</a>
+        @endif
         <a href="#contact" class="transition hover:text-brand-700">Contact</a>
         <a href="{{ route('login') }}" class="transition hover:text-brand-700">Sign in</a>
         <a href="{{ route('register') }}" class="transition hover:text-brand-700">Create account</a>

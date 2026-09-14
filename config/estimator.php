@@ -42,16 +42,31 @@ return [
             'label' => 'Garden Design',
             'description' => 'Full landscape design, plant selection & installation.',
             'rate' => 50,
+            'packages' => [
+                'standard' => ['package_title' => 'Starter Garden', 'caption' => 'A practical garden using common plants, lawn, and simple edging.', 'examples' => ['Common shrubs and groundcover', 'Basic soil preparation', 'Simple edging and layout']],
+                'premium' => ['package_title' => 'Enhanced Garden', 'caption' => 'A polished garden with mature planting, a refined path, stone edging, and lighting.', 'examples' => ['Mature plants and layered planting', 'Decorative stone and edging', 'Selected garden lighting']],
+                'luxury' => ['package_title' => 'Signature Landscape', 'caption' => 'A bespoke landscape with specimen plants, custom stonework, lighting, and a water feature.', 'examples' => ['Rare or specimen plants', 'Custom hardscape and irrigation', 'Water feature or signature focal point']],
+            ],
         ],
         'maintenance' => [
             'label' => 'Maintenance',
             'description' => 'Regular lawn care, pruning, weeding & cleanup.',
             'rate' => 10,
+            'packages' => [
+                'standard' => ['package_title' => 'Routine Garden Care', 'caption' => 'Essential recurring care that keeps lawns, beds, and paths tidy.', 'examples' => ['Lawn mowing and edging', 'Routine pruning and weeding', 'Green-waste cleanup']],
+                'premium' => ['package_title' => 'Detailed Garden Care', 'caption' => 'More frequent, detailed upkeep for established gardens and feature planting.', 'examples' => ['Detailed pruning and shaping', 'Bed cultivation and mulch touch-ups', 'Plant-health and irrigation checks']],
+                'luxury' => ['package_title' => 'Estate Care Program', 'caption' => 'High-touch maintenance for complex landscapes, specialty plants, and outdoor features.', 'examples' => ['Specialist specimen-plant care', 'Seasonal presentation planning', 'Priority feature and irrigation upkeep']],
+            ],
         ],
         'hardscaping' => [
             'label' => 'Hardscaping',
             'description' => 'Patios, walkways, retaining walls & stonework.',
             'rate' => 120,
+            'packages' => [
+                'standard' => ['package_title' => 'Essential Hardscape', 'caption' => 'A durable, straightforward paved area or path using practical finishes.', 'examples' => ['Base preparation and drainage allowance', 'Standard pavers or concrete finish', 'Simple borders and transitions']],
+                'premium' => ['package_title' => 'Crafted Outdoor Space', 'caption' => 'A refined patio, path, or wall with upgraded materials and detailed finishing.', 'examples' => ['Premium pavers or natural-stone accents', 'Detailed borders and step transitions', 'Integrated drainage and selected lighting']],
+                'luxury' => ['package_title' => 'Signature Stonework', 'caption' => 'Bespoke masonry and outdoor construction with premium stone and custom detailing.', 'examples' => ['Custom natural-stone layout', 'Built-in seating or feature walls', 'Architectural lighting and drainage detailing']],
+            ],
         ],
     ],
 

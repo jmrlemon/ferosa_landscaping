@@ -120,11 +120,17 @@ class SystemSeeder extends Seeder
         $productGravel = Product::where('name', 'Gravel')->first();
 
         if ($productSoil && $productGravel) {
+            $this->renameLegacyOrder($demoUser, 'ORD-123456', 'FRS-DEMO-001');
+            $this->renameLegacyOrder($demoUser, 'ORD-789012', 'FRS-DEMO-002');
+
             $order1 = Order::updateOrCreate(
-                ['order_number' => 'ORD-123456'],
+                ['order_number' => 'FRS-DEMO-001'],
                 [
                     'user_id' => $demoUser->id,
                     'status' => 'pending',
+                    'payment_status' => 'unpaid',
+                    'payment_method' => 'cod',
+                    'delivery_method' => 'delivery',
                     'total_amount' => ($productSoil->price * 2) + $productGravel->price,
                     'items' => [
                         ['product_id' => $productSoil->id, 'name' => $productSoil->name, 'price' => (string) $productSoil->price, 'qty' => 2],
@@ -142,10 +148,13 @@ class SystemSeeder extends Seeder
             }
 
             $order2 = Order::updateOrCreate(
-                ['order_number' => 'ORD-789012'],
+                ['order_number' => 'FRS-DEMO-002'],
                 [
                     'user_id' => $demoUser->id,
-                    'status' => 'delivered',
+                    'status' => 'completed',
+                    'payment_status' => 'paid',
+                    'payment_method' => 'cash',
+                    'delivery_method' => 'pickup',
                     'total_amount' => $productSoil->price * 5,
                     'items' => [
                         ['product_id' => $productSoil->id, 'name' => $productSoil->name, 'price' => (string) $productSoil->price, 'qty' => 5],
@@ -174,6 +183,9 @@ class SystemSeeder extends Seeder
                 ],
                 [
                     'appointment_at' => now()->addDays(7),
+                    'slot_key' => Appointment::slotKey($serviceDesign->id, now()->addDays(7)),
+                    'payment_status' => 'unpaid',
+                    'appointment_amount' => $serviceDesign->default_fee,
                     'notes' => 'Looking to redesign my front yard layout.',
                 ]
             );
@@ -191,9 +203,24 @@ class SystemSeeder extends Seeder
                 ],
                 [
                     'appointment_at' => now()->subDays(2),
+                    'slot_key' => null,
+                    'payment_status' => 'paid',
+                    'appointment_amount' => $serviceLawn->default_fee,
                     'notes' => 'Routine lawn mowing and fertilizing done.',
                 ]
             );
         }
+    }
+
+    private function renameLegacyOrder(User $demoUser, string $legacyNumber, string $currentNumber): void
+    {
+        if (Order::query()->where('order_number', $currentNumber)->exists()) {
+            return;
+        }
+
+        Order::query()
+            ->where('user_id', $demoUser->id)
+            ->where('order_number', $legacyNumber)
+            ->update(['order_number' => $currentNumber]);
     }
 }

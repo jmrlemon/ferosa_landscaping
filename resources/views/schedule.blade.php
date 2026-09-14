@@ -1,6 +1,6 @@
 @extends('layouts.customer')
 
-@section('title', 'Book a Service')
+@section('title', 'Book a Service - Ferosa Landscaping')
 
 @section('styles')
 <style>
@@ -391,6 +391,7 @@
 
   function pickDate(date) {
     selectedDate = date;
+    clearTimeSelection();
     renderCalendar();
     refreshTimeSlotAvailability();
   }
@@ -408,6 +409,15 @@
   }
 
   // ── Time slots ────────────────────────────────────────────────────────────
+  function clearTimeSelection() {
+    selectedTime = null;
+    document.querySelectorAll('.time-slot[data-time]').forEach(slot => {
+      slot.classList.remove('selected');
+      slot.setAttribute('aria-pressed', 'false');
+    });
+    updateSummary();
+  }
+
   function selectTime(btn) {
     if (!btn || btn.disabled || btn.classList.contains('booked')) return;
     document.querySelectorAll('.time-slot[data-time]').forEach(t => {
@@ -460,13 +470,7 @@
       updateSummary();
       return;
     }
-    if (pickable.length) {
-      pickable[0].classList.add('selected');
-      pickable[0].setAttribute('aria-pressed', 'true');
-      selectedTime = pickable[0].dataset.time;
-    } else {
-      selectedTime = null;
-    }
+    selectedTime = null;
     updateSummary();
   }
 
@@ -478,11 +482,7 @@
         btn.classList.remove('booked');
       });
       setTimeSlotsHint('');
-      const first = document.querySelector('.time-slot[data-time]:not(:disabled)');
-      if (first && !document.querySelector('.time-slot[data-time].selected')) {
-        first.classList.add('selected');
-        selectedTime = first.dataset.time;
-      }
+      clearTimeSelection();
       updateSummary();
       return;
     }
@@ -511,15 +511,6 @@
       updateSummary();
     }
   }
-
-  // Auto-select first available time slot (before date is chosen, all slots stay selectable)
-  (function () {
-    const first = document.querySelector('.time-slot[data-time]:not(:disabled)');
-    if (first) {
-      first.classList.add('selected');
-      selectedTime = first.dataset.time;
-    }
-  })();
 
   // ── Progress ──────────────────────────────────────────────────────────────
   // Step 1 is complete as soon as a service is chosen (one is preselected), so
@@ -584,7 +575,7 @@
     }
 
     if (!selectedDate) { alert('Please select a date.'); return; }
-    if (!selectedTime)  { alert('No time slot is available. Please choose another date or service.'); return; }
+    if (!selectedTime)  { alert('Please select a time.'); return; }
 
     const serviceTypeId = document.getElementById('service-type-select').value;
     if (!serviceTypeId) { alert('Please select a service type.'); return; }

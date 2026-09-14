@@ -1,5 +1,7 @@
 @extends('layouts.customer')
 
+@section('title', 'Cost Estimator - Ferosa Landscaping')
+
 @section('styles')
 <style>
   /* ── Project Type cards ─────────────────────────────────────── */
@@ -496,9 +498,10 @@
                       aria-label="Open a larger view of the selected package visualization"
                       class="group relative mx-auto block aspect-[3/4] w-full max-w-xs cursor-zoom-in overflow-hidden bg-surface-200 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500">
                 <img id="package-visual-sprite"
-                     src="{{ asset('images/quality-tier-standard.png') }}"
+                     src="{{ asset('images/tier-package-visuals.png') }}"
                      alt="Standard starter garden package visualization"
-                     class="absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ease-out">
+                     class="absolute inset-y-0 left-0 h-auto min-h-full w-[300%] max-w-none object-cover transition-transform duration-500 ease-out"
+                     style="transform: translateX(0%);">
                 <span class="absolute right-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full border border-white/40 bg-black/55 px-2.5 py-1.5 text-[10px] font-semibold text-white shadow-sm backdrop-blur-sm transition group-hover:bg-black/70" aria-hidden="true">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="11" cy="11" r="7"/>
@@ -580,9 +583,10 @@
   <div class="relative overflow-hidden rounded-2xl border border-white/20 bg-surface-900 shadow-2xl"
        style="height: min(82vh, calc(92vw * 1.3333)); aspect-ratio: 3 / 4;">
     <img id="package-zoom-image"
-         src="{{ asset('images/quality-tier-standard.png') }}"
+         src="{{ asset('images/tier-package-visuals.png') }}"
          alt="Standard starter garden package visualization"
-         class="absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ease-out">
+         class="absolute inset-y-0 left-0 h-auto min-h-full w-[300%] max-w-none object-cover transition-transform duration-500 ease-out"
+         style="transform: translateX(0%);">
     <button id="package-zoom-close"
             type="button"
             onclick="closePackageZoom()"
@@ -614,26 +618,23 @@
   /** Object.fromEntries is Chrome 73+; some Android 7 WebViews are older. */
   function mapValues(source, pick) {
     const out = {};
-    Object.keys(source).forEach(function (key) { out[key] = pick(source[key], key); });
+    Object.keys(source).forEach(function (key) { out[key] = pick(source[key]); });
     return out;
   }
 
   const BASE_RATES = mapValues(RATE_CARD.project_types, t => t.rate);          // ₱ per sq m
   const PROJECT_NAME = mapValues(RATE_CARD.project_types, t => t.label);
+  const PROJECT_PACKAGES = mapValues(RATE_CARD.project_types, t => t.packages || {});
   const TIER_MULT = mapValues(RATE_CARD.tiers, t => t.multiplier);
   const TIER_NAME = mapValues(RATE_CARD.tiers, t => t.label);
   const TIER_LABEL = mapValues(RATE_CARD.tiers, t => `${t.label} (${t.multiplier}×)`);
   const TIER_EXAMPLES = mapValues(RATE_CARD.tiers, t => t.examples);
-  const TIER_VISUAL_SOURCES = {
-    standard: @json(asset('images/quality-tier-standard.png')),
-    premium: @json(asset('images/quality-tier-premium.png')),
-    luxury: @json(asset('images/quality-tier-luxury.png')),
-  };
-  const TIER_VISUALS = mapValues(RATE_CARD.tiers, (t, key) => ({
+  const TIER_VISUALS = mapValues(RATE_CARD.tiers, t => ({
     title: t.package_title,
     caption: t.caption,
     alt: `${t.label} ${t.package_title.toLowerCase()} package visualization`,
-    src: TIER_VISUAL_SOURCES[key],
+    // The sprite is three panels wide, so panel n starts at -(n × 100/3)%.
+    position: -(t.visual_index * (100 / 3)),
   }));
 
   // ─── Helpers ─────────────────────────────────────────────────────────────
@@ -770,8 +771,9 @@
 
   // ─── AR Visualizer ───────────────────────────────────────────────────────
   function updateGeneratedPackage(data) {
-    const packageName = `${data.typeLabel} Package`;
     const tierName = data.tier.charAt(0).toUpperCase() + data.tier.slice(1);
+    const packageCopy = PROJECT_PACKAGES[data.type]?.[data.tier] || null;
+    const packageName = packageCopy?.package_title || `${data.typeLabel} Package`;
     const addonCount = data.addonRows.length;
     const productCount = data.productRows.reduce((sum, item) => sum + item.qty, 0);
     const itemCount = 1 + addonCount + productCount;
@@ -783,15 +785,15 @@
 
     const visual = TIER_VISUALS[data.tier] || TIER_VISUALS.standard;
     const visualImage = document.getElementById('package-visual-sprite');
-    visualImage.src = visual.src;
-    visualImage.alt = visual.alt;
+    visualImage.style.transform = `translateX(${visual.position}%)`;
+    visualImage.alt = `${tierName} ${packageName.toLowerCase()} concept visualization`;
     const zoomImage = document.getElementById('package-zoom-image');
-    zoomImage.src = visual.src;
-    zoomImage.alt = visual.alt;
-    document.getElementById('package-visual-title').textContent = visual.title;
-    document.getElementById('package-visual-caption').textContent = visual.caption;
-    document.getElementById('package-zoom-title').textContent = visual.title;
-    document.getElementById('package-zoom-caption').textContent = visual.caption;
+    zoomImage.style.transform = `translateX(${visual.position}%)`;
+    zoomImage.alt = visualImage.alt;
+    document.getElementById('package-visual-title').textContent = packageName;
+    document.getElementById('package-visual-caption').textContent = packageCopy?.caption || visual.caption;
+    document.getElementById('package-zoom-title').textContent = packageName;
+    document.getElementById('package-zoom-caption').textContent = packageCopy?.caption || visual.caption;
 
     const serviceLine = `
       <div class="flex items-start justify-between gap-3">
@@ -799,7 +801,7 @@
         <span class="text-xs font-semibold text-surface-800">${fmt(data.base)}</span>
       </div>
     `;
-    const tierLines = (TIER_EXAMPLES[data.tier] || []).map(item => `
+    const tierLines = (packageCopy?.examples || TIER_EXAMPLES[data.tier] || []).map(item => `
       <div class="flex items-start gap-2">
         <span class="text-brand-600">✓</span>
         <span class="text-xs text-surface-600">${escapeHtml(item)}</span>

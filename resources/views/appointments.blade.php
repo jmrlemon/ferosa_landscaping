@@ -71,6 +71,18 @@
         $isUpcoming = in_array($st, ['scheduled','confirmed'])
           && $appt->appointment_at
           && \Carbon\Carbon::parse($appt->appointment_at)->isFuture();
+        $isPastOpen = in_array($st, ['scheduled','confirmed'])
+          && $appt->appointment_at
+          && ! \Carbon\Carbon::parse($appt->appointment_at)->isFuture();
+        $statusLabel = $isPastOpen ? 'Past visit - awaiting team update' : ucfirst($st);
+        $appointmentAmount = (float) ($appt->appointment_amount ?? 0);
+        $hasCharge = $appointmentAmount > 0;
+        $paymentLabel = $hasCharge
+          ? ucfirst(str_replace('_', ' ', $appt->payment_status ?? 'unpaid'))
+          : ($st === 'completed' ? 'No payment due' : 'Not due yet');
+        $amountLabel = $hasCharge
+          ? 'PHP '.number_format($appointmentAmount, 2)
+          : ($st === 'completed' ? 'No charge' : 'To be confirmed');
         $canReschedule = $appt->isCustomerReschedulable();
         $canCancel = $appt->isCustomerChangeable();
         $step = match($st) {
@@ -95,7 +107,7 @@
                 <h3 class="text-[15px] font-bold text-surface-900">
                   {{ $appt->serviceType->name ?? 'Service' }}
                 </h3>
-                <span class="badge {{ $badge }}">{{ ucfirst($st) }}</span>
+                <span class="badge {{ $isPastOpen ? 'badge-danger' : $badge }}">{{ $statusLabel }}</span>
                 @if ($isUpcoming)
                   <span class="badge badge-success">Upcoming</span>
                 @endif
@@ -177,11 +189,11 @@
               </div>
               <div class="flex gap-2">
                 <span class="text-surface-400 w-20 shrink-0">Payment</span>
-                <span class="text-surface-700 capitalize">{{ $appt->payment_status ?? 'unpaid' }}</span>
+                <span class="text-surface-700 font-medium">{{ $paymentLabel }}</span>
               </div>
               <div class="flex gap-2">
                 <span class="text-surface-400 w-20 shrink-0">Amount</span>
-                <span class="text-surface-700 font-medium">PHP {{ number_format((float) ($appt->appointment_amount ?? $appt->serviceType->default_fee ?? 0), 2) }}</span>
+                <span class="text-surface-700 font-medium">{{ $amountLabel }}</span>
               </div>
               @if ((float) ($appt->appointment_amount ?? 0) > 0 && $appt->balanceDue() > 0 && $appt->totalPaid() > 0)
                 <div class="flex gap-2">

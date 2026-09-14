@@ -194,6 +194,7 @@
           };
           $balanceDue = $order->balanceDue();
           $amountPaid = $order->totalPaid();
+          $needsTeamUpdate = $order->needsStatusFollowUp();
         @endphp
 
         <div class="customer-card lift overflow-hidden">
@@ -206,10 +207,20 @@
                 <span class="badge {{ $badge }}">
                   {{ $statusLabel }}
                 </span>
+                @if ($needsTeamUpdate)
+                  <span class="badge badge-danger">Needs team update</span>
+                @endif
               </div>
               <p class="mt-1 text-xs font-medium text-surface-500">
                 Placed {{ optional($order->created_at)->format('M d, Y h:i A') }}
               </p>
+              @if ($needsTeamUpdate)
+                <p class="mt-2 max-w-xl text-xs leading-5 text-amber-700">
+                  This order has had no status change for over {{ \App\Models\Order::FOLLOW_UP_AFTER_DAYS }} days.
+                  <a href="{{ route('messages') }}" class="font-bold underline underline-offset-2">Message the team</a>
+                  for an update.
+                </p>
+              @endif
             </div>
             <div class="sm:text-right flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-2">
               <div>

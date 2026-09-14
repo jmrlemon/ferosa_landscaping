@@ -1,5 +1,7 @@
 @extends('layouts.customer')
 
+@section('title', 'Checkout - Ferosa Landscaping')
+
 @section('styles')
 <style>
   #checkout-mobile-bar { display: none; }

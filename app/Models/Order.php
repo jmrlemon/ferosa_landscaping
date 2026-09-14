@@ -26,6 +26,8 @@ class Order extends Model
 {
     use Concerns\HasPayments;
 
+    public const FOLLOW_UP_AFTER_DAYS = 7;
+
     public const STATUS_TRANSITIONS = [
         'pending' => ['confirmed', 'cancelled'],
         'confirmed' => ['out_for_delivery', 'cancelled'],
@@ -131,6 +133,14 @@ class Order extends Model
     public function isCustomerCancellable(): bool
     {
         return $this->status === 'pending';
+    }
+
+    /** Open orders older than a week should not look current without explanation. */
+    public function needsStatusFollowUp(): bool
+    {
+        return in_array($this->status, ['pending', 'confirmed'], true)
+            && $this->created_at !== null
+            && $this->created_at->lte(Carbon::now()->subDays(self::FOLLOW_UP_AFTER_DAYS));
     }
 
     public function canTransitionTo(string $status): bool

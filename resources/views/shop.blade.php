@@ -1,5 +1,7 @@
 @extends('layouts.customer')
 
+@section('title', 'Shop - Ferosa Landscaping')
+
 @section('styles')
 <style>
   .product-card { transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }

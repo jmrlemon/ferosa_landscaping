@@ -1,6 +1,6 @@
 @extends('layouts.customer')
 
-@section('title', 'Feedback')
+@section('title', 'Feedback - Ferosa Landscaping')
 
 @section('content')
 <div class="customer-page is-narrow space-y-6">
