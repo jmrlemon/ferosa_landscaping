@@ -10,3 +10,11 @@
     RewriteRule ^public(?:/|$) - [L]
     RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>
+
+# Hostinger adds its own minimal CSP after PHP has generated the response,
+# which would otherwise replace Laravel's stronger application policy.
+# Set the complete policy at Apache's final response layer as well.
+<IfModule mod_headers.c>
+    Header always unset X-Powered-By
+    Header always set Content-Security-Policy "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; object-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self'; upgrade-insecure-requests"
+</IfModule>
