@@ -27,7 +27,10 @@ final class ArAssetBudgets
 
     public const RECOMMENDED_DECODED_TEXTURE_BYTES = 24 * 1024 * 1024;
 
-    public const MAX_DECODED_TEXTURE_BYTES = 48 * 1024 * 1024;
+    // Three 2048px RGBA PBR maps (including mipmaps) use 64 MiB. This is the
+    // standard Meshy mobile export, so allow it while still warning above the
+    // much safer 24 MiB target and rejecting a fourth full-size map.
+    public const MAX_DECODED_TEXTURE_BYTES = 64 * 1024 * 1024;
 
     private function __construct() {}
 }

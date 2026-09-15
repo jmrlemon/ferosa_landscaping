@@ -103,6 +103,9 @@
         : 'Updating the real-world height…';
 
       xhr.open('POST', form.action);
+      xhr.responseType = 'json';
+      xhr.setRequestHeader('Accept', 'application/json');
+      xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
       xhr.upload.addEventListener('progress', function (uploadEvent) {
         if (!uploadEvent.lengthComputable) return;
         const value = Math.min(100, Math.round(uploadEvent.loaded / uploadEvent.total * 100));
@@ -116,14 +119,27 @@
       });
       xhr.addEventListener('load', function () {
         activeUpload = null;
-        if (xhr.status >= 200 && xhr.status < 400) {
+        if (xhr.status >= 200 && xhr.status < 300 && xhr.response?.redirect_url) {
           fileStatus.textContent = 'Upload received. Checking the model…';
-          window.location.assign(xhr.responseURL || form.action);
+          window.location.assign(xhr.response.redirect_url);
           return;
         }
+
         setUploading(false);
         fileStatus.className = 'mt-2 block text-xs font-semibold text-red-700';
-        fileStatus.textContent = 'The upload could not be completed. Check your connection and try again.';
+        const validationMessages = Object.values(xhr.response?.errors || {}).flat();
+        const responseMessage = validationMessages.find(function (message) {
+          return typeof message === 'string' && message.trim() !== '';
+        });
+
+        if (xhr.status === 422 && responseMessage) {
+          input.setAttribute('aria-invalid', 'true');
+          fileStatus.textContent = responseMessage;
+          return;
+        }
+
+        fileStatus.textContent = xhr.response?.message ||
+          'The upload could not be completed. Check your connection and try again.';
       });
       xhr.addEventListener('error', function () {
         activeUpload = null;

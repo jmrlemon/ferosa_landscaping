@@ -408,8 +408,9 @@ class GlbValidator
                 '.',
                 '',
             );
+            $maximumMebibytes = ArAssetBudgets::MAX_DECODED_TEXTURE_BYTES / (1024 * 1024);
 
-            return "The GLB textures require approximately {$decodedMebibytes} MiB decoded memory; the maximum supported budget is 48 MiB. Reduce the texture count or dimensions before uploading.";
+            return "The GLB textures require approximately {$decodedMebibytes} MiB decoded memory; the maximum supported budget is {$maximumMebibytes} MiB. Reduce the texture count or dimensions before uploading.";
         }
 
         if ($decodedTextureBytes > ArAssetBudgets::RECOMMENDED_DECODED_TEXTURE_BYTES) {

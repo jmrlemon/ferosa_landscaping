@@ -2123,7 +2123,7 @@ class AdminController extends Controller
     /**
      * Upload or replace an AR 3D model for a product.
      */
-    public function uploadArModel(Request $request, Product $product, GlbValidator $glb): RedirectResponse
+    public function uploadArModel(Request $request, Product $product, GlbValidator $glb): RedirectResponse|JsonResponse
     {
         $rules = [
             'height_cm' => ['required', 'numeric', 'min:1', 'max:500'],
@@ -2145,23 +2145,21 @@ class AdminController extends Controller
             $extension = strtolower($file->getClientOriginalExtension());
 
             if ($extension !== 'glb') {
-                return redirect()->route('admin.products.edit', $product)
-                    ->withErrors(['ar_model' => 'Upload a self-contained .glb file. Separate .gltf assets are not supported.'])
-                    ->withInput();
+                throw ValidationException::withMessages([
+                    'ar_model' => 'Upload a self-contained .glb file. Separate .gltf assets are not supported.',
+                ]);
             }
 
             if ($validationError = $glb->validate($file, $validationWarnings)) {
-                return redirect()->route('admin.products.edit', $product)
-                    ->withErrors(['ar_model' => $validationError])
-                    ->withInput();
+                throw ValidationException::withMessages(['ar_model' => $validationError]);
             }
 
             $oldPath = $product->plantModel?->file_path;
             $storedPath = $file->store('ar-models', 'public');
             if (! $storedPath) {
-                return redirect()->route('admin.products.edit', $product)
-                    ->withErrors(['ar_model' => 'The model could not be stored. Please try again.'])
-                    ->withInput();
+                throw ValidationException::withMessages([
+                    'ar_model' => 'The model could not be stored. Please try again.',
+                ]);
             }
             $fileName = $file->getClientOriginalName();
             $fileSize = $file->getSize();
@@ -2195,8 +2193,24 @@ class AdminController extends Controller
             }
         }
 
-        $redirect = redirect()->route('admin.products.edit', $product)
-            ->with('status', "AR model for \"{$product->name}\" updated successfully.");
+        $message = "AR model for \"{$product->name}\" updated successfully.";
+        $redirectUrl = route('admin.products.edit', $product);
+
+        if ($request->expectsJson()) {
+            $request->session()->flash('status', $message);
+
+            if ($validationWarnings !== []) {
+                $request->session()->flash('ar_model_warnings', $validationWarnings);
+            }
+
+            return response()->json([
+                'message' => $message,
+                'redirect_url' => $redirectUrl,
+                'warnings' => $validationWarnings,
+            ]);
+        }
+
+        $redirect = redirect($redirectUrl)->with('status', $message);
 
         if ($validationWarnings !== []) {
             $redirect->with('ar_model_warnings', $validationWarnings);
