@@ -3,10 +3,11 @@
 namespace App\Http\Requests;
 
 use App\Models\User;
+use App\Services\RegistrationOtpService;
 use App\Support\PasswordRules;
 use App\Support\PhoneNumber;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class RegisterRequest extends FormRequest
@@ -22,8 +23,8 @@ class RegisterRequest extends FormRequest
             'last_name' => ['required', 'string', 'max:255'],
             'first_name' => ['required', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'phone_number' => ['required', 'string', 'max:20', 'regex:/^\+639\d{9}$/', Rule::unique('users', 'phone_number')],
+            'email' => ['required', 'email', 'max:255'],
+            'phone_number' => ['required', 'string', 'max:20', 'regex:/^\+639\d{9}$/'],
             'password' => PasswordRules::required(),
             'terms_accepted' => ['accepted'],
         ];
@@ -39,8 +40,13 @@ class RegisterRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            $email = (string) $this->input('email');
             $phone = (string) $this->input('phone_number');
-            if ($phone !== '' && User::query()->whereIn('phone_number', PhoneNumber::lookupCandidates($phone))->exists()) {
+            if ($email !== '' && $this->blockingAccountQuery()->where('email', $email)->exists()) {
+                $validator->errors()->add('email', 'That email address is already connected to an account.');
+            }
+
+            if ($phone !== '' && $this->blockingAccountQuery()->whereIn('phone_number', PhoneNumber::lookupCandidates($phone))->exists()) {
                 $validator->errors()->add('phone_number', 'That mobile number is already connected to an account.');
             }
         });
@@ -53,5 +59,16 @@ class RegisterRequest extends FormRequest
             'phone_number.regex' => 'Enter a valid Philippine mobile number, such as 0917 123 4567.',
             'phone_number.unique' => 'That mobile number is already connected to an account.',
         ];
+    }
+
+    /** @return Builder<User> */
+    private function blockingAccountQuery(): Builder
+    {
+        return User::query()->where(function (Builder $query): void {
+            $query->whereNotNull('phone_verified_at')
+                ->orWhere('role', '!=', 'user')
+                ->orWhereNull('created_at')
+                ->orWhere('created_at', '>', now()->subMinutes(RegistrationOtpService::PENDING_REGISTRATION_LIFETIME_MINUTES));
+        });
     }
 }

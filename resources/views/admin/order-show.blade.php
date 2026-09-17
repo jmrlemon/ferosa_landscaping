@@ -30,6 +30,10 @@
     ));
   }
   $hasOperationalTransition = count($availableStatuses) > 1;
+  $requestedStatus = old('status');
+  $selectedStatus = is_string($requestedStatus) && in_array($requestedStatus, $availableStatuses, true)
+    ? $requestedStatus
+    : $order->status;
   $closedStatusLabel = $order->status === 'cancelled' ? 'cancelled' : 'complete';
   $isPickupOrder = ($order->delivery_method ?? 'delivery') === 'pickup';
   $paymentStatusLabel = ucfirst(str_replace('_', ' ', $order->payment_status ?? 'unpaid'));
@@ -216,6 +220,23 @@
           @endif
         </section>
 
+        @if($order->returnRequests->isNotEmpty())
+          <section class="overflow-hidden rounded-xl border border-surface-100 bg-white shadow-sm">
+            <div class="flex items-center justify-between gap-3 border-b border-surface-200 px-5 py-4">
+              <h3 class="font-semibold">Return Claims</h3>
+              <a href="{{ route('admin.returns.index') }}" class="text-xs font-bold text-brand-700">Claims queue</a>
+            </div>
+            <div class="divide-y divide-surface-100">
+              @foreach($order->returnRequests->sortByDesc('created_at') as $claim)
+                <a href="{{ route('admin.returns.show', $claim) }}" class="flex items-center justify-between gap-3 px-5 py-3 hover:bg-surface-50">
+                  <span class="text-sm font-bold text-brand-800">{{ $claim->claim_number }}</span>
+                  <span class="badge badge-neutral">{{ ucfirst(str_replace('_', ' ', $claim->status)) }}</span>
+                </a>
+              @endforeach
+            </div>
+          </section>
+        @endif
+
         @if($isAdmin && $history->isNotEmpty())
           <section class="overflow-hidden rounded-xl border border-surface-100 bg-white shadow-sm">
             <div class="border-b border-surface-200 px-5 py-4"><h3 class="font-semibold">Activity History</h3></div>
@@ -255,9 +276,9 @@
             @csrf @method('PUT')
             <input type="hidden" name="redirect_to" value="show">
             <label class="block text-sm font-medium">Status
-              <select name="status" class="mt-2 h-10 w-full rounded-lg border border-surface-200 px-3 outline-none focus:border-brand-600" {{ $isAdmin || $hasOperationalTransition ? '' : 'disabled' }}>
+              <select id="order-status-select" name="status" @unless($isPickupOrder) data-order-status-select aria-controls="order-status-fields-out-for-delivery order-status-fields-delivered" @endunless class="mt-2 h-10 w-full rounded-lg border border-surface-200 px-3 outline-none focus:border-brand-600" {{ $isAdmin || $hasOperationalTransition ? '' : 'disabled' }}>
                 @foreach($availableStatuses as $status)
-                  <option value="{{ $status }}" {{ $order->status === $status ? 'selected' : '' }}>{{ $fulfillmentStatusLabel($status) }}</option>
+                  <option value="{{ $status }}" {{ $selectedStatus === $status ? 'selected' : '' }}>{{ $fulfillmentStatusLabel($status) }}</option>
                 @endforeach
               </select>
             </label>
@@ -278,25 +299,25 @@
               <p class="rounded-lg border border-surface-200 bg-surface-50 px-3 py-2 text-xs text-surface-500">Payment verification is handled by an administrator.</p>
             @endif
             @unless($isPickupOrder)
-            <div class="rounded-xl border border-indigo-100 bg-indigo-50/60 p-4 space-y-3">
+            <div id="order-status-fields-out-for-delivery" data-order-status-fields="out_for_delivery" aria-hidden="{{ $selectedStatus === 'out_for_delivery' ? 'false' : 'true' }}" @if($selectedStatus !== 'out_for_delivery') hidden @endif class="rounded-xl border border-indigo-100 bg-indigo-50/60 p-4 space-y-3">
               <div><p class="text-sm font-semibold text-indigo-900">Out for Delivery</p><p class="text-xs text-indigo-700">Required when dispatching the order.</p></div>
               <label class="block text-sm font-medium">Driver or Rider Name
-                <input name="driver_name" value="{{ old('driver_name', $order->driver_name) }}" maxlength="255" class="mt-2 h-10 w-full rounded-lg border border-surface-200 bg-white px-3 outline-none focus:border-indigo-500">
+                <input name="driver_name" value="{{ old('driver_name', $order->driver_name) }}" maxlength="255" @disabled($selectedStatus !== 'out_for_delivery') class="mt-2 h-10 w-full rounded-lg border border-surface-200 bg-white px-3 outline-none focus:border-indigo-500">
               </label>
               <label class="block text-sm font-medium">Driver Contact
-                <input name="driver_phone" type="tel" inputmode="numeric" pattern="[0-9]{11}" minlength="11" maxlength="11" title="Enter exactly 11 digits." value="{{ old('driver_phone', $order->driver_phone) }}" class="mt-2 h-10 w-full rounded-lg border border-surface-200 bg-white px-3 outline-none focus:border-indigo-500">
+                <input name="driver_phone" type="tel" inputmode="numeric" pattern="[0-9]{11}" minlength="11" maxlength="11" title="Enter exactly 11 digits." value="{{ old('driver_phone', $order->driver_phone) }}" @disabled($selectedStatus !== 'out_for_delivery') class="mt-2 h-10 w-full rounded-lg border border-surface-200 bg-white px-3 outline-none focus:border-indigo-500">
               </label>
               <label class="block text-sm font-medium">Dispatch Notes
-                <textarea name="dispatch_notes" rows="2" maxlength="1000" class="mt-2 w-full rounded-lg border border-surface-200 bg-white px-3 py-2 outline-none focus:border-indigo-500">{{ old('dispatch_notes', $order->dispatch_notes) }}</textarea>
+                <textarea name="dispatch_notes" rows="2" maxlength="1000" @disabled($selectedStatus !== 'out_for_delivery') class="mt-2 w-full rounded-lg border border-surface-200 bg-white px-3 py-2 outline-none focus:border-indigo-500">{{ old('dispatch_notes', $order->dispatch_notes) }}</textarea>
               </label>
             </div>
-            <div class="rounded-xl border border-brand-100 bg-brand-50/60 p-4 space-y-3">
+            <div id="order-status-fields-delivered" data-order-status-fields="delivered" aria-hidden="{{ $selectedStatus === 'delivered' ? 'false' : 'true' }}" @if($selectedStatus !== 'delivered') hidden @endif class="rounded-xl border border-brand-100 bg-brand-50/60 p-4 space-y-3">
               <div><p class="text-sm font-semibold text-brand-900">Delivered</p><p class="text-xs text-brand-700">Required after the customer receives the order.</p></div>
               <label class="block text-sm font-medium">Received By
-                <input name="delivery_recipient_name" value="{{ old('delivery_recipient_name', $order->delivery_recipient_name) }}" maxlength="255" class="mt-2 h-10 w-full rounded-lg border border-surface-200 bg-white px-3 outline-none focus:border-brand-500">
+                <input name="delivery_recipient_name" value="{{ old('delivery_recipient_name', $order->delivery_recipient_name) }}" maxlength="255" @disabled($selectedStatus !== 'delivered') class="mt-2 h-10 w-full rounded-lg border border-surface-200 bg-white px-3 outline-none focus:border-brand-500">
               </label>
               <label class="block text-sm font-medium">Delivery Proof
-                <input name="delivery_proof" type="file" accept="image/*" class="mt-2 h-10 w-full rounded-lg border border-surface-200 bg-white text-sm file:mr-3 file:h-full file:border-0 file:bg-brand-100 file:px-3">
+                <input name="delivery_proof" type="file" accept="image/*" @disabled($selectedStatus !== 'delivered') class="mt-2 h-10 w-full rounded-lg border border-surface-200 bg-white text-sm file:mr-3 file:h-full file:border-0 file:bg-brand-100 file:px-3">
               </label>
             </div>
             @endunless
@@ -329,6 +350,27 @@
   <script>
     const deliveryProofModal = document.getElementById('delivery-proof-modal');
     const deliveryProofImage = document.getElementById('delivery-proof-modal-image');
+    const orderStatusSelect = document.querySelector('[data-order-status-select]');
+    const orderStatusPanels = document.querySelectorAll('[data-order-status-fields]');
+
+    function syncOrderStatusFields() {
+      const selectedStatus = orderStatusSelect?.value;
+
+      orderStatusPanels.forEach(panel => {
+        const isActive = panel.dataset.orderStatusFields === selectedStatus;
+        panel.hidden = !isActive;
+        panel.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+
+        panel.querySelectorAll('input, textarea, select').forEach(control => {
+          control.disabled = !isActive;
+        });
+      });
+    }
+
+    if (orderStatusSelect) {
+      orderStatusSelect.addEventListener('change', syncOrderStatusFields);
+      syncOrderStatusFields();
+    }
 
     function openDeliveryProof(src, alt) {
       if (!src) return;

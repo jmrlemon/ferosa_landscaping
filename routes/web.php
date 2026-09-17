@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminAccountController;
 use App\Http\Controllers\AdminBusinessProfileController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminProjectController;
+use App\Http\Controllers\AdminReturnRequestController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\FeedbackController;
@@ -13,6 +14,8 @@ use App\Http\Controllers\PageController;
 use App\Http\Controllers\PasswordResetOtpController;
 use App\Http\Controllers\ProductImageController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\RegistrationVerificationController;
+use App\Http\Controllers\ReturnRequestController;
 use App\Http\Controllers\SocialAuthController;
 use Illuminate\Support\Facades\Route;
 
@@ -50,6 +53,9 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1')->name('login.submit');
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:5,1')->name('register.submit');
+    Route::get('/register/verify', [RegistrationVerificationController::class, 'show'])->name('register.verification');
+    Route::post('/register/verify', [RegistrationVerificationController::class, 'verify'])->middleware('throttle:10,1')->name('register.verify');
+    Route::post('/register/resend', [RegistrationVerificationController::class, 'resend'])->middleware('throttle:3,10')->name('register.resend');
 
     Route::get('/auth/{provider}/redirect', [SocialAuthController::class, 'redirect'])->name('social.redirect');
     Route::get('/auth/{provider}/callback', [SocialAuthController::class, 'callback'])->name('social.callback');
@@ -76,6 +82,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/orders/{order}/payment-proof', [PageController::class, 'paymentProof'])->name('orders.payment-proof');
     Route::get('/orders/{order}/dispatch-proof', [PageController::class, 'dispatchProof'])->name('orders.dispatch-proof');
     Route::get('/orders/{order}/delivery-proof', [PageController::class, 'deliveryProof'])->name('orders.delivery-proof');
+    Route::get('/orders/{order}/returns/create', [ReturnRequestController::class, 'create'])->name('returns.create');
+    Route::post('/orders/{order}/returns', [ReturnRequestController::class, 'store'])->middleware('throttle:5,60')->name('returns.store');
+    Route::get('/returns/{returnRequest}', [ReturnRequestController::class, 'show'])->name('returns.show');
+    Route::post('/returns/{returnRequest}/information', [ReturnRequestController::class, 'information'])->middleware('throttle:5,60')->name('returns.information');
+    Route::post('/returns/{returnRequest}/cancel', [ReturnRequestController::class, 'cancel'])->name('returns.cancel');
+    Route::get('/returns/{returnRequest}/evidence/{evidence}', [ReturnRequestController::class, 'evidence'])->name('returns.evidence');
     Route::get('/orders', [PageController::class, 'orders'])->name('orders');
     Route::get('/appointments', [PageController::class, 'appointments'])->name('appointments');
     Route::get('/appointments/{appointment}/receipt', [PageController::class, 'appointmentReceipt'])->name('appointments.receipt');
@@ -115,6 +127,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/ordering-delivery', [AdminController::class, 'dashboard'])->name('ordering-delivery');
         Route::get('/service-scheduling/{appointment}', [AdminController::class, 'showAppointment'])->name('appointments.show');
         Route::get('/ordering-delivery/{order}', [AdminController::class, 'showOrder'])->name('orders.show');
+        Route::get('/returns', [AdminReturnRequestController::class, 'index'])->name('returns.index');
+        Route::get('/returns/{returnRequest}', [AdminReturnRequestController::class, 'show'])->name('returns.show');
+        Route::put('/returns/{returnRequest}/review', [AdminReturnRequestController::class, 'review'])->name('returns.review');
+        Route::post('/returns/{returnRequest}/dispatch-replacement', [AdminReturnRequestController::class, 'dispatch'])->name('returns.dispatch');
+        Route::post('/returns/{returnRequest}/resolve', [AdminReturnRequestController::class, 'resolve'])->name('returns.resolve');
 
         // Project portfolio content is operational/public content. Staff can
         // maintain it; it does not change prices, stock, or payments.
@@ -176,6 +193,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/orders/{order}/payments', [BillingController::class, 'storeOrderPayment'])->name('orders.payments.store');
         Route::post('/appointments/{appointment}/payments', [BillingController::class, 'storeAppointmentPayment'])->name('appointments.payments.store');
         Route::put('/payments/{payment}/void', [BillingController::class, 'voidPayment'])->name('payments.void');
+        Route::put('/returns/{returnRequest}/decision', [AdminReturnRequestController::class, 'decision'])->name('returns.decision');
+        Route::post('/returns/{returnRequest}/refunds', [AdminReturnRequestController::class, 'refund'])->name('returns.refunds.store');
+        Route::put('/returns/{returnRequest}/refunds/{refund}/void', [AdminReturnRequestController::class, 'voidRefund'])->name('returns.refunds.void');
+        Route::post('/returns/{returnRequest}/items/{item}/restock', [AdminReturnRequestController::class, 'restock'])->name('returns.items.restock');
 
         // Inventory: manual stock movements and history.
         Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PhoneNumber;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -26,6 +27,7 @@ class User extends Authenticatable
         'name',
         'email',
         'phone_number',
+        'phone_verified_at',
         'password',
         'account_type',
         'role',
@@ -50,8 +52,14 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'phone_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function setPhoneNumberAttribute(?string $value): void
+    {
+        $this->attributes['phone_number'] = $value === null ? null : PhoneNumber::normalize($value);
     }
 
     public function isAdmin(): bool
@@ -78,6 +86,12 @@ class User extends Authenticatable
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
+    }
+
+    /** @return HasMany<ReturnRequest, $this> */
+    public function returnRequests(): HasMany
+    {
+        return $this->hasMany(ReturnRequest::class);
     }
 
     /** @return HasMany<Appointment, $this> */

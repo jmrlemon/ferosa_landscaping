@@ -60,7 +60,10 @@ class FunctionalWorkflowTest extends TestCase
             ->assertSee('id="ar-model-file-status"', false)
             ->assertSee('aria-live="polite"', false)
             ->assertSee('id="ar-model-upload-cancel"', false)
-            ->assertSee('Upload progress', false);
+            ->assertSee('Upload progress', false)
+            ->assertSee("xhr.responseType = 'json';", false)
+            ->assertSee("xhr.setRequestHeader('Accept', 'application/json');", false)
+            ->assertSee('xhr.response.redirect_url', false);
 
         $this->actingAs($admin)->post(route('admin.ar-models.upload', $product), [
             'ar_model' => UploadedFile::fake()->createWithContent(
@@ -81,6 +84,48 @@ class FunctionalWorkflowTest extends TestCase
             ->assertOk()
             ->assertJsonPath('0.id', $product->id)
             ->assertJsonPath('0.height_cm', 125.5);
+    }
+
+    public function test_ajax_ar_upload_returns_json_and_preserves_the_success_message_for_one_redirect(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create(['role' => 'admin']);
+        $product = $this->product(stock: 5);
+
+        $this->actingAs($admin)
+            ->withHeaders([
+                'Accept' => 'application/json',
+                'X-Requested-With' => 'XMLHttpRequest',
+            ])
+            ->post(route('admin.ar-models.upload', $product), [
+                'ar_model' => UploadedFile::fake()->createWithContent('agave.glb', $this->validGlb()),
+                'height_cm' => 50,
+            ])
+            ->assertOk()
+            ->assertJsonPath('redirect_url', route('admin.products.edit', $product))
+            ->assertJsonPath('message', 'AR model for "'.$product->name.'" updated successfully.')
+            ->assertSessionHas('status', 'AR model for "'.$product->name.'" updated successfully.');
+    }
+
+    public function test_ajax_ar_upload_returns_validation_errors_without_redirecting(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create(['role' => 'admin']);
+        $product = $this->product(stock: 5);
+
+        $this->actingAs($admin)
+            ->withHeaders([
+                'Accept' => 'application/json',
+                'X-Requested-With' => 'XMLHttpRequest',
+            ])
+            ->post(route('admin.ar-models.upload', $product), [
+                'ar_model' => UploadedFile::fake()->createWithContent('broken.glb', 'not a glb'),
+                'height_cm' => 50,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('ar_model');
+
+        $this->assertNull($product->fresh()->plantModel);
     }
 
     public function test_invalid_glb_does_not_replace_the_working_ar_model(): void
@@ -273,16 +318,31 @@ class FunctionalWorkflowTest extends TestCase
                     && str_contains($errors->first('ar_model'), '2048px');
             });
 
+        $decodedTextureLimit = $this->actingAs($admin)->post(route('admin.ar-models.upload', $product), [
+            'ar_model' => UploadedFile::fake()->createWithContent(
+                'three-pbr-textures.glb',
+                $this->budgetGlb(textureWidth: 2048, textureHeight: 2048, textureCopies: 3)
+            ),
+            'height_cm' => 120,
+        ])->assertSessionHasNoErrors();
+
+        $decodedTextureLimit->assertSessionHas('ar_model_warnings', function (array $warnings): bool {
+            return collect($warnings)->contains(
+                fn (string $warning): bool => str_contains($warning, 'decoded memory')
+                    && str_contains($warning, '24 MiB')
+            );
+        });
+
         $this->actingAs($admin)->post(route('admin.ar-models.upload', $product), [
             'ar_model' => UploadedFile::fake()->createWithContent(
                 'texture-memory-too-large.glb',
-                $this->budgetGlb(textureWidth: 2048, textureHeight: 2048, textureCopies: 3)
+                $this->budgetGlb(textureWidth: 2048, textureHeight: 2048, textureCopies: 4)
             ),
             'height_cm' => 120,
         ])->assertSessionHasErrors('ar_model')
             ->assertSessionHas('errors', function ($errors): bool {
                 return str_contains($errors->first('ar_model'), 'decoded memory')
-                    && str_contains($errors->first('ar_model'), '48 MiB');
+                    && str_contains($errors->first('ar_model'), '64 MiB');
             });
     }
 

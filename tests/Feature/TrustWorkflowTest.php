@@ -166,7 +166,7 @@ class TrustWorkflowTest extends TestCase
         $this->assertDatabaseHas('users', [
             'id' => $staff->id,
             'name' => 'Ferosa Operations',
-            'phone_number' => '0917 123 4567',
+            'phone_number' => '+639171234567',
             'role' => 'staff',
         ]);
     }

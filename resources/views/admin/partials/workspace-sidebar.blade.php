@@ -56,6 +56,13 @@
           <span title="{{ $badge('orders_pending') }} order{{ $badge('orders_pending') !== 1 ? 's' : '' }} awaiting processing" class="{{ $pillBadgeClass }} border border-amber-200 bg-amber-50 text-amber-700">{{ $badgeCount($badge('orders_pending')) }} actions</span>
         @endif
       </a>
+      <a href="{{ route('admin.returns.index') }}" class="{{ $navClass('returns') }}" @if($adminSection === 'returns') aria-current="page" @endif>
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 14 4 9l5-5M4 9h11a5 5 0 0 1 5 5v5"/></svg>
+        Returns &amp; Replacements
+        @if($badge('returns_actionable') > 0)
+          <span title="{{ $badge('returns_actionable') }} claim{{ $badge('returns_actionable') !== 1 ? 's' : '' }} needing action" class="{{ $countBadgeClass }}">{{ $badgeCount($badge('returns_actionable')) }}</span>
+        @endif
+      </a>
       <a href="{{ route('admin.dashboard', ['tab' => 'services']) }}" class="{{ $navClass('services') }}">
         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
         {{ $isAdmin ? 'Services' : 'Services · read-only' }}

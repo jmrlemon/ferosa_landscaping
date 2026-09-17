@@ -22,6 +22,7 @@ use App\Services\CartService;
 use App\Services\InventoryService;
 use App\Support\Audit;
 use App\Support\PasswordRules;
+use App\Support\PhoneNumber;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -34,6 +35,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -497,7 +499,7 @@ class PageController extends Controller
         ]);
 
         $q = Order::query()
-            ->with('feedback')
+            ->with(['feedback', 'returnRequests', 'activeRefunds'])
             ->where('user_id', auth()->id())
             ->whereNull('archived_at')
             ->latest();
@@ -1001,10 +1003,14 @@ class PageController extends Controller
     {
         $user = auth()->user();
 
+        if ($request->filled('phone_number')) {
+            $request->merge(['phone_number' => PhoneNumber::normalize((string) $request->input('phone_number'))]);
+        }
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email,'.$user->id],
-            'phone_number' => ['nullable', 'string', 'max:20'],
+            'phone_number' => ['nullable', 'string', 'max:20', Rule::unique('users', 'phone_number')->ignore($user->id)],
             'current_password' => ['nullable', 'required_with:password', 'current_password'],
             'password' => PasswordRules::optional(),
         ]);

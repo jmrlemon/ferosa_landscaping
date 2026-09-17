@@ -26,6 +26,9 @@ class DemoDataQualityTest extends TestCase
         $this->assertDatabaseMissing('orders', ['order_number' => 'ORD-123456']);
         $this->assertDatabaseMissing('orders', ['order_number' => 'ORD-789012']);
 
+        $this->assertNotNull(User::query()->where('email', 'admin@cblandscaping.com')->value('phone_verified_at'));
+        $this->assertNotNull(User::query()->where('email', 'user@cblandscaping.com')->value('phone_verified_at'));
+
         $completed = Appointment::query()->where('status', 'completed')->firstOrFail();
         $this->assertSame('paid', $completed->payment_status);
         $this->assertGreaterThan(0, (float) $completed->appointment_amount);

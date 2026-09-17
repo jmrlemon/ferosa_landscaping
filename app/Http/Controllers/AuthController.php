@@ -5,12 +5,17 @@ namespace App\Http\Controllers;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
 use App\Models\User;
+use App\Services\RegistrationOtpService;
+use App\Support\PhoneNumber;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\View\View;
+use Throwable;
 
 class AuthController extends Controller
 {
@@ -40,8 +45,29 @@ class AuthController extends Controller
             return back()->withErrors(['email' => 'Invalid email or password.'])->onlyInput('email');
         }
 
+        $user = Auth::user();
+        if ($user?->isUser() && $user->phone_verified_at === null) {
+            $phone = (string) $user->phone_number;
+            Auth::logout();
+            $request->session()->put([
+                'pending_registration_user_id' => $user->id,
+                'pending_registration_phone' => $phone,
+            ]);
+
+            $payload = [
+                'message' => 'Verify your mobile number before signing in.',
+                'verification_required' => true,
+            ];
+
+            if ($request->expectsJson()) {
+                return response()->json($payload, 403);
+            }
+
+            return redirect()->route('register.verification')->withErrors(['email' => $payload['message']]);
+        }
+
         $request->session()->regenerate();
-        $redirectUrl = Auth::user()?->isStaffOrAdmin() ? route('admin.dashboard') : route('home');
+        $redirectUrl = $user?->isStaffOrAdmin() ? route('admin.dashboard') : route('home');
 
         if ($request->expectsJson()) {
             return response()->json(['ok' => true, 'redirectUrl' => $redirectUrl]);
@@ -50,29 +76,78 @@ class AuthController extends Controller
         return redirect()->to($redirectUrl);
     }
 
-    public function register(RegisterRequest $request): RedirectResponse|JsonResponse
+    public function register(RegisterRequest $request, RegistrationOtpService $verification): RedirectResponse|JsonResponse
     {
         $data = $request->validated();
 
         $nameParts = array_filter([$data['first_name'], $data['middle_name'] ?? null, $data['last_name']]);
-        $user = User::create([
-            'name' => implode(' ', $nameParts),
-            'email' => $data['email'],
-            'phone_number' => $data['phone_number'],
-            'password' => Hash::make($data['password']),
-            'account_type' => 'Customer',
-            'role' => 'user',
-        ]);
+        try {
+            $user = DB::transaction(function () use ($data, $nameParts): User {
+                User::query()
+                    ->where('role', 'user')
+                    ->whereNull('phone_verified_at')
+                    ->whereNotNull('created_at')
+                    ->where('created_at', '<=', now()->subMinutes(RegistrationOtpService::PENDING_REGISTRATION_LIFETIME_MINUTES))
+                    ->where(function ($query) use ($data): void {
+                        $query->where('email', $data['email'])
+                            ->orWhereIn('phone_number', PhoneNumber::lookupCandidates($data['phone_number']));
+                    })
+                    ->delete();
 
-        Auth::login($user);
-        $request->session()->regenerate();
-        $redirectUrl = $user->isAdmin() ? route('admin.dashboard') : route('home');
+                return User::query()->create([
+                    'name' => implode(' ', $nameParts),
+                    'email' => $data['email'],
+                    'phone_number' => $data['phone_number'],
+                    'phone_verified_at' => null,
+                    'password' => Hash::make($data['password']),
+                    'account_type' => 'Customer',
+                    'role' => 'user',
+                ]);
+            }, attempts: 3);
+        } catch (UniqueConstraintViolationException) {
+            $message = 'That email address or mobile number is already connected to an account.';
 
-        if ($request->expectsJson()) {
-            return response()->json(['ok' => true, 'redirectUrl' => $redirectUrl]);
+            return $request->expectsJson()
+                ? response()->json(['message' => $message, 'errors' => ['phone_number' => [$message]]], 422)
+                : back()->withErrors(['phone_number' => $message])->withInput($request->except('password', 'password_confirmation'));
         }
 
-        return redirect()->to($redirectUrl);
+        try {
+            $result = $verification->issue($user);
+        } catch (Throwable $exception) {
+            report($exception);
+            $result = RegistrationOtpService::FAILED;
+        }
+
+        if ($result !== RegistrationOtpService::ISSUED) {
+            DB::transaction(function () use ($user): void {
+                DB::table('registration_otps')->where('user_id', $user->id)->delete();
+                $user->delete();
+            });
+
+            $message = 'We could not send your verification code. Please try again.';
+
+            return $request->expectsJson()
+                ? response()->json(['message' => $message], 503)
+                : back()->withErrors(['phone_number' => $message])->withInput($request->except('password', 'password_confirmation'));
+        }
+
+        $request->session()->put([
+            'pending_registration_user_id' => $user->id,
+            'pending_registration_phone' => $user->phone_number,
+        ]);
+        $payload = [
+            'ok' => true,
+            'verification_required' => true,
+            'message' => 'We sent a 6-digit verification code to your mobile number.',
+            'redirectUrl' => route('register.verification'),
+        ];
+
+        if ($request->expectsJson()) {
+            return response()->json($payload, 201);
+        }
+
+        return redirect()->route('register.verification')->with('status', $payload['message']);
     }
 
     public function logout(Request $request): RedirectResponse

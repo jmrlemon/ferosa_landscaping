@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\PasswordRules;
+use App\Support\PhoneNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -21,6 +22,10 @@ class AdminAccountController extends Controller
     {
         $user = $request->user();
 
+        if ($request->filled('phone_number')) {
+            $request->merge(['phone_number' => PhoneNumber::normalize((string) $request->input('phone_number'))]);
+        }
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => [
@@ -29,7 +34,7 @@ class AdminAccountController extends Controller
                 'max:255',
                 Rule::unique('users', 'email')->ignore($user->id),
             ],
-            'phone_number' => ['nullable', 'string', 'max:20'],
+            'phone_number' => ['nullable', 'string', 'max:20', Rule::unique('users', 'phone_number')->ignore($user->id)],
             'current_password' => ['nullable', 'required_with:password', 'current_password'],
             'password' => PasswordRules::optional(),
         ]);

@@ -39,4 +39,14 @@ class AppointmentMovedByTeam extends Notification implements ShouldQueue
             'url' => route('appointments', absolute: false),
         ];
     }
+
+    public function toSmsMessage(): string
+    {
+        $service = $this->appointment->serviceType->name ?? 'Service';
+
+        return "Ferosa: Your {$service} appointment was rescheduled from "
+            .$this->previousAt->format('M d, Y g:i A').' to '
+            .$this->appointment->appointment_at->format('M d, Y g:i A')
+            .'. Contact us if this new schedule does not work for you.';
+    }
 }

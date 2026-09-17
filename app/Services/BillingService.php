@@ -5,8 +5,11 @@ namespace App\Services;
 use App\Models\Appointment;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\Refund;
+use App\Models\ReturnRequest;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Owns the money side of orders and appointments.
@@ -91,6 +94,104 @@ class BillingService
     public function balanceDue(Model $payable): float
     {
         return round(max(0, $this->totalBilled($payable) - $this->totalPaid($payable)), 2);
+    }
+
+    public function totalRefunded(Order $order): float
+    {
+        return round((float) $order->activeRefunds()->sum('amount'), 2);
+    }
+
+    public function netPaid(Order $order): float
+    {
+        return round(max(0, $this->totalPaid($order) - $this->totalRefunded($order)), 2);
+    }
+
+    public function refundableAmount(Order $order): float
+    {
+        return $this->netPaid($order);
+    }
+
+    /**
+     * Record money returned without corrupting the payments-received ledger.
+     *
+     * @param  array{amount: float|int|string, method?: string, reference?: string|null, notes?: string|null, refunded_at?: mixed, processed_by?: int|null}  $attributes
+     */
+    public function recordRefund(Order $order, ReturnRequest $claim, array $attributes): Refund
+    {
+        return DB::transaction(function () use ($order, $claim, $attributes): Refund {
+            /** @var Order $lockedOrder */
+            $lockedOrder = Order::query()->lockForUpdate()->findOrFail($order->id);
+            /** @var ReturnRequest $lockedClaim */
+            $lockedClaim = ReturnRequest::query()->lockForUpdate()->findOrFail($claim->id);
+            abort_unless((int) $lockedClaim->order_id === (int) $lockedOrder->id, 422);
+            abort_unless(in_array($lockedClaim->status, ['approved', 'replacement_dispatched', 'resolved'], true), 422);
+
+            $amount = round((float) $attributes['amount'], 2);
+            $approved = round((float) $lockedClaim->items()->sum('refund_amount'), 2);
+            $alreadyClaimed = round((float) $lockedClaim->refunds()->whereNull('voided_at')->sum('amount'), 2);
+            $maximum = round(min(
+                max(0, $approved - $alreadyClaimed),
+                $this->refundableAmount($lockedOrder)
+            ), 2);
+
+            if ($amount <= 0 || $amount > $maximum) {
+                throw ValidationException::withMessages([
+                    'amount' => 'Refund amount cannot exceed ₱'.number_format($maximum, 2).'.',
+                ]);
+            }
+
+            $refund = $lockedOrder->refunds()->create([
+                'return_request_id' => $lockedClaim->id,
+                'amount' => $amount,
+                'method' => $attributes['method'] ?? 'cash',
+                'reference' => $attributes['reference'] ?? null,
+                'notes' => $attributes['notes'] ?? null,
+                'refunded_at' => $attributes['refunded_at'] ?? now(),
+                'processed_by' => $attributes['processed_by'] ?? null,
+            ]);
+
+            if ($this->totalRefunded($lockedOrder) >= $this->totalPaid($lockedOrder)
+                && $this->totalPaid($lockedOrder) > 0) {
+                $lockedOrder->forceFill(['payment_status' => 'refunded'])->save();
+            }
+
+            return $refund;
+        }, 3);
+    }
+
+    public function voidRefund(
+        Order $order,
+        Refund $refund,
+        ?int $userId,
+        string $reason,
+    ): void {
+        DB::transaction(function () use ($order, $refund, $userId, $reason): void {
+            /** @var Order $lockedOrder */
+            $lockedOrder = Order::query()->lockForUpdate()->findOrFail($order->id);
+            /** @var Refund $lockedRefund */
+            $lockedRefund = Refund::query()->lockForUpdate()->findOrFail($refund->id);
+            abort_unless((int) $lockedRefund->order_id === (int) $lockedOrder->id, 422);
+            if ($lockedRefund->isVoided()) {
+                return;
+            }
+
+            $lockedRefund->update([
+                'voided_at' => now(),
+                'voided_by' => $userId,
+                'void_reason' => $reason,
+            ]);
+
+            if ($lockedOrder->payment_status === 'refunded') {
+                $paid = $this->totalPaid($lockedOrder);
+                $billed = $this->totalBilled($lockedOrder);
+                $status = match (true) {
+                    $paid <= 0 => 'unpaid',
+                    $billed > 0 && $paid >= $billed => 'paid',
+                    default => 'partial',
+                };
+                $lockedOrder->forceFill(['payment_status' => $status])->save();
+            }
+        }, 3);
     }
 
     /**

@@ -2,9 +2,12 @@
 
 namespace App\Models;
 
+use App\Support\ProfanityFilter;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/** @property-read string|null $censored_comment */
 class Feedback extends Model
 {
     protected $table = 'feedbacks';
@@ -18,6 +21,18 @@ class Feedback extends Model
         'rating',
         'comment',
     ];
+
+    /** @return Attribute<string|null, never> */
+    protected function censoredComment(): Attribute
+    {
+        return Attribute::make(
+            get: function (mixed $value, array $attributes): ?string {
+                $comment = $attributes['comment'] ?? null;
+
+                return ProfanityFilter::censor(is_string($comment) ? $comment : null);
+            }
+        );
+    }
 
     /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo

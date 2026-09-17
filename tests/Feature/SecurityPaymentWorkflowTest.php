@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
 use App\Notifications\OrderPaymentReviewed;
+use App\Services\SmsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+use Tests\Fakes\FakeSmsService;
 use Tests\TestCase;
 
 class SecurityPaymentWorkflowTest extends TestCase
@@ -160,6 +162,8 @@ class SecurityPaymentWorkflowTest extends TestCase
 
     public function test_registration_normalizes_and_deduplicates_philippine_mobile_numbers(): void
     {
+        $this->app->instance(SmsService::class, new FakeSmsService(true));
+
         $this->postJson(route('register.submit'), [
             'first_name' => 'Juan',
             'last_name' => 'Dela Cruz',
@@ -168,14 +172,13 @@ class SecurityPaymentWorkflowTest extends TestCase
             'password' => 'StrongPassword123!',
             'password_confirmation' => 'StrongPassword123!',
             'terms_accepted' => true,
-        ])->assertOk();
+        ])->assertCreated();
 
         $this->assertDatabaseHas('users', [
             'email' => 'juan@example.test',
             'phone_number' => '+639171234567',
         ]);
 
-        auth()->logout();
         $this->postJson(route('register.submit'), [
             'first_name' => 'Maria',
             'last_name' => 'Santos',

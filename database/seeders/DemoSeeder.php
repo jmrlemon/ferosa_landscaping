@@ -70,6 +70,7 @@ class DemoSeeder extends Seeder
                     'password' => Hash::make('password'),
                     'role' => 'user',
                     'account_type' => 'Customer',
+                    'phone_verified_at' => now(),
                 ]
             );
         }
@@ -83,6 +84,7 @@ class DemoSeeder extends Seeder
                 'password' => Hash::make('password'),
                 'role' => 'staff',
                 'account_type' => 'Business',
+                'phone_verified_at' => now(),
             ]
         );
 

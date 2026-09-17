@@ -8,7 +8,7 @@
   $billed = $payable->totalBilled();
   $paid = $payable->totalPaid();
   $balance = $payable->balanceDue();
-  $ledgerEntries = $payable->activePayments()->with('recordedBy')->get();
+  $ledgerEntries = $payable->paymentHistory()->with(['recordedBy', 'voidedBy'])->get();
   $balanceTone = match (true) {
       $payable->payment_status === 'refunded' => 'border-surface-200 bg-surface-50 text-surface-700',
       $balance <= 0 && $billed > 0 => 'border-brand-200 bg-brand-50 text-brand-800',
@@ -62,28 +62,47 @@
         </thead>
         <tbody class="divide-y divide-surface-50">
           @foreach($ledgerEntries as $payment)
-            <tr>
+            <tr @class(['bg-red-50/40' => $payment->isVoided()])>
               <td class="whitespace-nowrap py-2.5 pr-3 text-surface-500">{{ optional($payment->paid_at)->format('M d, Y') }}</td>
               <td class="py-2.5 pr-3">
-                <span class="font-medium text-surface-800">{{ $payment->methodLabel() }}</span>
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <span @class(['font-medium', 'text-surface-800' => ! $payment->isVoided(), 'text-surface-500 line-through' => $payment->isVoided()])>{{ $payment->methodLabel() }}</span>
+                  @if($payment->isVoided())
+                    <span class="rounded-full border border-red-200 bg-red-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-700">Voided</span>
+                  @endif
+                </div>
                 @if($payment->recordedBy)<div class="text-[11px] text-surface-400">by {{ $payment->recordedBy->name }}</div>@endif
                 @if($payment->notes)<div class="max-w-xs text-[11px] text-surface-400">{{ $payment->notes }}</div>@endif
+                @if($payment->isVoided())
+                  <div class="mt-1 max-w-sm text-[11px] text-red-700">
+                    <span class="font-semibold">Reason:</span> {{ $payment->void_reason }}
+                    <span class="block text-red-600/80">
+                      Voided {{ optional($payment->voided_at)->format('M d, Y h:i A') }}
+                      @if($payment->voidedBy) by {{ $payment->voidedBy->name }}@endif
+                    </span>
+                  </div>
+                @endif
               </td>
               <td class="py-2.5 pr-3 font-mono text-[11px] text-surface-500">{{ $payment->reference ?: '—' }}</td>
-              <td class="whitespace-nowrap py-2.5 pr-3 text-right font-bold text-surface-900">PHP {{ number_format((float) $payment->amount, 2) }}</td>
+              <td @class(['whitespace-nowrap py-2.5 pr-3 text-right font-bold', 'text-surface-900' => ! $payment->isVoided(), 'text-surface-400 line-through' => $payment->isVoided()])>PHP {{ number_format((float) $payment->amount, 2) }}</td>
               @if($isAdmin)
                 <td class="py-2.5 text-right">
-                  <details class="inline-block text-left">
-                    <summary class="cursor-pointer list-none rounded border border-red-200 px-2 py-1 text-[11px] font-semibold text-red-600 hover:bg-red-50">Void</summary>
-                    <form method="POST" action="{{ route('admin.payments.void', $payment) }}" class="mt-2 w-56 rounded-lg border border-surface-200 bg-white p-2 shadow-sm">
-                      @csrf @method('PUT')
-                      <input type="text" name="void_reason" required maxlength="255" placeholder="Reason for voiding"
-                             class="w-full rounded border border-surface-200 px-2 py-1 text-[11px] outline-none focus:border-red-400">
-                      <button type="submit" class="mt-1.5 w-full rounded bg-red-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-red-700">
-                        Void this payment
-                      </button>
-                    </form>
-                  </details>
+                  @if($payment->isVoided())
+                    <span class="text-[11px] font-medium text-surface-400">History retained</span>
+                  @else
+                    <details class="inline-block text-left">
+                      <summary class="cursor-pointer list-none rounded border border-red-200 px-2 py-1 text-[11px] font-semibold text-red-600 hover:bg-red-50">Void</summary>
+                      <form method="POST" action="{{ route('admin.payments.void', $payment) }}" class="mt-2 w-56 rounded-lg border border-surface-200 bg-white p-2 shadow-sm">
+                        @csrf @method('PUT')
+                        <input type="text" name="void_reason" required maxlength="255" placeholder="Reason for voiding"
+                               aria-label="Reason for voiding this payment"
+                               class="w-full rounded border border-surface-200 px-2 py-1 text-[11px] outline-none focus:border-red-400">
+                        <button type="submit" class="mt-1.5 w-full rounded bg-red-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-red-700">
+                          Void this payment
+                        </button>
+                      </form>
+                    </details>
+                  @endif
                 </td>
               @endif
             </tr>

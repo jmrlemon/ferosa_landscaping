@@ -449,6 +449,24 @@ html, body {
 @keyframes toastIn  { from { opacity:0; transform:translateX(30px); } to { opacity:1; transform:translateX(0); } }
 @keyframes toastOut { from { opacity:1; transform:translateX(0); } to { opacity:0; transform:translateX(30px); } }
 
+.server-feedback {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  z-index: 9998;
+  width: min(92vw, 520px);
+  transform: translateX(-50%);
+  padding: 12px 16px;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 600;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.22);
+}
+.server-feedback.success { background: rgba(22,163,74,0.96); }
+.server-feedback.error { background: rgba(185,28,28,0.96); }
+.server-feedback ul { margin: 0; padding-left: 20px; }
+
 /* ── Loading spinner on button ── */
 .cta-btn.loading { opacity: 0.75; pointer-events: none; cursor: not-allowed; }
 .spinner {
@@ -749,6 +767,18 @@ html, body {
 <!-- ── Toast notification container ── -->
 <div id="toast-container"></div>
 
+@if (session('status'))
+<div class="server-feedback success" role="status">{{ session('status') }}</div>
+@elseif ($errors->any())
+<div class="server-feedback error" role="alert">
+  <ul>
+    @foreach ($errors->all() as $error)
+      <li>{{ $error }}</li>
+    @endforeach
+  </ul>
+</div>
+@endif
+
 <!-- ── Already-logged-in session banner ── -->
 <div id="session-banner">
   <span id="session-msg">You're already signed in.</span>
@@ -917,7 +947,7 @@ html, body {
 <div class="scene">
 
   <!-- LOGIN -->
-  <div class="page {{ in_array($active ?? 'login', ['signup', 'forgot']) ? '' : 'active' }}" id="page-login">
+  <div class="page {{ in_array($active ?? 'login', ['signup', 'forgot', 'registration-otp']) ? '' : 'active' }}" id="page-login">
     <div class="form-card">
       <div class="auth-mark" aria-label="Ferosa Landscaping">
         <span class="auth-mark-icon" aria-hidden="true">
@@ -1122,6 +1152,38 @@ html, body {
       </form>
 
       <p class="bottom-link">Already have an account? <a onclick="switchTo('login')">Sign in</a></p>
+    </div>
+  </div>
+
+  <!-- REGISTRATION: Verify Mobile Number -->
+  <div class="page {{ ($active ?? 'login') === 'registration-otp' ? 'active' : '' }}" id="page-registration-otp">
+    <div class="form-card">
+      <div class="form-header">
+        <h1 class="form-title">Verify Mobile Number</h1>
+        <p class="form-subtitle">Enter the 6-digit code sent through TextBee. The code expires in 10 minutes.</p>
+      </div>
+      <form id="registration-verification-form" method="POST" action="{{ route('register.verify') }}">
+        @csrf
+        <div class="field">
+          <label class="field-label" for="registration-otp-code">6-Digit Code</label>
+          <div class="input-wrap">
+            <span class="input-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+            <input id="registration-otp-code" name="otp" type="text" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" placeholder="123456" dir="ltr" autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" required>
+          </div>
+        </div>
+        <button id="registration-otp-btn" type="submit" class="cta-btn">
+          Verify and Continue
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </button>
+      </form>
+      <div class="bottom-link">
+        <form id="registration-resend-form" method="POST" action="{{ route('register.resend') }}" style="display:inline">
+          @csrf
+          <button id="registration-resend-btn" type="submit">Resend code</button>
+        </form>
+        &nbsp;&middot;&nbsp; <a href="{{ route('register') }}">Start registration again</a>
+        &nbsp;&middot;&nbsp; <button type="button" onclick="switchTo('login')">Back to Sign In</button>
+      </div>
     </div>
   </div>
 
@@ -1429,6 +1491,11 @@ async function handleLogin() {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
+      if (data.verification_required) {
+        showToast(data.message || 'Verify your mobile number before signing in.', 'info');
+        switchTo('registration-otp');
+        return;
+      }
       if (data.errors) {
         const messages = Object.values(data.errors).flat();
         messages.forEach(msg => showToast(msg, 'error'));
@@ -1494,6 +1561,13 @@ async function handleSignup() {
       }
       throw new Error(data.message || 'Account creation failed');
     }
+    if (data.verification_required) {
+      document.getElementById('signup-password').value = '';
+      document.getElementById('signup-password-confirm').value = '';
+      showToast(data.message || 'Verification code sent!', 'success');
+      switchTo('registration-otp');
+      return;
+    }
     window.location.href = data.redirectUrl || '{{ route('home') }}';
   } catch (err) {
     showToast(err.message || 'Account creation failed. Please try again.', 'error');
@@ -1504,6 +1578,63 @@ async function handleSignup() {
 
 function handleForgotPassword() {
   switchTo('forgot');
+}
+
+async function verifyRegistrationOtp() {
+  const code = document.getElementById('registration-otp-code').value.trim();
+  if (!/^\d{6}$/.test(code)) return showToast('Please enter the 6-digit code.', 'error');
+
+  setLoading('registration-otp-btn', true);
+  try {
+    const form = new URLSearchParams();
+    form.append('otp', code);
+    const res = await fetch('{{ route('register.verify') }}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body: form.toString(),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || 'Verification failed.');
+    showToast('Mobile number verified!', 'success');
+    window.location.href = data.redirectUrl || '{{ route('home') }}';
+  } catch (err) {
+    showToast(err.message || 'Verification failed. Please try again.', 'error');
+  } finally {
+    setLoading('registration-otp-btn', false);
+  }
+}
+
+async function resendRegistrationOtp() {
+  setLoading('registration-resend-btn', true);
+  try {
+    const res = await fetch('{{ route('register.resend') }}', {
+      method: 'POST',
+      headers: {
+        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      if (data.registration_expired) {
+        showToast(data.message || 'This registration has expired. Please register again.', 'info');
+        switchTo('signup');
+        return;
+      }
+      throw new Error(data.message || 'Could not resend the code.');
+    }
+    showToast(data.message || 'A new verification code was sent.', 'success');
+  } catch (err) {
+    showToast(err.message || 'Could not resend the code. Please try again.', 'error');
+  } finally {
+    setLoading('registration-resend-btn', false, 'Resend code');
+  }
 }
 
 // ── OTP state ────────────────────────────────────────────
@@ -1630,6 +1761,16 @@ document.getElementById('login-form').addEventListener('submit', event => {
 document.getElementById('signup-form').addEventListener('submit', event => {
   event.preventDefault();
   handleSignup();
+});
+
+document.getElementById('registration-verification-form').addEventListener('submit', event => {
+  event.preventDefault();
+  verifyRegistrationOtp();
+});
+
+document.getElementById('registration-resend-form').addEventListener('submit', event => {
+  event.preventDefault();
+  resendRegistrationOtp();
 });
 </script>
 </body>

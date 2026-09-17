@@ -650,7 +650,7 @@ class AdminController extends Controller
         $isAdmin = auth()->user()?->isAdmin() === true;
         abort_unless($order->archived_at === null || $isAdmin, 404);
 
-        $order->load(['user', 'orderItems.product', 'feedback', 'paymentVerifiedBy:id,name']);
+        $order->load(['user', 'orderItems.product', 'feedback', 'paymentVerifiedBy:id,name', 'returnRequests']);
         $history = $isAdmin
             ? AuditLog::query()->with('actor')
                 ->where('auditable_type', Order::class)
@@ -2033,16 +2033,46 @@ class AdminController extends Controller
         );
 
         // The customer did not ask for this, so silence would leave them
-        // turning up on the old day.
+        // turning up on the old day. Keep both channels independent: one
+        // provider failing must not suppress the other or undo the move.
+        $notification = new AppointmentMovedByTeam($appointment, $previousAt);
+        $inAppQueued = false;
+
         try {
-            $appointment->user->notify(new AppointmentMovedByTeam($appointment, $previousAt));
+            $appointment->user->notify($notification);
+            $inAppQueued = true;
         } catch (\Throwable $e) {
             report($e);
         }
 
+        $smsQueued = false;
+        $smsQueueFailed = false;
+
+        if (filled($appointment->user->phone_number) && $appointment->user->phone_verified_at !== null) {
+            try {
+                SendSmsJob::dispatch(
+                    $appointment->user->phone_number,
+                    $notification->toSmsMessage()
+                )->afterCommit();
+                $smsQueued = true;
+            } catch (\Throwable $e) {
+                $smsQueueFailed = true;
+                report($e);
+            }
+        }
+
+        $notificationStatus = match (true) {
+            $inAppQueued && $smsQueued => 'The customer was notified in-app and an SMS was queued.',
+            $inAppQueued && $smsQueueFailed => 'The customer was notified in-app, but the SMS could not be queued. Please contact them directly.',
+            $inAppQueued => 'The customer was notified in-app, but no SMS was queued because there is no verified phone number.',
+            $smsQueued => 'An SMS was queued, but the in-app notification could not be queued.',
+            $smsQueueFailed => 'Customer notifications could not be queued. Please contact them directly.',
+            default => 'The in-app notification could not be queued, and the customer has no verified phone number.',
+        };
+
         return redirect()->route('admin.appointments.show', $appointment)->with(
             'status',
-            'Visit moved to '.$appointmentAt->format('M d, Y \a\t g:i A').'. The customer has been notified.'
+            'Visit moved to '.$appointmentAt->format('M d, Y \a\t g:i A').'. '.$notificationStatus
         );
     }
 

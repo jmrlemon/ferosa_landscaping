@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 use Laravel\Socialite\Contracts\User as SocialiteUser;
 use Laravel\Socialite\Facades\Socialite;
 use Throwable;
@@ -62,20 +61,24 @@ class SocialAuthController extends Controller
         }
 
         if (! $user) {
-            $user = User::create([
-                'name' => $social->getName() ?? $social->getNickname() ?? 'User',
-                'email' => $email,
-                // The same migration restored password to NOT NULL. Social
-                // accounts never use this value; it exists so the row is valid
-                // and so the hash can never be guessed.
-                'password' => Str::random(64),
-                'account_type' => 'Customer',
-                'role' => 'user',
+            return redirect()->route('register')->withErrors([
+                'email' => 'Register with your mobile number first, then you can use social sign-in.',
             ]);
         }
 
         if ($this->emailIsVerifiedByProvider($social) && ! $user->email_verified_at) {
             $user->forceFill(['email_verified_at' => now()])->save();
+        }
+
+        if ($user->isUser() && $user->phone_verified_at === null) {
+            request()->session()->put([
+                'pending_registration_user_id' => $user->id,
+                'pending_registration_phone' => (string) $user->phone_number,
+            ]);
+
+            return redirect()->route('register.verification')->withErrors([
+                'email' => 'Verify your mobile number before signing in.',
+            ]);
         }
 
         // Deliberately not forcing "remember me": a social sign-in is not an

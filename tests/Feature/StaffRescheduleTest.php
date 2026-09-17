@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\SendSmsJob;
 use App\Models\Appointment;
 use App\Models\AuditLog;
 use App\Models\ServiceType;
@@ -10,6 +11,7 @@ use App\Notifications\AppointmentMovedByTeam;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 /**
@@ -26,7 +28,10 @@ class StaffRescheduleTest extends TestCase
     private function seedActors(): array
     {
         $staff = User::factory()->create(['role' => 'staff']);
-        $customer = User::factory()->create(['role' => 'user']);
+        $customer = User::factory()->create([
+            'role' => 'user',
+            'phone_number' => '+639171234567',
+        ]);
         $service = ServiceType::query()->create([
             'name' => 'Lawn Care',
             'default_fee' => 1200,
@@ -51,6 +56,7 @@ class StaffRescheduleTest extends TestCase
     public function test_staff_can_move_a_visit_the_customer_can_no_longer_touch(): void
     {
         Notification::fake();
+        Queue::fake();
         [$staff, $customer, $service] = $this->seedActors();
 
         // Inside the customer's notice window: they are being told to message
@@ -70,7 +76,12 @@ class StaffRescheduleTest extends TestCase
                 'move_time' => '13:00',
             ])
             ->assertRedirect(route('admin.appointments.show', $appointment))
-            ->assertSessionHasNoErrors();
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas(
+                'status',
+                'Visit moved to '.$movedTo->format('M d, Y \a\t g:i A')
+                    .'. The customer was notified in-app and an SMS was queued.'
+            );
 
         $appointment->refresh();
         $this->assertTrue($movedTo->equalTo($appointment->appointment_at));
@@ -81,8 +92,77 @@ class StaffRescheduleTest extends TestCase
         $this->assertSame('confirmed', $appointment->status);
 
         Notification::assertSentTo($customer, AppointmentMovedByTeam::class);
+        Queue::assertPushed(
+            SendSmsJob::class,
+            fn (SendSmsJob $job): bool => $job->recipient() === $customer->phone_number
+                && $job->message() === 'Ferosa: Your Lawn Care appointment was rescheduled from '
+                    .$bookedAt->format('M d, Y g:i A').' to '
+                    .$movedTo->format('M d, Y g:i A')
+                    .'. Contact us if this new schedule does not work for you.'
+        );
+        Queue::assertPushed(SendSmsJob::class, 1);
         $this->assertDatabaseHas('audit_logs', ['action' => 'appointment.reschedule.staff']);
         $this->assertSame(1, AuditLog::query()->where('action', 'appointment.reschedule.staff')->count());
+    }
+
+    public function test_staff_move_without_a_verified_customer_phone_keeps_the_in_app_notification(): void
+    {
+        Notification::fake();
+        Queue::fake();
+        [$staff, $customer, $service] = $this->seedActors();
+        $customer->update(['phone_verified_at' => null]);
+
+        $appointment = $this->makeAppointment(
+            $customer,
+            $service,
+            Carbon::now()->addDays(2)->setTime(9, 0)
+        );
+        $movedTo = Carbon::now()->addDays(4)->setTime(13, 0)->seconds(0);
+
+        $this->actingAs($staff)
+            ->put(route('admin.appointments.reschedule', $appointment), [
+                'move_date' => $movedTo->format('Y-m-d'),
+                'move_time' => '13:00',
+            ])
+            ->assertRedirect(route('admin.appointments.show', $appointment))
+            ->assertSessionHas(
+                'status',
+                'Visit moved to '.$movedTo->format('M d, Y \a\t g:i A')
+                    .'. The customer was notified in-app, but no SMS was queued because there is no verified phone number.'
+            );
+
+        $this->assertTrue($movedTo->equalTo($appointment->refresh()->appointment_at));
+        Notification::assertSentTo($customer, AppointmentMovedByTeam::class);
+        Queue::assertNotPushed(SendSmsJob::class);
+    }
+
+    public function test_staff_move_without_a_customer_phone_keeps_the_in_app_notification(): void
+    {
+        Notification::fake();
+        Queue::fake();
+        [$staff, $customer, $service] = $this->seedActors();
+        $customer->update([
+            'phone_number' => null,
+            'phone_verified_at' => null,
+        ]);
+
+        $appointment = $this->makeAppointment(
+            $customer,
+            $service,
+            Carbon::now()->addDays(2)->setTime(9, 0)
+        );
+        $movedTo = Carbon::now()->addDays(4)->setTime(13, 0)->seconds(0);
+
+        $this->actingAs($staff)
+            ->put(route('admin.appointments.reschedule', $appointment), [
+                'move_date' => $movedTo->format('Y-m-d'),
+                'move_time' => '13:00',
+            ])
+            ->assertRedirect(route('admin.appointments.show', $appointment));
+
+        $this->assertTrue($movedTo->equalTo($appointment->refresh()->appointment_at));
+        Notification::assertSentTo($customer, AppointmentMovedByTeam::class);
+        Queue::assertNotPushed(SendSmsJob::class);
     }
 
     public function test_the_move_control_renders_on_an_upcoming_visit_and_not_on_a_finished_one(): void
@@ -106,6 +186,7 @@ class StaffRescheduleTest extends TestCase
     public function test_staff_cannot_move_a_visit_off_a_dispatch_slot_or_into_the_past(): void
     {
         Notification::fake();
+        Queue::fake();
         [$staff, $customer, $service] = $this->seedActors();
         $appointment = $this->makeAppointment($customer, $service, Carbon::now()->addDays(2)->setTime(9, 0));
         $original = $appointment->appointment_at->copy();
@@ -126,11 +207,33 @@ class StaffRescheduleTest extends TestCase
 
         $this->assertTrue($original->equalTo($appointment->refresh()->appointment_at));
         Notification::assertNothingSent();
+        Queue::assertNotPushed(SendSmsJob::class);
+    }
+
+    public function test_staff_cannot_move_a_visit_to_its_existing_time(): void
+    {
+        Notification::fake();
+        Queue::fake();
+        [$staff, $customer, $service] = $this->seedActors();
+        $bookedAt = Carbon::now()->addDays(2)->setTime(9, 0)->seconds(0);
+        $appointment = $this->makeAppointment($customer, $service, $bookedAt);
+
+        $this->actingAs($staff)
+            ->put(route('admin.appointments.reschedule', $appointment), [
+                'move_date' => $bookedAt->format('Y-m-d'),
+                'move_time' => '09:00',
+            ])
+            ->assertSessionHasErrors('appointment_at');
+
+        $this->assertTrue($bookedAt->equalTo($appointment->refresh()->appointment_at));
+        Notification::assertNothingSent();
+        Queue::assertNotPushed(SendSmsJob::class);
     }
 
     public function test_staff_cannot_move_a_visit_onto_another_booking_for_the_same_service(): void
     {
         Notification::fake();
+        Queue::fake();
         [$staff, $customer, $service] = $this->seedActors();
         $other = User::factory()->create(['role' => 'user']);
 
@@ -147,11 +250,13 @@ class StaffRescheduleTest extends TestCase
 
         $this->assertSame(2, Appointment::query()->count());
         Notification::assertNothingSent();
+        Queue::assertNotPushed(SendSmsJob::class);
     }
 
     public function test_a_completed_visit_cannot_be_moved_and_customers_cannot_reach_the_control(): void
     {
         Notification::fake();
+        Queue::fake();
         [$staff, $customer, $service] = $this->seedActors();
 
         $completed = $this->makeAppointment($customer, $service, Carbon::now()->subDays(2)->setTime(9, 0), 'completed');
@@ -171,5 +276,70 @@ class StaffRescheduleTest extends TestCase
             ->assertForbidden();
 
         Notification::assertNothingSent();
+        Queue::assertNotPushed(SendSmsJob::class);
+    }
+
+    public function test_staff_cannot_move_an_archived_visit(): void
+    {
+        Notification::fake();
+        Queue::fake();
+        [$staff, $customer, $service] = $this->seedActors();
+        $bookedAt = Carbon::now()->addDays(2)->setTime(9, 0)->seconds(0);
+        $appointment = $this->makeAppointment($customer, $service, $bookedAt);
+        $appointment->update(['archived_at' => now()]);
+
+        $this->actingAs($staff)
+            ->put(route('admin.appointments.reschedule', $appointment), [
+                'move_date' => Carbon::now()->addDays(4)->format('Y-m-d'),
+                'move_time' => '13:00',
+            ])
+            ->assertNotFound();
+
+        $this->assertTrue($bookedAt->equalTo($appointment->refresh()->appointment_at));
+        Notification::assertNothingSent();
+        Queue::assertNotPushed(SendSmsJob::class);
+    }
+
+    public function test_sms_message_uses_a_safe_service_fallback(): void
+    {
+        [, $customer, $service] = $this->seedActors();
+        $previousAt = Carbon::now()->addDays(2)->setTime(9, 0)->seconds(0);
+        $movedTo = Carbon::now()->addDays(4)->setTime(13, 0)->seconds(0);
+        $appointment = $this->makeAppointment($customer, $service, $movedTo);
+        $appointment->setRelation('serviceType', null);
+
+        $message = (new AppointmentMovedByTeam($appointment, $previousAt))->toSmsMessage();
+
+        $this->assertSame(
+            'Ferosa: Your Service appointment was rescheduled from '
+                .$previousAt->format('M d, Y g:i A').' to '
+                .$movedTo->format('M d, Y g:i A')
+                .'. Contact us if this new schedule does not work for you.',
+            $message
+        );
+    }
+
+    public function test_customer_self_reschedule_does_not_queue_the_team_move_sms(): void
+    {
+        Notification::fake();
+        Queue::fake();
+        [, $customer, $service] = $this->seedActors();
+
+        $appointment = $this->makeAppointment(
+            $customer,
+            $service,
+            Carbon::now()->addHours(Appointment::CHANGE_NOTICE_HOURS + 2)->seconds(0),
+            'scheduled'
+        );
+        $movedTo = Carbon::now()->addDays(5)->setTime(13, 0)->seconds(0);
+
+        $this->actingAs($customer)
+            ->put(route('appointments.reschedule', $appointment), [
+                'appointment_at' => $movedTo->format('Y-m-d H:i:s'),
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertTrue($movedTo->equalTo($appointment->refresh()->appointment_at));
+        Queue::assertNotPushed(SendSmsJob::class);
     }
 }

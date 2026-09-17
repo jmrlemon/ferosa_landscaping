@@ -36,6 +36,10 @@
     tbody td { padding: 9px 0; border-bottom: 1px solid #f8f7f3; vertical-align: top; }
     tbody tr:last-child td { border-bottom: none; }
     .muted { color: #948e83; font-size: 11px; }
+    .voided-row { background: #fff7f7; color: #746f65; }
+    .voided-row .payment-value { text-decoration: line-through; color: #948e83; }
+    .voided-badge { display: inline-block; margin-left: 4px; padding: 2px 6px; border: 1px solid #fecaca; border-radius: 999px; background: #fef2f2; color: #b91c1c; font-size: 9px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+    .voided-detail { margin-top: 3px; color: #b91c1c; font-size: 10px; line-height: 1.45; }
     .totals { margin-top: 8px; border-top: 1px solid #f0eee8; padding-top: 10px; }
     .balance { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding: 14px 16px; border-radius: 10px; font-weight: 800; font-size: 15px; }
     .balance.due { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
@@ -111,6 +115,28 @@
     </tbody>
   </table>
 
+  @if($isOrder && $payable->activeRefunds->isNotEmpty())
+    <div class="section-title">Refunds issued</div>
+    <table>
+      <thead>
+        <tr><th>Date</th><th>Method</th><th>Reference</th><th>Amount</th></tr>
+      </thead>
+      <tbody>
+        @foreach($payable->activeRefunds as $refund)
+          <tr>
+            <td>{{ optional($refund->refunded_at)->format('M d, Y') }}</td>
+            <td>
+              {{ $refund->methodLabel() }}
+              @if($refund->processedBy)<div class="muted">processed by {{ $refund->processedBy->name }}</div>@endif
+            </td>
+            <td class="muted">{{ $refund->reference ?: '—' }}</td>
+            <td>&#8369;{{ number_format((float)$refund->amount, 2) }}</td>
+          </tr>
+        @endforeach
+      </tbody>
+    </table>
+  @endif
+
   <div class="totals">
     <div class="row">
       <span class="label">Total billed</span>
@@ -124,17 +150,24 @@
       <tr><th>Date</th><th>Method</th><th>Reference</th><th>Amount</th></tr>
     </thead>
     <tbody>
-      @forelse ($payable->activePayments as $payment)
-        <tr>
+      @forelse ($payable->paymentHistory as $payment)
+        <tr @class(['voided-row' => $payment->isVoided()])>
           <td>{{ optional($payment->paid_at)->format('M d, Y') }}</td>
           <td>
-            {{ $payment->methodLabel() }}
+            <span @class(['payment-value' => $payment->isVoided()])>{{ $payment->methodLabel() }}</span>
+            @if($payment->isVoided())<span class="voided-badge">Voided</span>@endif
             @if ($payment->recordedBy)
               <div class="muted">recorded by {{ $payment->recordedBy->name }}</div>
             @endif
+            @if($payment->isVoided())
+              <div class="voided-detail">
+                <strong>Reason:</strong> {{ $payment->void_reason }}<br>
+                Voided {{ optional($payment->voided_at)->format('M d, Y h:i A') }}
+              </div>
+            @endif
           </td>
           <td class="muted">{{ $payment->reference ?: '—' }}</td>
-          <td>&#8369;{{ number_format((float) $payment->amount, 2) }}</td>
+          <td @class(['payment-value' => $payment->isVoided()])>&#8369;{{ number_format((float) $payment->amount, 2) }}</td>
         </tr>
       @empty
         <tr><td colspan="4" class="empty">No payments received yet.</td></tr>
@@ -147,6 +180,16 @@
       <span class="label">Total paid</span>
       <span class="value">&#8369;{{ number_format($totalPaid, 2) }}</span>
     </div>
+    @if($isOrder && $totalRefunded > 0)
+      <div class="row">
+        <span class="label">Total refunded</span>
+        <span class="value">&#8369;{{ number_format($totalRefunded, 2) }}</span>
+      </div>
+      <div class="row">
+        <span class="label">Net paid</span>
+        <span class="value">&#8369;{{ number_format($netPaid, 2) }}</span>
+      </div>
+    @endif
   </div>
 
   <div class="balance {{ $statusClass }}">

@@ -6,6 +6,7 @@ use App\Models\Appointment;
 use App\Models\Order;
 use App\Models\ServiceType;
 use App\Models\User;
+use App\Notifications\PaymentVoided;
 use App\Services\BillingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -86,6 +87,73 @@ class BillingLedgerTest extends TestCase
         $this->assertSame(1, $order->payments()->count());
         $this->assertSame(0, $order->activePayments()->count());
         $this->assertNotNull($payment->refresh()->voided_at);
+    }
+
+    public function test_voided_payment_remains_visible_in_admin_and_customer_history(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $customer = User::factory()->create(['role' => 'user']);
+        $order = $this->order(400.00, $customer);
+        $payment = app(BillingService::class)->record($order, [
+            'amount' => 400,
+            'method' => 'cash',
+            'reference' => 'CASH-VOID-HISTORY',
+            'recorded_by' => $admin->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('admin.payments.void', $payment), [
+                'void_reason' => 'Payment was recorded against the wrong order.',
+            ])
+            ->assertRedirect();
+
+        $this->actingAs($admin)
+            ->get(route('admin.orders.show', $order))
+            ->assertOk()
+            ->assertSee('CASH-VOID-HISTORY')
+            ->assertSee('Voided')
+            ->assertSee('Payment was recorded against the wrong order.');
+
+        $this->actingAs($customer)
+            ->get(route('orders.invoice', $order))
+            ->assertOk()
+            ->assertSee('CASH-VOID-HISTORY')
+            ->assertSee('Voided')
+            ->assertSee('Payment was recorded against the wrong order.');
+    }
+
+    public function test_voiding_a_payment_notifies_the_customer_with_an_invoice_link(): void
+    {
+        Notification::fake();
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        $customer = User::factory()->create(['role' => 'user']);
+        $order = $this->order(400.00, $customer);
+        $payment = app(BillingService::class)->record($order, [
+            'amount' => 150,
+            'method' => 'cash',
+            'recorded_by' => $admin->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('admin.payments.void', $payment), [
+                'void_reason' => 'Duplicate payment entry.',
+            ])
+            ->assertRedirect();
+
+        Notification::assertSentTo(
+            $customer,
+            PaymentVoided::class,
+            function (PaymentVoided $notification) use ($customer, $order): bool {
+                $data = $notification->toArray($customer);
+
+                return $data['type'] === 'payment_voided'
+                    && $data['order_id'] === $order->id
+                    && $data['url'] === route('orders.invoice', $order, absolute: false)
+                    && str_contains($data['message'], 'PHP 150.00')
+                    && str_contains($data['message'], 'Duplicate payment entry.');
+            },
+        );
     }
 
     public function test_void_reason_is_required(): void

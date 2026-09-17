@@ -23,6 +23,8 @@ class StockMovement extends Model
 
     public const TYPE_RETURN = 'return';
 
+    public const TYPE_REPLACEMENT = 'replacement';
+
     public const TYPE_WASTAGE = 'wastage';
 
     public const TYPE_CORRECTION = 'correction';
@@ -77,6 +79,7 @@ class StockMovement extends Model
             self::TYPE_RESTOCK => 'Restock',
             self::TYPE_SALE => 'Sale',
             self::TYPE_RETURN => 'Return',
+            self::TYPE_REPLACEMENT => 'Claim replacement',
             self::TYPE_WASTAGE => 'Wastage',
             self::TYPE_CORRECTION => 'Correction',
             default => ucfirst((string) $this->type),

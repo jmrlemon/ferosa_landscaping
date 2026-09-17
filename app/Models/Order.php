@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\BillingService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -104,6 +105,38 @@ class Order extends Model
         return $this->hasMany(OrderItem::class);
     }
 
+    /** @return HasMany<ReturnRequest, $this> */
+    public function returnRequests(): HasMany
+    {
+        return $this->hasMany(ReturnRequest::class);
+    }
+
+    /** @return HasMany<Refund, $this> */
+    public function refunds(): HasMany
+    {
+        return $this->hasMany(Refund::class);
+    }
+
+    /** @return HasMany<Refund, $this> */
+    public function activeRefunds(): HasMany
+    {
+        return $this->refunds()->whereNull('voided_at')->orderByDesc('refunded_at')->orderByDesc('id');
+    }
+
+    public function totalRefunded(): float
+    {
+        if ($this->relationLoaded('activeRefunds')) {
+            return round((float) $this->activeRefunds->sum('amount'), 2);
+        }
+
+        return app(BillingService::class)->totalRefunded($this);
+    }
+
+    public function netPaid(): float
+    {
+        return app(BillingService::class)->netPaid($this);
+    }
+
     /** @return HasOne<Feedback, $this> */
     public function feedback(): HasOne
     {
@@ -147,6 +180,23 @@ class Order extends Model
     {
         return $status === $this->status
             || in_array($status, self::STATUS_TRANSITIONS[$this->status], true);
+    }
+
+    public function returnClaimDeadline(): ?Carbon
+    {
+        $receivedAt = $this->customer_confirmed_at ?? $this->delivered_at;
+
+        return $receivedAt?->copy()->addHours(ReturnRequest::CLAIM_WINDOW_HOURS);
+    }
+
+    public function canOpenReturnRequest(): bool
+    {
+        $deadline = $this->returnClaimDeadline();
+
+        return $this->archived_at === null
+            && in_array($this->status, ['delivered', 'completed'], true)
+            && $deadline !== null
+            && now()->lte($deadline);
     }
 
     public function hasFinalReceipt(): bool

@@ -956,7 +956,7 @@
                           'customer_name'  => $appt->user->name ?? 'N/A',
                           'customer_email' => $appt->user->email ?? '',
                           'feedback_rating' => $appt->feedback?->rating,
-                          'feedback_comment'=> $appt->feedback?->comment ?? '',
+                          'feedback_comment'=> $appt->feedback?->censored_comment ?? '',
                         ]) }})"
                         class="text-surface-400 hover:text-brand-600 transition-colors" title="View Details">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
@@ -1999,7 +1999,7 @@
                       <span class="px-2 py-0.5 rounded text-[10px] font-medium border bg-purple-50 text-purple-700 border-purple-100">{{ $fb->serviceType->name }}</span>
                     @endif
                   </td>
-                  <td class="px-5 py-3 max-w-xs whitespace-normal text-surface-600">{{ $fb->comment ?: '—' }}</td>
+                  <td class="px-5 py-3 max-w-xs whitespace-normal text-surface-600">{{ $fb->censored_comment ?: '—' }}</td>
                   <td class="px-5 py-3 text-surface-400">{{ $fb->created_at->format('M d, Y') }}</td>
                 </tr>
               @empty

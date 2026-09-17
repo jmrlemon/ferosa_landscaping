@@ -194,7 +194,10 @@
           };
           $balanceDue = $order->balanceDue();
           $amountPaid = $order->totalPaid();
+          $amountRefunded = $order->totalRefunded();
+          $netPaid = round(max(0, $amountPaid - $amountRefunded), 2);
           $needsTeamUpdate = $order->needsStatusFollowUp();
+          $latestClaim = $order->returnRequests->sortByDesc('created_at')->first();
         @endphp
 
         <div class="customer-card lift overflow-hidden">
@@ -233,8 +236,23 @@
                 @elseif ($balanceDue <= 0 && (float) $order->total_amount > 0)
                   <p class="text-[11px] font-semibold text-brand-700">Fully paid</p>
                 @endif
+                @if($amountRefunded > 0)
+                  <p class="text-[11px] font-semibold text-blue-700">
+                    &#8369;{{ number_format($amountRefunded, 2) }} refunded · &#8369;{{ number_format($netPaid, 2) }} net paid
+                  </p>
+                @endif
               </div>
               <div class="flex items-center flex-wrap gap-1.5 justify-end">
+                @if($order->canOpenReturnRequest())
+                  <a href="{{ route('returns.create', $order) }}" class="btn btn-sm border-red-200 bg-red-50 text-red-700 hover:border-red-300 hover:bg-red-100">
+                    Report damaged plant
+                  </a>
+                @endif
+                @if($latestClaim)
+                  <a href="{{ route('returns.show', $latestClaim) }}" class="btn btn-soft btn-sm">
+                    {{ $latestClaim->claim_number }} · {{ ucfirst(str_replace('_', ' ', $latestClaim->status)) }}
+                  </a>
+                @endif
                 @if ($status === 'delivered' && ($isPickupOrder || $order->delivery_proof_url))
                   <form method="POST" action="{{ route('orders.confirm-received', $order) }}">
                     @csrf

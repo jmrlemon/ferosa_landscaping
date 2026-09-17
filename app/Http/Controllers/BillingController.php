@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Appointment;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Notifications\PaymentVoided;
 use App\Services\BillingService;
 use App\Support\Audit;
 use Illuminate\Contracts\View\View;
@@ -26,7 +27,7 @@ class BillingController extends Controller
     {
         $this->authorizeInvoiceView($request, (int) $order->user_id);
 
-        $order->load(['user', 'orderItems', 'activePayments.recordedBy']);
+        $order->load(['user', 'orderItems', 'paymentHistory.recordedBy', 'paymentHistory.voidedBy', 'activeRefunds.processedBy']);
 
         return view('invoice', $this->invoiceData($order, 'order'));
     }
@@ -35,7 +36,7 @@ class BillingController extends Controller
     {
         $this->authorizeInvoiceView($request, (int) $appointment->user_id);
 
-        $appointment->load(['user', 'serviceType', 'activePayments.recordedBy']);
+        $appointment->load(['user', 'serviceType', 'paymentHistory.recordedBy', 'paymentHistory.voidedBy']);
 
         return view('invoice', $this->invoiceData($appointment, 'appointment'));
     }
@@ -73,7 +74,20 @@ class BillingController extends Controller
         $payment->refresh();
         Audit::log($request, 'payment.void', $payment, $before, Audit::snapshot($payment, ['amount', 'method', 'voided_at', 'void_reason']));
 
-        return back()->with('status', 'Payment voided. The balance has been recalculated.');
+        $notificationQueued = true;
+
+        try {
+            $payable->user->notify(new PaymentVoided($payment));
+        } catch (\Throwable $exception) {
+            $notificationQueued = false;
+            report($exception);
+        }
+
+        $message = $notificationQueued
+            ? 'Payment voided. The history was retained, the balance was recalculated, and the customer notification was queued.'
+            : 'Payment voided and history retained, but the customer notification could not be queued. Please contact the customer directly.';
+
+        return back()->with('status', $message);
     }
 
     /**
@@ -139,6 +153,8 @@ class BillingController extends Controller
      */
     private function invoiceData($payable, string $kind): array
     {
+        $isOrder = $payable instanceof Order;
+
         return [
             'kind' => $kind,
             'payable' => $payable,
@@ -147,6 +163,8 @@ class BillingController extends Controller
             'totalBilled' => $this->billing->totalBilled($payable),
             'totalPaid' => $this->billing->totalPaid($payable),
             'balanceDue' => $this->billing->balanceDue($payable),
+            'totalRefunded' => $isOrder ? $this->billing->totalRefunded($payable) : 0.0,
+            'netPaid' => $isOrder ? $this->billing->netPaid($payable) : $this->billing->totalPaid($payable),
         ];
     }
 

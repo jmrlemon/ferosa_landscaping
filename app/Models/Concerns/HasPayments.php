@@ -36,6 +36,16 @@ trait HasPayments
         return $this->payments()->whereNull('voided_at')->orderByDesc('paid_at')->orderByDesc('id');
     }
 
+    /**
+     * Complete append-only payment history, including voided entries.
+     *
+     * @return MorphMany<Payment, $this>
+     */
+    public function paymentHistory(): MorphMany
+    {
+        return $this->payments()->orderByDesc('paid_at')->orderByDesc('id');
+    }
+
     public function totalBilled(): float
     {
         return app(BillingService::class)->totalBilled($this);

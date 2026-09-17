@@ -31,4 +31,14 @@ class SendSmsJob implements ShouldQueue
             throw new \RuntimeException('SMS provider did not accept the message.');
         }
     }
+
+    public function recipient(): string
+    {
+        return $this->to;
+    }
+
+    public function message(): string
+    {
+        return $this->message;
+    }
 }

@@ -27,6 +27,7 @@ class SystemSeeder extends Seeder
                 'password' => Hash::make('password'),
                 'role' => 'admin',
                 'account_type' => 'Business',
+                'phone_verified_at' => now(),
             ]
         );
 
@@ -37,6 +38,7 @@ class SystemSeeder extends Seeder
                 'password' => Hash::make('password'),
                 'role' => 'user',
                 'account_type' => 'Customer',
+                'phone_verified_at' => now(),
             ]
         );
 

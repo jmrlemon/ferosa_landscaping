@@ -86,4 +86,22 @@ class InventoryService
             'note' => 'Returned to stock when '.$reference.' was cancelled.',
         ]);
     }
+
+    public function recordReplacement(Product $product, int $quantity, string $claimNumber, ?int $userId): StockMovement
+    {
+        return $this->record($product, StockMovement::TYPE_REPLACEMENT, -abs($quantity), [
+            'reference' => $claimNumber,
+            'note' => 'Replacement stock issued for '.$claimNumber.'.',
+            'user_id' => $userId,
+        ]);
+    }
+
+    public function recordClaimRestock(Product $product, int $quantity, string $claimNumber, ?int $userId): StockMovement
+    {
+        return $this->record($product, StockMovement::TYPE_RETURN, abs($quantity), [
+            'reference' => $claimNumber,
+            'note' => 'Inspected saleable item restocked from '.$claimNumber.'.',
+            'user_id' => $userId,
+        ]);
+    }
 }

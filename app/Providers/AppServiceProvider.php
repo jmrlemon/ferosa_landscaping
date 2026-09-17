@@ -9,6 +9,7 @@ use App\Models\Feedback;
 use App\Models\Message;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\ReturnRequest;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\View;
@@ -69,6 +70,7 @@ class AppServiceProvider extends ServiceProvider
                 'appointments_overdue' => 0,
                 'appointments_pending' => 0,
                 'orders_pending' => 0,
+                'returns_actionable' => 0,
                 'low_stock' => 0,
                 'unread_messages' => 0,
                 'feedback' => 0,
@@ -94,6 +96,9 @@ class AppServiceProvider extends ServiceProvider
                     'orders_pending' => Order::query()
                         ->whereNull('archived_at')
                         ->whereIn('status', ['pending', 'confirmed'])
+                        ->count(),
+                    'returns_actionable' => ReturnRequest::query()
+                        ->whereIn('status', ['submitted', 'needs_information', 'approved', 'replacement_dispatched'])
                         ->count(),
                     'low_stock' => Product::query()
                         ->whereNull('archived_at')
