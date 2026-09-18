@@ -1107,6 +1107,14 @@ class AdminController extends Controller
                 : back()->withErrors(['status' => $message]);
         }
 
+        if ($data['status'] === 'delivered' && $paymentStatus !== 'paid') {
+            return $this->orderStatusError(
+                $request,
+                'payment_status',
+                'Payment must be marked paid before this order can be delivered.'
+            );
+        }
+
         if ($isAdmin
             && ($order->payment_method ?? 'cod') === 'gcash'
             && $paymentStatus === 'paid'
@@ -1217,9 +1225,19 @@ class AdminController extends Controller
         $before = Audit::snapshot($order, $workflowFields);
         $orderStatusChanged = $order->status !== $data['status'];
         $paymentStatusChanged = $isAdmin && $order->payment_status !== $paymentStatus;
-        DB::transaction(function () use ($order, $updates, $data, $inventory): void {
+        DB::transaction(function () use ($order, $updates, $data, $inventory, $isAdmin, $paymentStatus): void {
             $lockedOrder = Order::query()->lockForUpdate()->findOrFail($order->id);
             abort_unless($lockedOrder->canTransitionTo($data['status']), 422, 'Order status changed. Refresh and try again.');
+
+            $lockedPaymentStatus = $isAdmin
+                ? $paymentStatus
+                : ($lockedOrder->payment_status ?? 'unpaid');
+
+            if ($data['status'] === 'delivered' && $lockedPaymentStatus !== 'paid') {
+                throw ValidationException::withMessages([
+                    'payment_status' => 'Payment must be marked paid before this order can be delivered.',
+                ]);
+            }
 
             if ($data['status'] === 'cancelled' && $lockedOrder->status !== 'cancelled') {
                 foreach ($lockedOrder->orderItems()->with('product')->get() as $item) {

@@ -57,6 +57,42 @@ class OrderDeliveryStatusFieldsVisibilityTest extends TestCase
         }
     }
 
+    public function test_unpaid_order_disables_delivered_until_payment_is_selected_as_paid(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $customer = User::factory()->create(['role' => 'user']);
+        $order = Order::query()->create([
+            'user_id' => $customer->id,
+            'order_number' => 'FRS-DELIVERY-PAYMENT-GATE',
+            'status' => 'out_for_delivery',
+            'payment_status' => 'unpaid',
+            'delivery_method' => 'delivery',
+            'total_amount' => 500,
+            'driver_name' => 'Juan Rider',
+            'driver_phone' => '09171234567',
+            'dispatched_at' => now(),
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->get(route('admin.orders.show', $order))
+            ->assertOk()
+            ->assertSeeText('Payment must be marked Paid before this order can be delivered')
+            ->assertSee('data-payment-status-select', false);
+
+        $document = new DOMDocument;
+        $previousErrorHandling = libxml_use_internal_errors(true);
+        $document->loadHTML($response->getContent());
+        libxml_clear_errors();
+        libxml_use_internal_errors($previousErrorHandling);
+
+        $xpath = new DOMXPath($document);
+        $deliveredOption = $xpath->query('//select[@id="order-status-select"]/option[@value="delivered"]')->item(0);
+
+        $this->assertInstanceOf(DOMElement::class, $deliveredOption);
+        $this->assertTrue($deliveredOption->hasAttribute('disabled'));
+        $this->assertTrue($deliveredOption->hasAttribute('data-requires-paid'));
+    }
+
     private function assertPanelState(TestResponse $response, string $panelStatus, bool $isActive): void
     {
         $document = new DOMDocument;

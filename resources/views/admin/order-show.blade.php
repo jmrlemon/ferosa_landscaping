@@ -36,6 +36,9 @@
     : $order->status;
   $closedStatusLabel = $order->status === 'cancelled' ? 'cancelled' : 'complete';
   $isPickupOrder = ($order->delivery_method ?? 'delivery') === 'pickup';
+  $selectedPaymentStatus = $isAdmin
+    ? old('payment_status', $order->payment_status ?? 'unpaid')
+    : ($order->payment_status ?? 'unpaid');
   $paymentStatusLabel = ucfirst(str_replace('_', ' ', $order->payment_status ?? 'unpaid'));
   $fulfillmentStatusLabel = fn (string $status) => $isPickupOrder
     ? match($status) {
@@ -276,20 +279,23 @@
             @csrf @method('PUT')
             <input type="hidden" name="redirect_to" value="show">
             <label class="block text-sm font-medium">Status
-              <select id="order-status-select" name="status" @unless($isPickupOrder) data-order-status-select aria-controls="order-status-fields-out-for-delivery order-status-fields-delivered" @endunless class="mt-2 h-10 w-full rounded-lg border border-surface-200 px-3 outline-none focus:border-brand-600" {{ $isAdmin || $hasOperationalTransition ? '' : 'disabled' }}>
+              <select id="order-status-select" name="status" data-current-status="{{ $order->status }}" data-payment-status="{{ $selectedPaymentStatus }}" @unless($isPickupOrder) data-order-status-select aria-controls="order-status-fields-out-for-delivery order-status-fields-delivered" @endunless @if(in_array('delivered', $availableStatuses, true)) aria-describedby="order-delivery-payment-notice" @endif class="mt-2 h-10 w-full rounded-lg border border-surface-200 px-3 outline-none focus:border-brand-600" {{ $isAdmin || $hasOperationalTransition ? '' : 'disabled' }}>
                 @foreach($availableStatuses as $status)
-                  <option value="{{ $status }}" {{ $selectedStatus === $status ? 'selected' : '' }}>{{ $fulfillmentStatusLabel($status) }}</option>
+                  <option value="{{ $status }}" @if($status === 'delivered') data-requires-paid @disabled($selectedPaymentStatus !== 'paid') @endif {{ $selectedStatus === $status ? 'selected' : '' }}>{{ $fulfillmentStatusLabel($status) }}</option>
                 @endforeach
               </select>
             </label>
+            @if(in_array('delivered', $availableStatuses, true))
+              <p id="order-delivery-payment-notice" class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800" @if($selectedPaymentStatus === 'paid') hidden @endif>Payment must be marked Paid before this order can be delivered. Record or verify the payment first.</p>
+            @endif
             @if($isAdmin)
               <label class="block text-sm font-medium">Payment Status
-                <select name="payment_status" class="mt-2 h-10 w-full rounded-lg border border-surface-200 px-3 outline-none focus:border-brand-600">
-                  <option value="unpaid" {{ ($order->payment_status ?? 'unpaid') === 'unpaid' ? 'selected' : '' }}>Unpaid</option>
-                  <option value="pending_verification" {{ $order->payment_status === 'pending_verification' ? 'selected' : '' }}>Pending verification</option>
-                  <option value="paid" {{ ($order->payment_status ?? 'unpaid') === 'paid' ? 'selected' : '' }}>Paid</option>
-                  <option value="rejected" {{ $order->payment_status === 'rejected' ? 'selected' : '' }}>Rejected</option>
-                  <option value="refunded" {{ $order->payment_status === 'refunded' ? 'selected' : '' }}>Refunded</option>
+                <select name="payment_status" data-payment-status-select class="mt-2 h-10 w-full rounded-lg border border-surface-200 px-3 outline-none focus:border-brand-600">
+                  <option value="unpaid" {{ $selectedPaymentStatus === 'unpaid' ? 'selected' : '' }}>Unpaid</option>
+                  <option value="pending_verification" {{ $selectedPaymentStatus === 'pending_verification' ? 'selected' : '' }}>Pending verification</option>
+                  <option value="paid" {{ $selectedPaymentStatus === 'paid' ? 'selected' : '' }}>Paid</option>
+                  <option value="rejected" {{ $selectedPaymentStatus === 'rejected' ? 'selected' : '' }}>Rejected</option>
+                  <option value="refunded" {{ $selectedPaymentStatus === 'refunded' ? 'selected' : '' }}>Refunded</option>
                 </select>
               </label>
               <label class="block text-sm font-medium">Payment Review Notes
@@ -350,7 +356,10 @@
   <script>
     const deliveryProofModal = document.getElementById('delivery-proof-modal');
     const deliveryProofImage = document.getElementById('delivery-proof-modal-image');
-    const orderStatusSelect = document.querySelector('[data-order-status-select]');
+    const orderStatusSelect = document.getElementById('order-status-select');
+    const paymentStatusSelect = document.querySelector('[data-payment-status-select]');
+    const deliveredStatusOption = orderStatusSelect?.querySelector('option[value="delivered"]');
+    const deliveryPaymentNotice = document.getElementById('order-delivery-payment-notice');
     const orderStatusPanels = document.querySelectorAll('[data-order-status-fields]');
 
     function syncOrderStatusFields() {
@@ -367,10 +376,26 @@
       });
     }
 
+    function syncDeliveredPaymentGate() {
+      const paymentStatus = paymentStatusSelect?.value || orderStatusSelect?.dataset.paymentStatus || 'unpaid';
+      const isPaid = paymentStatus === 'paid';
+
+      if (deliveredStatusOption) deliveredStatusOption.disabled = !isPaid;
+      if (deliveryPaymentNotice) deliveryPaymentNotice.hidden = isPaid;
+
+      if (!isPaid && orderStatusSelect?.value === 'delivered' && orderStatusSelect.dataset.currentStatus !== 'delivered') {
+        orderStatusSelect.value = orderStatusSelect.dataset.currentStatus;
+        syncOrderStatusFields();
+      }
+    }
+
     if (orderStatusSelect) {
       orderStatusSelect.addEventListener('change', syncOrderStatusFields);
       syncOrderStatusFields();
     }
+
+    if (paymentStatusSelect) paymentStatusSelect.addEventListener('change', syncDeliveredPaymentGate);
+    syncDeliveredPaymentGate();
 
     function openDeliveryProof(src, alt) {
       if (!src) return;

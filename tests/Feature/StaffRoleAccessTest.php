@@ -8,6 +8,7 @@ use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ServiceType;
 use App\Models\User;
+use App\Services\BillingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
@@ -129,6 +130,8 @@ class StaffRoleAccessTest extends TestCase
             ])
             ->assertSessionHasNoErrors();
 
+        app(BillingService::class)->settle($order->refresh(), null, 'cash');
+
         $this->actingAs($staff)
             ->put(route('admin.orders.status', $order), [
                 'status' => 'delivered',
@@ -143,7 +146,76 @@ class StaffRoleAccessTest extends TestCase
         $this->assertSame('delivered', $order->status);
         $this->assertSame('Maria Santos', $order->delivery_recipient_name);
         $this->assertNotNull($order->delivery_proof_url);
-        $this->assertSame('unpaid', $order->payment_status);
+        $this->assertSame('paid', $order->payment_status);
+    }
+
+    public function test_unpaid_order_cannot_be_marked_delivered_by_admin_or_staff(): void
+    {
+        Storage::fake('public');
+        Notification::fake();
+        $customer = $this->customer();
+
+        foreach (['admin', 'staff'] as $role) {
+            $actor = User::factory()->create(['role' => $role]);
+            $order = $this->orderFor($customer, 'out_for_delivery');
+            $order->forceFill([
+                'driver_name' => 'Juan Rider',
+                'driver_phone' => '09171234567',
+                'dispatched_at' => now(),
+            ])->save();
+
+            $payload = [
+                'status' => 'delivered',
+                'driver_name' => 'Juan Rider',
+                'driver_phone' => '09171234567',
+                'delivery_recipient_name' => 'Maria Santos',
+                'delivery_proof' => UploadedFile::fake()->create("{$role}-delivery-proof.png", 10, 'image/png'),
+            ];
+
+            if ($role === 'admin') {
+                $payload['payment_status'] = 'unpaid';
+            }
+
+            $this->actingAs($actor)
+                ->put(route('admin.orders.status', $order), $payload)
+                ->assertSessionHasErrors('payment_status');
+
+            $order->refresh();
+            $this->assertSame('out_for_delivery', $order->status);
+            $this->assertSame('unpaid', $order->payment_status);
+            $this->assertNull($order->delivery_proof_url);
+            $this->assertNull($order->delivered_at);
+        }
+    }
+
+    public function test_admin_can_mark_cod_order_paid_and_delivered_together(): void
+    {
+        Storage::fake('public');
+        Notification::fake();
+        $admin = User::factory()->create(['role' => 'admin']);
+        $order = $this->orderFor($this->customer(), 'out_for_delivery');
+        $order->forceFill([
+            'driver_name' => 'Juan Rider',
+            'driver_phone' => '09171234567',
+            'dispatched_at' => now(),
+        ])->save();
+
+        $this->actingAs($admin)
+            ->put(route('admin.orders.status', $order), [
+                'status' => 'delivered',
+                'payment_status' => 'paid',
+                'driver_name' => 'Juan Rider',
+                'driver_phone' => '09171234567',
+                'delivery_recipient_name' => 'Maria Santos',
+                'delivery_proof' => UploadedFile::fake()->create('paid-delivery-proof.png', 10, 'image/png'),
+            ])
+            ->assertSessionHasNoErrors();
+
+        $order->refresh();
+        $this->assertSame('delivered', $order->status);
+        $this->assertSame('paid', $order->payment_status);
+        $this->assertSame(500.0, (float) $order->activePayments()->sum('amount'));
+        $this->assertNotNull($order->delivered_at);
     }
 
     public function test_forged_staff_payment_fields_are_rejected_on_operational_endpoints(): void
