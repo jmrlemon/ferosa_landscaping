@@ -54,11 +54,21 @@ class AdminReturnRequestController extends Controller
             'decidedBy',
         ]);
 
+        $refundableAmount = $billing->refundableAmount($returnRequest->order);
+        $approvedRefundRemaining = round(max(
+            0,
+            (float) $returnRequest->items->sum('refund_amount')
+                - (float) $returnRequest->refunds->whereNull('voided_at')->sum('amount')
+        ), 2);
+        $maximumRefundAmount = round(min($approvedRefundRemaining, $refundableAmount), 2);
+
         return view('admin.returns.show', [
             'claim' => $returnRequest,
             'totalPaid' => $billing->totalPaid($returnRequest->order),
             'totalRefunded' => $billing->totalRefunded($returnRequest->order),
-            'refundableAmount' => $billing->refundableAmount($returnRequest->order),
+            'refundableAmount' => $refundableAmount,
+            'approvedRefundRemaining' => $approvedRefundRemaining,
+            'maximumRefundAmount' => $maximumRefundAmount,
             'isAdmin' => auth()->user()?->isAdmin() ?? false,
         ]);
     }

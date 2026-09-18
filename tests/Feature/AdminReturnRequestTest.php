@@ -33,6 +33,52 @@ class AdminReturnRequestTest extends TestCase
         }
     }
 
+    public function test_approved_refund_without_a_recorded_payment_points_admin_to_billing(): void
+    {
+        [$claim, $claimItem, , $order] = $this->claim(itemPrice: 250);
+        $admin = User::factory()->create(['role' => 'admin']);
+        $order->forceFill(['payment_status' => 'unpaid'])->save();
+        $claim->forceFill(['status' => 'approved'])->save();
+        $claimItem->forceFill([
+            'quantity_claimed' => 1,
+            'resolution' => 'refund',
+            'refund_amount' => 250,
+        ])->save();
+
+        $this->actingAs($admin)
+            ->get(route('admin.returns.show', $claim))
+            ->assertOk()
+            ->assertSeeText('A PHP 250.00 refund is approved')
+            ->assertSeeText('No payment has been recorded for this order')
+            ->assertSee(route('admin.orders.show', $order), false)
+            ->assertDontSee('action="'.route('admin.returns.refunds.store', $claim).'"', false);
+    }
+
+    public function test_refund_form_prefills_the_full_eligible_approved_amount(): void
+    {
+        [$claim, $claimItem, , $order] = $this->claim(itemPrice: 250);
+        $admin = User::factory()->create(['role' => 'admin']);
+        $claim->forceFill(['status' => 'approved'])->save();
+        $claimItem->forceFill([
+            'quantity_claimed' => 1,
+            'resolution' => 'refund',
+            'refund_amount' => 250,
+        ])->save();
+        Payment::query()->create([
+            'payable_type' => Order::class,
+            'payable_id' => $order->id,
+            'amount' => 250,
+            'method' => 'cash',
+            'paid_at' => now(),
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.returns.show', $claim))
+            ->assertOk()
+            ->assertSee('action="'.route('admin.returns.refunds.store', $claim).'"', false)
+            ->assertSee('name="amount" type="number" min="0.01" max="250.00" step="0.01" value="250.00"', false);
+    }
+
     public function test_staff_can_review_claim_but_cannot_make_admin_decision(): void
     {
         [$claim] = $this->claim();

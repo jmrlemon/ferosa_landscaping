@@ -152,18 +152,28 @@
           </section>
         @endif
 
-        @if($isAdmin && in_array($claim->status, ['approved', 'replacement_dispatched', 'resolved'], true) && $claim->items->sum('refund_amount') > $claim->refunds->whereNull('voided_at')->sum('amount'))
-          <section class="rounded-xl border border-blue-200 bg-blue-50 p-5">
-            <h2 class="font-bold text-blue-950">Record refund</h2>
-            <form method="POST" action="{{ route('admin.returns.refunds.store', $claim) }}" class="mt-4 space-y-3">
-              @csrf
-              <label class="block text-sm font-semibold">Amount<input name="amount" type="number" min="0.01" step="0.01" required class="mt-1 block w-full rounded-lg border-blue-300"></label>
-              <label class="block text-sm font-semibold">Method<select name="method" class="mt-1 block w-full rounded-lg border-blue-300"><option value="cash">Cash</option><option value="gcash">GCash</option><option value="bank_transfer">Bank transfer</option><option value="other">Other</option></select></label>
-              <label class="block text-sm font-semibold">Reference<input name="reference" maxlength="120" class="mt-1 block w-full rounded-lg border-blue-300"></label>
-              <label class="block text-sm font-semibold">Notes<textarea name="notes" maxlength="1000" rows="2" class="mt-1 block w-full rounded-lg border-blue-300"></textarea></label>
-              <button class="rounded-lg bg-blue-700 px-4 py-2 text-sm font-bold text-white">Record refund</button>
-            </form>
-          </section>
+        @if($isAdmin && in_array($claim->status, ['approved', 'replacement_dispatched', 'resolved'], true) && $approvedRefundRemaining > 0)
+          @if($maximumRefundAmount <= 0)
+            <section class="rounded-xl border border-amber-200 bg-amber-50 p-5">
+              <h2 class="font-bold text-amber-950">Payment required before refund</h2>
+              <p class="mt-3 text-sm font-semibold text-amber-950">A PHP {{ number_format($approvedRefundRemaining, 2) }} refund is approved.</p>
+              <p class="mt-2 text-sm leading-6 text-amber-900">No payment has been recorded for this order. Record the customer's payment first so the refund is tied to a real payment and the billing history remains accurate.</p>
+              <a href="{{ route('admin.orders.show', $claim->order) }}" class="mt-4 inline-flex min-h-11 items-center justify-center rounded-lg bg-amber-800 px-4 py-2 text-sm font-bold text-white hover:bg-amber-900">Open order billing</a>
+            </section>
+          @else
+            <section class="rounded-xl border border-blue-200 bg-blue-50 p-5">
+              <h2 class="font-bold text-blue-950">Record refund</h2>
+              <p class="mt-2 text-sm text-blue-900">PHP {{ number_format($approvedRefundRemaining, 2) }} is approved. PHP {{ number_format($maximumRefundAmount, 2) }} is currently available to refund.</p>
+              <form method="POST" action="{{ route('admin.returns.refunds.store', $claim) }}" class="mt-4 space-y-3">
+                @csrf
+                <label class="block text-sm font-semibold">Amount<input name="amount" type="number" min="0.01" max="{{ number_format($maximumRefundAmount, 2, '.', '') }}" step="0.01" value="{{ number_format($maximumRefundAmount, 2, '.', '') }}" required class="mt-1 block w-full rounded-lg border-blue-300"></label>
+                <label class="block text-sm font-semibold">Method<select name="method" class="mt-1 block w-full rounded-lg border-blue-300"><option value="cash">Cash</option><option value="gcash">GCash</option><option value="bank_transfer">Bank transfer</option><option value="other">Other</option></select></label>
+                <label class="block text-sm font-semibold">Reference<input name="reference" maxlength="120" class="mt-1 block w-full rounded-lg border-blue-300"></label>
+                <label class="block text-sm font-semibold">Notes<textarea name="notes" maxlength="1000" rows="2" class="mt-1 block w-full rounded-lg border-blue-300"></textarea></label>
+                <button class="rounded-lg bg-blue-700 px-4 py-2 text-sm font-bold text-white">Record refund</button>
+              </form>
+            </section>
+          @endif
         @endif
 
         @if($claim->status === 'approved' && $claim->items->sum('replacement_quantity') > 0)
