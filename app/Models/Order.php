@@ -21,6 +21,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $cancelled_at
  * @property Carbon|null $payment_verified_at
  * @property Carbon|null $archived_at
+ * @property Carbon|null $estimated_delivery_date
  * @property 'pending'|'confirmed'|'out_for_delivery'|'delivered'|'completed'|'cancelled' $status
  */
 class Order extends Model
@@ -53,6 +54,7 @@ class Order extends Model
         'delivery_address',
         'delivery_city',
         'delivery_notes',
+        'estimated_delivery_date',
         'payment_method',
         'payment_reference',
         'payment_reference_normalized',
@@ -85,6 +87,7 @@ class Order extends Model
             'items' => 'array',
             'total_amount' => 'decimal:2',
             'archived_at' => 'datetime',
+            'estimated_delivery_date' => 'date',
             'delivered_at' => 'datetime',
             'dispatched_at' => 'datetime',
             'customer_confirmed_at' => 'datetime',

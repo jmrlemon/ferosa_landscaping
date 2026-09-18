@@ -217,6 +217,11 @@
               <p class="mt-1 text-xs font-medium text-surface-500">
                 Placed {{ optional($order->created_at)->format('M d, Y h:i A') }}
               </p>
+              @if(!$isPickupOrder && $order->estimated_delivery_date && in_array($status, ['pending', 'confirmed', 'out_for_delivery'], true))
+                <p class="mt-1 text-xs font-semibold text-brand-700">
+                  Estimated delivery: {{ $order->estimated_delivery_date->format('M d, Y') }}
+                </p>
+              @endif
               @if ($needsTeamUpdate)
                 <p class="mt-2 max-w-xl text-xs leading-5 text-amber-700">
                   This order has had no status change for over {{ \App\Models\Order::FOLLOW_UP_AFTER_DAYS }} days.

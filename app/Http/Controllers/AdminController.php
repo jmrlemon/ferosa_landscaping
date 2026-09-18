@@ -1091,8 +1091,19 @@ class AdminController extends Controller
             'driver_phone' => ['nullable', 'string', 'regex:/^\d{11}$/'],
             'dispatch_notes' => ['nullable', 'string', 'max:1000'],
             'delivery_recipient_name' => ['nullable', 'string', 'max:255'],
+            'estimated_delivery_date' => $isDeliveryOrder
+                ? [
+                    'nullable',
+                    'date',
+                    Rule::when(
+                        ! in_array($request->input('status'), ['delivered', 'completed', 'cancelled'], true),
+                        ['after_or_equal:today']
+                    ),
+                ]
+                : ['prohibited'],
         ], [
             'driver_phone.regex' => 'Driver contact must contain exactly 11 digits.',
+            'estimated_delivery_date.after_or_equal' => 'The estimated delivery date cannot be in the past.',
         ]);
 
         // Payment state is always the current server-side value for staff.
@@ -1180,6 +1191,10 @@ class AdminController extends Controller
         }
 
         if ($isDeliveryOrder) {
+            if (array_key_exists('estimated_delivery_date', $data)) {
+                $updates['estimated_delivery_date'] = $data['estimated_delivery_date'];
+            }
+
             foreach (['driver_name', 'driver_phone', 'dispatch_notes', 'delivery_recipient_name'] as $field) {
                 if (array_key_exists($field, $data)) {
                     $updates[$field] = $data[$field];
@@ -1221,7 +1236,7 @@ class AdminController extends Controller
             }
         }
 
-        $workflowFields = ['status', 'payment_status', 'payment_review_notes', 'payment_verified_at', 'payment_verified_by', 'dispatch_proof_url', 'dispatched_at', 'driver_name', 'driver_phone', 'dispatch_notes', 'delivery_proof_url', 'delivery_recipient_name', 'delivered_at', 'customer_confirmed_at', 'cancel_reason', 'cancelled_at', 'cancelled_by'];
+        $workflowFields = ['status', 'payment_status', 'payment_review_notes', 'payment_verified_at', 'payment_verified_by', 'estimated_delivery_date', 'dispatch_proof_url', 'dispatched_at', 'driver_name', 'driver_phone', 'dispatch_notes', 'delivery_proof_url', 'delivery_recipient_name', 'delivered_at', 'customer_confirmed_at', 'cancel_reason', 'cancelled_at', 'cancelled_by'];
         $before = Audit::snapshot($order, $workflowFields);
         $orderStatusChanged = $order->status !== $data['status'];
         $paymentStatusChanged = $isAdmin && $order->payment_status !== $paymentStatus;

@@ -288,6 +288,11 @@
             @if(in_array('delivered', $availableStatuses, true))
               <p id="order-delivery-payment-notice" class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800" @if($selectedPaymentStatus === 'paid') hidden @endif>Payment must be marked Paid before this order can be delivered. Record or verify the payment first.</p>
             @endif
+            @if(!$isPickupOrder && !in_array($order->status, ['delivered', 'completed', 'cancelled'], true))
+              <label class="block text-sm font-medium" for="estimated-delivery-date">Estimated Delivery Date</label>
+              <input id="estimated-delivery-date" name="estimated_delivery_date" type="date" min="{{ now()->toDateString() }}" value="{{ old('estimated_delivery_date', $order->estimated_delivery_date?->toDateString()) }}" class="-mt-2 h-10 w-full rounded-lg border border-surface-200 px-3 outline-none focus:border-brand-600">
+              <p class="-mt-2 text-xs text-surface-500">Date only. The customer can see this estimate until the order is delivered.</p>
+            @endif
             @if($isAdmin)
               <label class="block text-sm font-medium">Payment Status
                 <select name="payment_status" data-payment-status-select class="mt-2 h-10 w-full rounded-lg border border-surface-200 px-3 outline-none focus:border-brand-600">
