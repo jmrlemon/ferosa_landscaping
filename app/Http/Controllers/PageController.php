@@ -627,9 +627,7 @@ class PageController extends Controller
         if (! $rescheduling) {
             $draft = $estimator->current($request);
             if (! $draft) {
-                return redirect()->route('estimator')->withErrors([
-                    'estimate' => 'Use the cost estimator first, then choose Book Consultation to schedule your visit.',
-                ]);
+                return redirect()->route('estimator')->with('estimator_guidance', true);
             }
 
             $bookingService = ServiceType::query()
@@ -736,9 +734,7 @@ class PageController extends Controller
 
         $draft = $estimator->current($request);
         if (! $draft) {
-            return redirect()->route('estimator')->withErrors([
-                'estimate' => 'Your estimate is missing or expired. Prepare it again before booking a consultation.',
-            ]);
+            return redirect()->route('estimator')->with('estimator_guidance', true);
         }
 
         if ($this->activeAppointmentForUser(auth()->id())) {

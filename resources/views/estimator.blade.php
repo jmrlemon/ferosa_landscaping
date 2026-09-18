@@ -154,6 +154,28 @@
   </div>
 
   <div class="max-w-5xl mx-auto px-4 sm:px-6 pt-8">
+    @if (session('estimator_guidance'))
+      <section class="mb-5 rounded-xl border border-brand-200 bg-brand-50 px-4 py-4 sm:flex sm:items-center sm:justify-between sm:gap-5" role="region" aria-labelledby="estimator-guidance-title">
+        <div class="flex items-start gap-3">
+          <span class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-700 text-white" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 2v4M16 2v4M3 10h18"/><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 15h8"/>
+            </svg>
+          </span>
+          <div>
+            <p class="text-[10px] font-bold uppercase tracking-[.14em] text-brand-600">Before you schedule</p>
+            <h2 id="estimator-guidance-title" class="mt-1 text-base font-bold text-brand-950">Start with a cost estimate</h2>
+            <p class="mt-1 max-w-2xl text-xs leading-5 text-brand-800/80">
+              Choose your project type, property size, and preferred finish below. When the estimate looks right, select <span class="font-semibold text-brand-900">Book Consultation</span>. Your project details will carry into scheduling.
+            </p>
+          </div>
+        </div>
+        <a href="#estimate-options" class="mt-3 inline-flex min-h-10 items-center justify-center rounded-lg bg-brand-700 px-4 text-xs font-bold text-white hover:bg-brand-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 sm:mt-0 sm:shrink-0">
+          Start my estimate
+        </a>
+      </section>
+    @endif
+
     @if ($errors->any())
       <x-alert type="error" class="mb-5">
         <p class="font-semibold">Please update your estimate before booking.</p>
@@ -178,7 +200,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
       {{-- ── Left: Steps ──────────────────────────────────────── --}}
-      <div class="lg:col-span-2 space-y-5">
+      <div id="estimate-options" class="lg:col-span-2 space-y-5 scroll-mt-6">
 
         {{-- Step 1: Project Type --}}
         <div class="bg-white rounded-2xl border border-surface-100 shadow-sm overflow-hidden">

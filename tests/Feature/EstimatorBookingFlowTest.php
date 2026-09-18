@@ -15,21 +15,31 @@ class EstimatorBookingFlowTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_new_schedule_access_requires_a_prepared_estimate(): void
+    public function test_schedule_link_guides_customer_to_prepare_an_estimate_without_showing_an_error(): void
     {
         $customer = User::factory()->create(['role' => 'user']);
 
         $this->actingAs($customer)
             ->get(route('schedule'))
             ->assertRedirect(route('estimator'))
-            ->assertSessionHasErrors('estimate');
+            ->assertSessionHas('estimator_guidance')
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($customer)
+            ->get(route('estimator'))
+            ->assertOk()
+            ->assertSeeText('Start with a cost estimate')
+            ->assertSeeText('Book Consultation')
+            ->assertSeeText('Your project details will carry into scheduling')
+            ->assertDontSeeText('Please update your estimate before booking.');
 
         $this->actingAs($customer)
             ->post(route('schedule.store'), [
                 'appointment_at' => now()->addDays(3)->setTime(9, 0)->format('Y-m-d H:i:s'),
             ])
             ->assertRedirect(route('estimator'))
-            ->assertSessionHasErrors('estimate');
+            ->assertSessionHas('estimator_guidance')
+            ->assertSessionHasNoErrors();
 
         $this->assertDatabaseCount('appointments', 0);
     }
