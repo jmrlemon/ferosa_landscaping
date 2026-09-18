@@ -7,6 +7,7 @@ use App\Services\RegistrationOtpService;
 use App\Services\SmsService;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Socialite\Facades\Socialite;
@@ -48,6 +49,39 @@ class RegistrationPhoneVerificationTest extends TestCase
         $this->assertAuthenticatedAs($user);
         $this->assertNotNull($user->refresh()->phone_verified_at);
         $this->assertNotNull(DB::table('registration_otps')->where('id', $otp->id)->value('used_at'));
+    }
+
+    public function test_issued_code_expires_ten_minutes_after_textbee_accepts_the_message(): void
+    {
+        $this->freezeTime();
+        $sms = new class extends SmsService
+        {
+            public function send(string $to, string $message): bool
+            {
+                // Simulate provider latency so expiry must be based on the
+                // moment TextBee accepts the message, not an earlier timestamp.
+                Carbon::setTestNow(now()->addSeconds(2));
+
+                return true;
+            }
+        };
+        $this->app->instance(SmsService::class, $sms);
+        $user = User::factory()->create([
+            'phone_number' => '+639171234567',
+            'phone_verified_at' => null,
+            'role' => 'user',
+        ]);
+
+        $result = $this->app->make(RegistrationOtpService::class)->issue($user);
+        $otp = DB::table('registration_otps')->where('user_id', $user->id)->first();
+
+        $this->assertSame(RegistrationOtpService::ISSUED, $result);
+        $this->assertIsObject($otp);
+        $this->assertSame(
+            600.0,
+            Carbon::parse($otp->sent_at)
+                ->diffInSeconds(Carbon::parse($otp->expires_at), false),
+        );
     }
 
     public function test_unverified_customer_cannot_log_in_with_the_correct_password(): void

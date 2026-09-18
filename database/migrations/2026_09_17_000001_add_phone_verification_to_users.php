@@ -28,7 +28,9 @@ return new class extends Migration
                 $table->string('phone_number', 20);
                 $table->string('otp');
                 $table->unsignedTinyInteger('attempts')->default(0);
-                $table->timestamp('expires_at');
+                // DATETIME avoids legacy MySQL/MariaDB treating the first
+                // TIMESTAMP column as ON UPDATE CURRENT_TIMESTAMP.
+                $table->dateTime('expires_at');
                 $table->timestamp('sent_at')->nullable();
                 $table->timestamp('used_at')->nullable();
                 $table->timestamp('locked_at')->nullable();

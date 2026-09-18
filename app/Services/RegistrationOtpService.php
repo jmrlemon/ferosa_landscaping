@@ -82,9 +82,11 @@ class RegistrationOtpService
                 return self::FAILED;
             }
 
+            $acceptedAt = now();
             DB::table('registration_otps')->where('id', $otpId)->update([
-                'sent_at' => now(),
-                'updated_at' => now(),
+                'sent_at' => $acceptedAt,
+                'expires_at' => $acceptedAt->copy()->addMinutes(self::EXPIRY_MINUTES),
+                'updated_at' => $acceptedAt,
             ]);
             DB::table('registration_otps')
                 ->where('user_id', $user->id)
