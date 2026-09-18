@@ -85,6 +85,38 @@ class ReturnRequestWorkflowTest extends TestCase
         $this->actingAs($stranger)->post(route('returns.store', $order), [])->assertForbidden();
     }
 
+    public function test_resolved_claim_keeps_its_history_but_closes_new_damage_reporting(): void
+    {
+        Storage::fake('local');
+        $customer = User::factory()->create(['role' => 'user']);
+        $order = $this->deliveredOrder($customer);
+        $item = $this->item($order, 'Resolved Palm', 500, 1);
+        $claim = ReturnRequest::query()->create([
+            'claim_number' => 'RET-RESOLVED-HISTORY',
+            'order_id' => $order->id,
+            'user_id' => $customer->id,
+            'status' => 'resolved',
+            'submitted_at' => now()->subMinutes(20),
+            'resolved_at' => now(),
+        ]);
+
+        $this->actingAs($customer)
+            ->get(route('orders'))
+            ->assertOk()
+            ->assertDontSeeText('Report damaged plant')
+            ->assertSeeText($claim->claim_number)
+            ->assertSeeText('Resolved');
+
+        $this->actingAs($customer)
+            ->get(route('returns.create', $order))
+            ->assertNotFound();
+
+        $this->actingAs($customer)
+            ->post(route('returns.store', $order), $this->validPayload($item))
+            ->assertSessionHasErrors('order');
+        $this->assertDatabaseCount('return_requests', 1);
+    }
+
     public function test_claim_window_closes_twenty_four_hours_after_receipt(): void
     {
         Storage::fake('local');

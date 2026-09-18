@@ -193,10 +193,18 @@ class Order extends Model
     {
         $deadline = $this->returnClaimDeadline();
 
-        return $this->archived_at === null
-            && in_array($this->status, ['delivered', 'completed'], true)
-            && $deadline !== null
-            && now()->lte($deadline);
+        if ($this->archived_at !== null
+            || ! in_array($this->status, ['delivered', 'completed'], true)
+            || $deadline === null
+            || now()->gt($deadline)) {
+            return false;
+        }
+
+        $hasResolvedClaim = $this->relationLoaded('returnRequests')
+            ? $this->returnRequests->contains('status', 'resolved')
+            : $this->returnRequests()->where('status', 'resolved')->exists();
+
+        return ! $hasResolvedClaim;
     }
 
     public function hasFinalReceipt(): bool

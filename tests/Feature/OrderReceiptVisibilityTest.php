@@ -76,4 +76,37 @@ class OrderReceiptVisibilityTest extends TestCase
             ->get(route('orders.receipt', $order))
             ->assertForbidden();
     }
+
+    public function test_delivery_actions_replace_invoice_with_confirmation_then_feedback_and_receipt(): void
+    {
+        $customer = User::factory()->create(['role' => 'user']);
+        $order = Order::query()->create([
+            'user_id' => $customer->id,
+            'order_number' => 'FRS-DELIVERY-ACTIONS',
+            'status' => 'delivered',
+            'payment_status' => 'paid',
+            'total_amount' => 500,
+            'delivery_proof_url' => 'delivery-proofs/proof.jpg',
+            'delivered_at' => now(),
+        ]);
+
+        $this->actingAs($customer)
+            ->get(route('orders'))
+            ->assertOk()
+            ->assertDontSee(route('orders.invoice', $order), false)
+            ->assertSeeText('Confirm received')
+            ->assertDontSeeText('Leave feedback');
+
+        $this->actingAs($customer)
+            ->post(route('orders.confirm-received', $order))
+            ->assertRedirect();
+
+        $this->actingAs($customer)
+            ->get(route('orders'))
+            ->assertOk()
+            ->assertDontSee(route('orders.invoice', $order), false)
+            ->assertDontSeeText('Confirm received')
+            ->assertSeeText('Leave feedback')
+            ->assertSee(route('orders.receipt', $order), false);
+    }
 }
