@@ -634,10 +634,12 @@ class FunctionalWorkflowTest extends TestCase
         ]);
         $at = Carbon::now()->addDays(4)->setTime(9, 0)->seconds(0);
 
-        $this->actingAs($firstCustomer)->post(route('schedule.store'), [
-            'service_type_id' => $service->id,
-            'appointment_at' => $at->format('Y-m-d H:i:s'),
-        ])->assertSessionHasNoErrors();
+        $this->actingAs($firstCustomer)
+            ->withSession($this->estimatorBookingSession($service))
+            ->post(route('schedule.store'), [
+                'service_type_id' => $service->id,
+                'appointment_at' => $at->format('Y-m-d H:i:s'),
+            ])->assertSessionHasNoErrors();
 
         $appointment = Appointment::query()->where('user_id', $firstCustomer->id)->firstOrFail();
         $this->actingAs($firstCustomer)->delete(route('appointments.cancel', $appointment), [
@@ -645,10 +647,12 @@ class FunctionalWorkflowTest extends TestCase
         ])->assertRedirect();
         $this->assertNull($appointment->fresh()->slot_key);
 
-        $this->actingAs($secondCustomer)->post(route('schedule.store'), [
-            'service_type_id' => $service->id,
-            'appointment_at' => $at->format('Y-m-d H:i:s'),
-        ])->assertSessionHasNoErrors();
+        $this->actingAs($secondCustomer)
+            ->withSession($this->estimatorBookingSession($service))
+            ->post(route('schedule.store'), [
+                'service_type_id' => $service->id,
+                'appointment_at' => $at->format('Y-m-d H:i:s'),
+            ])->assertSessionHasNoErrors();
 
         $this->assertSame(2, Appointment::query()->count());
     }
@@ -666,10 +670,12 @@ class FunctionalWorkflowTest extends TestCase
 
         // The form never offers 03:17; posting it directly used to schedule a
         // crew for the middle of the night.
-        $this->actingAs($customer)->post(route('schedule.store'), [
-            'service_type_id' => $service->id,
-            'appointment_at' => Carbon::now()->addDays(5)->setTime(3, 17)->format('Y-m-d H:i:s'),
-        ])->assertSessionHasErrors('appointment_at');
+        $this->actingAs($customer)
+            ->withSession($this->estimatorBookingSession($service))
+            ->post(route('schedule.store'), [
+                'service_type_id' => $service->id,
+                'appointment_at' => Carbon::now()->addDays(5)->setTime(3, 17)->format('Y-m-d H:i:s'),
+            ])->assertSessionHasErrors('appointment_at');
 
         $this->assertSame(0, Appointment::query()->count());
 
@@ -683,10 +689,12 @@ class FunctionalWorkflowTest extends TestCase
                 $at->addDay();
             }
 
-            $this->actingAs($customer)->post(route('schedule.store'), [
-                'service_type_id' => $service->id,
-                'appointment_at' => $at->format('Y-m-d H:i:s'),
-            ])->assertSessionHasNoErrors();
+            $this->actingAs($customer)
+                ->withSession($this->estimatorBookingSession($service))
+                ->post(route('schedule.store'), [
+                    'service_type_id' => $service->id,
+                    'appointment_at' => $at->format('Y-m-d H:i:s'),
+                ])->assertSessionHasNoErrors();
 
             // One active booking at a time, so clear the way for the next slot.
             Appointment::query()->update(['status' => 'completed', 'slot_key' => null]);
@@ -1235,10 +1243,12 @@ class FunctionalWorkflowTest extends TestCase
         ]);
 
         $bookedAt = Carbon::now()->addDays(4)->setTime(9, 0)->seconds(0);
-        $this->actingAs($customer)->post(route('schedule.store'), [
-            'service_type_id' => $service->id,
-            'appointment_at' => $bookedAt->format('Y-m-d H:i:s'),
-        ])->assertSessionHasNoErrors();
+        $this->actingAs($customer)
+            ->withSession($this->estimatorBookingSession($service))
+            ->post(route('schedule.store'), [
+                'service_type_id' => $service->id,
+                'appointment_at' => $bookedAt->format('Y-m-d H:i:s'),
+            ])->assertSessionHasNoErrors();
 
         $appointment = Appointment::query()->where('user_id', $customer->id)->firstOrFail();
         $query = [
@@ -1280,10 +1290,12 @@ class FunctionalWorkflowTest extends TestCase
         $bookedAt = Carbon::now()->addDays(4)->setTime(9, 0)->seconds(0);
         $movedTo = Carbon::now()->addDays(5)->setTime(13, 0)->seconds(0);
 
-        $this->actingAs($customer)->post(route('schedule.store'), [
-            'service_type_id' => $service->id,
-            'appointment_at' => $bookedAt->format('Y-m-d H:i:s'),
-        ])->assertSessionHasNoErrors();
+        $this->actingAs($customer)
+            ->withSession($this->estimatorBookingSession($service))
+            ->post(route('schedule.store'), [
+                'service_type_id' => $service->id,
+                'appointment_at' => $bookedAt->format('Y-m-d H:i:s'),
+            ])->assertSessionHasNoErrors();
 
         $appointment = Appointment::query()->where('user_id', $customer->id)->firstOrFail();
         $appointment->update(['status' => 'confirmed']);
@@ -1336,14 +1348,18 @@ class FunctionalWorkflowTest extends TestCase
         $bookedAt = Carbon::now()->addDays(3)->setTime(9, 0)->seconds(0);
         $takenAt = Carbon::now()->addDays(3)->setTime(14, 30)->seconds(0);
 
-        $this->actingAs($customer)->post(route('schedule.store'), [
-            'service_type_id' => $service->id,
-            'appointment_at' => $bookedAt->format('Y-m-d H:i:s'),
-        ])->assertSessionHasNoErrors();
-        $this->actingAs($other)->post(route('schedule.store'), [
-            'service_type_id' => $service->id,
-            'appointment_at' => $takenAt->format('Y-m-d H:i:s'),
-        ])->assertSessionHasNoErrors();
+        $this->actingAs($customer)
+            ->withSession($this->estimatorBookingSession($service))
+            ->post(route('schedule.store'), [
+                'service_type_id' => $service->id,
+                'appointment_at' => $bookedAt->format('Y-m-d H:i:s'),
+            ])->assertSessionHasNoErrors();
+        $this->actingAs($other)
+            ->withSession($this->estimatorBookingSession($service))
+            ->post(route('schedule.store'), [
+                'service_type_id' => $service->id,
+                'appointment_at' => $takenAt->format('Y-m-d H:i:s'),
+            ])->assertSessionHasNoErrors();
 
         $appointment = Appointment::query()->where('user_id', $customer->id)->firstOrFail();
 
@@ -1364,10 +1380,12 @@ class FunctionalWorkflowTest extends TestCase
             ->assertSessionHasNoErrors();
 
         $third = User::factory()->create(['role' => 'user']);
-        $this->actingAs($third)->post(route('schedule.store'), [
-            'service_type_id' => $service->id,
-            'appointment_at' => $bookedAt->format('Y-m-d H:i:s'),
-        ])->assertSessionHasNoErrors();
+        $this->actingAs($third)
+            ->withSession($this->estimatorBookingSession($service))
+            ->post(route('schedule.store'), [
+                'service_type_id' => $service->id,
+                'appointment_at' => $bookedAt->format('Y-m-d H:i:s'),
+            ])->assertSessionHasNoErrors();
 
         $this->assertSame(3, Appointment::query()->count());
     }
@@ -1385,10 +1403,12 @@ class FunctionalWorkflowTest extends TestCase
         ]);
 
         $bookedAt = Carbon::now()->addDays(4)->setTime(9, 0)->seconds(0);
-        $this->actingAs($customer)->post(route('schedule.store'), [
-            'service_type_id' => $service->id,
-            'appointment_at' => $bookedAt->format('Y-m-d H:i:s'),
-        ])->assertSessionHasNoErrors();
+        $this->actingAs($customer)
+            ->withSession($this->estimatorBookingSession($service))
+            ->post(route('schedule.store'), [
+                'service_type_id' => $service->id,
+                'appointment_at' => $bookedAt->format('Y-m-d H:i:s'),
+            ])->assertSessionHasNoErrors();
         $appointment = Appointment::query()->where('user_id', $customer->id)->firstOrFail();
 
         // Someone else's booking is not theirs to move.
@@ -1434,10 +1454,12 @@ class FunctionalWorkflowTest extends TestCase
             'is_active' => true,
         ]);
 
-        $this->actingAs($customer)->post(route('schedule.store'), [
-            'service_type_id' => $service->id,
-            'appointment_at' => Carbon::now()->addDays(4)->setTime(9, 0)->format('Y-m-d H:i:s'),
-        ])->assertSessionHasNoErrors();
+        $this->actingAs($customer)
+            ->withSession($this->estimatorBookingSession($service))
+            ->post(route('schedule.store'), [
+                'service_type_id' => $service->id,
+                'appointment_at' => Carbon::now()->addDays(4)->setTime(9, 0)->format('Y-m-d H:i:s'),
+            ])->assertSessionHasNoErrors();
         $appointment = Appointment::query()->where('user_id', $customer->id)->firstOrFail();
 
         $this->actingAs($customer)
@@ -1451,6 +1473,7 @@ class FunctionalWorkflowTest extends TestCase
 
         // Without the flag the same customer is still held to one booking.
         $this->actingAs($customer)
+            ->withSession($this->estimatorBookingSession($service))
             ->get(route('schedule'))
             ->assertOk()
             ->assertSee('Please cancel or complete this booking before scheduling another service.');

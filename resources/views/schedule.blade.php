@@ -37,7 +37,7 @@
     title="{{ $rescheduling ? 'Reschedule your visit' : 'Schedule a service' }}"
     sub="{{ $rescheduling
       ? 'Pick a new date and time. The service and starting fee stay the same.'
-      : 'Pick your service, then a date and time. We confirm within one business day.' }}">
+      : 'Your estimate is ready. Pick a date and time for the consultation.' }}">
     <x-slot:icon>
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18M12 14v4M10 16h4"/>
@@ -50,7 +50,7 @@
        told them nothing about where they were. --}}
   <section class="mb-6 overflow-hidden rounded-2xl border border-brand-100 bg-white reveal reveal-1" aria-label="Booking progress">
     <ol class="grid grid-cols-2 sm:grid-cols-4">
-      @foreach([['1', 'Service'], ['2', 'Date'], ['3', 'Time'], ['4', 'Confirm']] as [$number, $label])
+      @foreach([['1', 'Estimate'], ['2', 'Date'], ['3', 'Time'], ['4', 'Confirm']] as [$number, $label])
         <li class="booking-step flex items-center gap-2 border-b border-r border-brand-50 px-3 py-3 last:border-r-0 sm:border-b-0" data-step="{{ $number }}">
           <span class="step-marker flex h-6 w-6 items-center justify-center rounded-full bg-brand-50 text-brand-700 text-[10px] font-bold" aria-hidden="true">{{ $number }}</span>
           <span class="step-label text-xs font-bold text-surface-500">{{ $label }}</span>
@@ -119,46 +119,57 @@
     @endif
 
     {{-- Hidden inputs populated by JS --}}
-    <input type="hidden" name="service_type_id" id="hidden-service-type">
+    <input type="hidden" id="availability-service-type" value="{{ $bookingService?->id }}">
     <input type="hidden" name="appointment_at"  id="hidden-appointment-at">
     <input type="hidden" name="notes"           id="hidden-notes">
 
     <div id="booking-container" class="grid grid-cols-1 md:grid-cols-5 gap-6">
 
-      {{-- Service first --}}
+      {{-- Estimate/service context. The service is set by the server-side
+           estimator mapping and is intentionally not an editable form field. --}}
       <div class="md:col-span-5 customer-card p-5 sm:p-6">
         <div class="grid md:grid-cols-[1fr_1.25fr] gap-5 md:items-center">
           <div>
             <div class="flex items-center gap-2 mb-2">
               <span class="w-6 h-6 rounded-full bg-brand-700 text-white text-[10px] font-bold flex items-center justify-center">1</span>
-              <p class="text-[10px] font-bold uppercase tracking-[.13em] text-brand-600">Choose a service</p>
+              <p class="text-[10px] font-bold uppercase tracking-[.13em] text-brand-600">{{ $rescheduling ? 'Booked service' : 'Prepared estimate' }}</p>
             </div>
-            <h2 class="font-display text-xl font-bold text-surface-900">What can we help with?</h2>
-            <p class="mt-2 text-xs leading-5 text-surface-500">Starting fees are shown before you choose a visit. The team will confirm final scope and cost with you.</p>
+            <h2 class="font-display text-xl font-bold text-surface-900">{{ $rescheduling ? 'Service stays as booked' : 'Your estimate is connected' }}</h2>
+            <p class="mt-2 text-xs leading-5 text-surface-500">
+              {{ $rescheduling
+                ? 'Choose only a new date and time. Your service and consultation fee will not change.'
+                : 'We carried your estimator choices into this consultation. Choose only the visit date and time.' }}
+            </p>
           </div>
-          <div>
-            <label for="service-type-select" class="block text-xs font-bold text-surface-700 mb-2">Landscaping service</label>
-            {{-- Locked while rescheduling: this form moves an existing booking,
-                 it does not turn it into a different service. --}}
-            <select id="service-type-select" @disabled($rescheduling !== null)
-              class="w-full border border-surface-200 rounded-xl px-3.5 py-2.5 text-sm text-surface-700 outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-100 transition-colors disabled:bg-surface-50 disabled:text-surface-500">
-              @forelse (($serviceTypes ?? []) as $st)
-                <option value="{{ $st->id }}"
-                  @selected($rescheduling
-                    ? (int) $rescheduling->service_type_id === (int) $st->id
-                    : (string) request('service') === (string) $st->id)>
-                  {{ $st->name }} - {{ $st->customerPriceLabel() }}
-                </option>
-              @empty
-                <option value="">No services available</option>
-              @endforelse
-            </select>
+          <div class="rounded-xl border border-brand-100 bg-brand-50/70 p-4">
             @if ($rescheduling)
-              <p class="mt-2 text-[11px] text-surface-400">The service stays as booked. Cancel this visit if you need a different one.</p>
-            @endif
-            @if(empty($serviceTypes) || count($serviceTypes) === 0)
-              <div class="rounded-lg border border-amber-100 bg-amber-50 text-amber-700 text-xs px-3 py-2 mt-3">
-                No service types are available right now. Please check again later.
+              <p class="text-[10px] font-bold uppercase tracking-wider text-brand-600">Consultation service</p>
+              <p class="mt-1 text-sm font-bold text-brand-950">{{ $bookingService?->name ?? 'Service' }}</p>
+              <p class="mt-1 text-xs text-brand-800/75">{{ $bookingService?->customerPriceLabel() ?? 'Fee recorded with your appointment' }}</p>
+            @else
+              <div class="grid grid-cols-2 gap-x-4 gap-y-3">
+                <div>
+                  <p class="text-[10px] uppercase tracking-wider text-brand-600">Project</p>
+                  <p class="mt-0.5 text-sm font-semibold text-brand-950">{{ $estimate['project_type_label'] }}</p>
+                </div>
+                <div>
+                  <p class="text-[10px] uppercase tracking-wider text-brand-600">Property</p>
+                  <p class="mt-0.5 text-sm font-semibold text-brand-950">{{ number_format((int) $estimate['size']) }} sq m</p>
+                </div>
+                <div>
+                  <p class="text-[10px] uppercase tracking-wider text-brand-600">Quality</p>
+                  <p class="mt-0.5 text-sm font-semibold text-brand-950">{{ $estimate['tier_label'] }}</p>
+                </div>
+                <div>
+                  <p class="text-[10px] uppercase tracking-wider text-brand-600">Estimate</p>
+                  <p class="mt-0.5 text-sm font-bold text-brand-950">PHP {{ number_format((float) $estimate['total'], 2) }}</p>
+                </div>
+              </div>
+              <div class="mt-3 border-t border-brand-100 pt-3 text-xs text-brand-800/75">
+                <p><span class="font-semibold">Typical range:</span> PHP {{ number_format((float) $estimate['range_low'], 2) }}–PHP {{ number_format((float) $estimate['range_high'], 2) }}</p>
+                <p class="mt-1"><span class="font-semibold">Consultation:</span> {{ $bookingService?->name }} · {{ $bookingService?->customerPriceLabel() }}</p>
+                <p class="mt-2 text-[11px] leading-4">The project estimate is indicative. The consultation fee and final project quotation are separate.</p>
+                <a href="{{ route('estimator') }}" class="mt-2 inline-flex font-bold text-brand-700 hover:text-brand-900">Change estimate</a>
               </div>
             @endif
           </div>
@@ -475,7 +486,7 @@
   }
 
   async function refreshTimeSlotAvailability() {
-    const serviceTypeId = document.getElementById('service-type-select')?.value;
+    const serviceTypeId = document.getElementById('availability-service-type')?.value;
     if (!selectedDate || !serviceTypeId) {
       document.querySelectorAll('.time-slot[data-time]').forEach(btn => {
         btn.disabled = false;
@@ -513,12 +524,12 @@
   }
 
   // ── Progress ──────────────────────────────────────────────────────────────
-  // Step 1 is complete as soon as a service is chosen (one is preselected), so
-  // the strip normally opens on step 2 rather than pretending nothing is done.
+  // Step 1 is complete because the estimate/service was prepared before this
+  // page opened, so the strip starts with the date as the active step.
   function updateStepper() {
     const hasDate = Boolean(selectedDate);
     const done = [
-      Boolean(document.getElementById('service-type-select')?.value),
+      Boolean(document.getElementById('availability-service-type')?.value),
       hasDate,
       // A time slot is preselected on load as a convenience, before any date
       // exists to book it on. Counting that as a finished step put a tick on
@@ -577,8 +588,8 @@
     if (!selectedDate) { alert('Please select a date.'); return; }
     if (!selectedTime)  { alert('Please select a time.'); return; }
 
-    const serviceTypeId = document.getElementById('service-type-select').value;
-    if (!serviceTypeId) { alert('Please select a service type.'); return; }
+    const serviceTypeId = document.getElementById('availability-service-type').value;
+    if (!serviceTypeId) { alert('Your consultation service is unavailable. Please prepare a new estimate.'); return; }
 
     // Build appointment_at as "YYYY-MM-DD HH:MM:00"
     const yyyy = selectedDate.getFullYear();
@@ -592,7 +603,6 @@
       return;
     }
 
-    document.getElementById('hidden-service-type').value   = serviceTypeId;
     document.getElementById('hidden-appointment-at').value = appointmentAt;
     document.getElementById('hidden-notes').value          = document.getElementById('notes-field').value;
 
@@ -608,10 +618,6 @@
   document.addEventListener('DOMContentLoaded', () => {
     renderCalendar();
     updateStepper();
-    document.getElementById('service-type-select')?.addEventListener('change', () => {
-      refreshTimeSlotAvailability();
-      updateStepper();
-    });
   });
 </script>
 @endsection

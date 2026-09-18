@@ -18,8 +18,8 @@ class ExperiencePolishTest extends TestCase
     {
         $customer = User::factory()->create();
 
-        ServiceType::query()->create([
-            'name' => 'Garden Design',
+        $service = ServiceType::query()->create([
+            'name' => 'Garden Design Consultation',
             'slug' => 'garden-design',
             'description' => 'A design consultation.',
             'duration_minutes' => 60,
@@ -28,6 +28,7 @@ class ExperiencePolishTest extends TestCase
         ]);
 
         $this->actingAs($customer)
+            ->withSession($this->estimatorBookingSession($service))
             ->get(route('schedule'))
             ->assertOk()
             ->assertSee('function clearTimeSelection()', false)

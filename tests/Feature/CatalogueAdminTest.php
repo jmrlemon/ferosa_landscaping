@@ -99,20 +99,24 @@ class CatalogueAdminTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'service.archive']);
     }
 
-    public function test_an_archived_service_disappears_from_the_booking_form(): void
+    public function test_an_archived_service_cannot_be_prepared_for_booking(): void
     {
         $admin = $this->admin();
         $customer = $this->customer();
-        $live = ServiceType::query()->create(['name' => 'Lawn Care', 'default_fee' => 900, 'is_active' => true]);
-        $retired = ServiceType::query()->create(['name' => 'Pond Cleaning', 'default_fee' => 1800, 'is_active' => true]);
+        $retired = ServiceType::query()->create(['name' => 'Hardscaping Quote', 'default_fee' => 1800, 'is_active' => true]);
 
         $this->actingAs($admin)->delete(route('admin.services.delete', $retired));
 
         $this->actingAs($customer)
-            ->get(route('schedule'))
-            ->assertOk()
-            ->assertSee('Lawn Care')
-            ->assertDontSee('Pond Cleaning');
+            ->from(route('estimator'))
+            ->post(route('estimator.prepare'), [
+                'project_type' => 'hardscaping',
+                'size' => 100,
+                'tier' => 'standard',
+            ])
+            ->assertRedirect(route('estimator'))
+            ->assertSessionHasErrors('project_type')
+            ->assertSessionMissing('estimator_booking');
     }
 
     // -- Products ------------------------------------------------------------

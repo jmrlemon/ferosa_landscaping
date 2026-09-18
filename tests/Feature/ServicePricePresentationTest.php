@@ -13,7 +13,7 @@ class ServicePricePresentationTest extends TestCase
 
     public function test_zero_value_services_are_presented_as_assessment_quotes_not_zero_cost_work(): void
     {
-        ServiceType::query()->create([
+        $service = ServiceType::query()->create([
             'name' => 'Hardscaping Quote',
             'default_fee' => 0,
             'is_active' => true,
@@ -25,6 +25,10 @@ class ServicePricePresentationTest extends TestCase
             ->assertDontSee('PHP 0');
 
         $this->actingAs(User::factory()->create())
+            ->withSession($this->estimatorBookingSession($service, [
+                'project_type' => 'hardscaping',
+                'project_type_label' => 'Hardscaping',
+            ]))
             ->get(route('schedule'))
             ->assertOk()
             ->assertSee('Quote after site assessment')

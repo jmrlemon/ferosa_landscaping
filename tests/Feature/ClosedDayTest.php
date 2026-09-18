@@ -55,6 +55,7 @@ class ClosedDayTest extends TestCase
         $this->assertTrue(Appointment::isClosedOn($sunday));
 
         $this->actingAs($customer)
+            ->withSession($this->estimatorBookingSession($service))
             ->post(route('schedule.store'), [
                 'service_type_id' => $service->id,
                 'appointment_at' => $sunday->format('Y-m-d H:i:s'),
@@ -75,6 +76,7 @@ class ClosedDayTest extends TestCase
         $this->assertFalse(Appointment::isClosedOn($tuesday));
 
         $this->actingAs($customer)
+            ->withSession($this->estimatorBookingSession($service))
             ->post(route('schedule.store'), [
                 'service_type_id' => $service->id,
                 'appointment_at' => $tuesday->format('Y-m-d H:i:s'),
@@ -160,11 +162,12 @@ class ClosedDayTest extends TestCase
     public function test_the_booking_page_tells_the_browser_which_days_are_closed(): void
     {
         $customer = User::factory()->create(['role' => 'user']);
-        $this->service();
+        $service = $this->service();
 
         // The calendar greys the days out client-side; the server rejects them
         // regardless, but the list has to reach the page for that to happen.
         $this->actingAs($customer)
+            ->withSession($this->estimatorBookingSession($service))
             ->get(route('schedule'))
             ->assertOk()
             ->assertSee('CLOSED_WEEKDAYS', false)

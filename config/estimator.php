@@ -40,6 +40,7 @@ return [
     'project_types' => [
         'design' => [
             'label' => 'Garden Design',
+            'booking_service_name' => 'Garden Design Consultation',
             'description' => 'Full landscape design, plant selection & installation.',
             'rate' => 50,
             'packages' => [
@@ -50,6 +51,7 @@ return [
         ],
         'maintenance' => [
             'label' => 'Maintenance',
+            'booking_service_name' => 'Routine Maintenance',
             'description' => 'Regular lawn care, pruning, weeding & cleanup.',
             'rate' => 10,
             'packages' => [
@@ -60,6 +62,7 @@ return [
         ],
         'hardscaping' => [
             'label' => 'Hardscaping',
+            'booking_service_name' => 'Hardscaping Quote',
             'description' => 'Patios, walkways, retaining walls & stonework.',
             'rate' => 120,
             'packages' => [

@@ -19,6 +19,7 @@ use App\Models\User;
 use App\Notifications\AdminCancellationNotice;
 use App\Notifications\WorkCreatedNotice;
 use App\Services\CartService;
+use App\Services\EstimatorQuoteService;
 use App\Services\InventoryService;
 use App\Support\Audit;
 use App\Support\PasswordRules;
@@ -603,7 +604,7 @@ class PageController extends Controller
         return back()->with('status', $message);
     }
 
-    public function schedule(Request $request): View
+    public function schedule(Request $request, EstimatorQuoteService $estimator): View|RedirectResponse
     {
         // `?reschedule=<id>` re-uses this whole form to move an existing visit,
         // rather than maintaining a second calendar in a modal. The record is
@@ -620,6 +621,34 @@ class PageController extends Controller
             abort_unless($rescheduling->isCustomerReschedulable(), 422);
         }
 
+        $estimate = null;
+        $bookingService = $rescheduling?->serviceType;
+
+        if (! $rescheduling) {
+            $draft = $estimator->current($request);
+            if (! $draft) {
+                return redirect()->route('estimator')->withErrors([
+                    'estimate' => 'Use the cost estimator first, then choose Book Consultation to schedule your visit.',
+                ]);
+            }
+
+            $bookingService = ServiceType::query()
+                ->whereKey($draft['service_type_id'])
+                ->where('is_active', true)
+                ->whereNull('archived_at')
+                ->first();
+
+            if (! $bookingService) {
+                $estimator->forget($request);
+
+                return redirect()->route('estimator')->withErrors([
+                    'project_type' => 'That consultation service is no longer available. Please prepare a new estimate.',
+                ]);
+            }
+
+            $estimate = $draft['snapshot'];
+        }
+
         // The one-active-booking limit does not apply while moving that very
         // booking; it would otherwise block the customer from their own visit.
         $activeAppointment = $rescheduling ? null : $this->activeAppointmentForUser(auth()->id());
@@ -627,12 +656,33 @@ class PageController extends Controller
         return view('schedule', [
             'activeAppointment' => $activeAppointment,
             'rescheduling' => $rescheduling,
-            'serviceTypes' => ServiceType::query()
-                ->where('is_active', true)
-                ->whereNull('archived_at')
-                ->orderBy('name')
-                ->get(),
+            'bookingService' => $bookingService,
+            'estimate' => $estimate,
         ]);
+    }
+
+    public function prepareEstimate(Request $request, EstimatorQuoteService $estimator): RedirectResponse
+    {
+        $projectTypes = array_keys((array) config('estimator.project_types', []));
+        $tiers = array_keys((array) config('estimator.tiers', []));
+        $addons = array_keys((array) config('estimator.addons', []));
+
+        /** @var array{project_type:string,size:int,tier:string,addons?:list<string>,products?:list<array{id:int,qty:int}>} $data */
+        $data = $request->validate([
+            'project_type' => ['required', 'string', Rule::in($projectTypes)],
+            'size' => ['required', 'integer', 'min:1', 'max:100000'],
+            'tier' => ['required', 'string', Rule::in($tiers)],
+            'addons' => ['sometimes', 'array', 'max:'.count($addons)],
+            'addons.*' => ['string', 'distinct', Rule::in($addons)],
+            'products' => ['sometimes', 'array', 'max:12'],
+            'products.*' => ['array:id,qty'],
+            'products.*.id' => ['required', 'integer', 'distinct', 'exists:products,id'],
+            'products.*.qty' => ['required', 'integer', 'min:1', 'max:999'],
+        ]);
+
+        $request->session()->put(EstimatorQuoteService::SESSION_KEY, $estimator->prepare($data));
+
+        return redirect()->route('schedule');
     }
 
     public function scheduleAvailability(Request $request): JsonResponse
@@ -680,9 +730,16 @@ class PageController extends Controller
         ]);
     }
 
-    public function storeSchedule(StoreScheduleRequest $request): RedirectResponse
+    public function storeSchedule(StoreScheduleRequest $request, EstimatorQuoteService $estimator): RedirectResponse
     {
         $data = $request->validated();
+
+        $draft = $estimator->current($request);
+        if (! $draft) {
+            return redirect()->route('estimator')->withErrors([
+                'estimate' => 'Your estimate is missing or expired. Prepare it again before booking a consultation.',
+            ]);
+        }
 
         if ($this->activeAppointmentForUser(auth()->id())) {
             return back()->withErrors([
@@ -690,15 +747,23 @@ class PageController extends Controller
             ]);
         }
 
-        $serviceTypeId = $data['service_type_id'] ?? null;
-        if (! $serviceTypeId) {
-            $serviceTypeId = ServiceType::query()
-                ->where('name', $data['service_name'] ?? '')
-                ->value('id');
+        // The client may post an old or forged service id. The server-prepared
+        // estimator session is the only source of truth for this booking.
+        $serviceType = ServiceType::query()
+            ->whereKey($draft['service_type_id'])
+            ->where('is_active', true)
+            ->whereNull('archived_at')
+            ->first();
+
+        if (! $serviceType) {
+            $estimator->forget($request);
+
+            return redirect()->route('estimator')->withErrors([
+                'project_type' => 'That consultation service is no longer available. Please prepare a new estimate.',
+            ]);
         }
 
-        $serviceType = ServiceType::query()->find($serviceTypeId);
-        abort_unless($serviceType, 422, 'Invalid service type.');
+        $serviceTypeId = $serviceType->id;
 
         // Prevent double booking (server-side)
         $appointmentAt = Carbon::parse($data['appointment_at'])->seconds(0);
@@ -721,6 +786,7 @@ class PageController extends Controller
                 'appointment_at' => $appointmentAt,
                 'slot_key' => Appointment::slotKey($serviceTypeId, $appointmentAt),
                 'appointment_amount' => $serviceType->default_fee ?? 0,
+                'estimate_snapshot' => $draft['snapshot'],
                 'status' => 'scheduled',
                 'notes' => $data['notes'] ?? null,
             ]);
@@ -748,7 +814,10 @@ class PageController extends Controller
             ));
         }
 
-        return back()->with('status', 'Booking submitted. Track confirmation and updates in Appointments and Notifications.');
+        $estimator->forget($request);
+
+        return redirect()->route('appointments')
+            ->with('status', 'Booking submitted. Track confirmation and updates in Appointments and Notifications.');
     }
 
     /**

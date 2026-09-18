@@ -280,6 +280,7 @@ class TrustWorkflowTest extends TestCase
 
         $appointmentAt = Carbon::now()->addDays(3)->setTime(10, 30);
         $this->actingAs($customer)
+            ->withSession($this->estimatorBookingSession($service))
             ->post(route('schedule.store'), [
                 'service_type_id' => $service->id,
                 'appointment_at' => $appointmentAt->format('Y-m-d H:i:s'),

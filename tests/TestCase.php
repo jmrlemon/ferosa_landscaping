@@ -3,6 +3,8 @@
 namespace Tests;
 
 use App\Models\AppSetting;
+use App\Models\ServiceType;
+use App\Services\EstimatorQuoteService;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Carbon;
 use RuntimeException;
@@ -91,5 +93,39 @@ abstract class TestCase extends BaseTestCase
             "phpunit.xml is expected to select an in-memory SQLite database. Check phpunit.xml,\n".
             ".env.testing, and any DB_* variables exported in your shell before retrying.\n"
         );
+    }
+
+    /**
+     * Prepare the same server-owned session contract used by the estimator.
+     * Feature tests that focus on later booking behavior can use this without
+     * repeating the estimator POST in every setup.
+     *
+     * @param  array<string, mixed>  $snapshotOverrides
+     * @return array<string, array<string, mixed>>
+     */
+    protected function estimatorBookingSession(ServiceType $service, array $snapshotOverrides = []): array
+    {
+        return [
+            EstimatorQuoteService::SESSION_KEY => [
+                'version' => EstimatorQuoteService::VERSION,
+                'prepared_at' => now()->toIso8601String(),
+                'service_type_id' => $service->id,
+                'snapshot' => array_merge([
+                    'project_type' => 'design',
+                    'project_type_label' => 'Garden Design',
+                    'size' => 100,
+                    'tier' => 'standard',
+                    'tier_label' => 'Standard',
+                    'addons' => [],
+                    'products' => [],
+                    'base_amount' => 5000.0,
+                    'addons_amount' => 0.0,
+                    'products_amount' => 0.0,
+                    'total' => 5000.0,
+                    'range_low' => 4000.0,
+                    'range_high' => 6250.0,
+                ], $snapshotOverrides),
+            ],
+        ];
     }
 }

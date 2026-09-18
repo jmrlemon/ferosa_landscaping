@@ -100,6 +100,9 @@ Route::middleware('auth')->group(function () {
     Route::delete('/appointments/{appointment}/cancel', [PageController::class, 'cancelAppointment'])->name('appointments.cancel');
     Route::delete('/orders/{order}/cancel', [PageController::class, 'cancelOrder'])->name('orders.cancel');
     Route::get('/estimator', [PageController::class, 'estimator'])->name('estimator');
+    Route::post('/estimator/prepare', [PageController::class, 'prepareEstimate'])
+        ->middleware('throttle:30,1')
+        ->name('estimator.prepare');
     Route::get('/account', [PageController::class, 'account'])->name('account');
     Route::put('/account', [PageController::class, 'updateAccount'])->name('account.update');
     Route::get('/feedback', [FeedbackController::class, 'index'])->name('feedback');

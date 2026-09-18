@@ -16,6 +16,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon $appointment_at
  * @property Carbon|null $cancelled_at
  * @property Carbon|null $archived_at
+ * @property array<string, mixed>|null $estimate_snapshot
  */
 class Appointment extends Model
 {
@@ -78,6 +79,7 @@ class Appointment extends Model
         'appointment_amount',
         'notes',
         'scope_notes',
+        'estimate_snapshot',
         'cancel_reason',
         'cancelled_at',
         'cancelled_by',
@@ -89,6 +91,7 @@ class Appointment extends Model
         return [
             'appointment_at' => 'datetime',
             'appointment_amount' => 'decimal:2',
+            'estimate_snapshot' => 'array',
             'cancelled_at' => 'datetime',
             'archived_at' => 'datetime',
         ];

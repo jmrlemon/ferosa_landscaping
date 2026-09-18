@@ -154,6 +154,17 @@
   </div>
 
   <div class="max-w-5xl mx-auto px-4 sm:px-6 pt-8">
+    @if ($errors->any())
+      <x-alert type="error" class="mb-5">
+        <p class="font-semibold">Please update your estimate before booking.</p>
+        <ul class="mt-1 list-disc space-y-0.5 pl-4">
+          @foreach ($errors->all() as $error)
+            <li>{{ $error }}</li>
+          @endforeach
+        </ul>
+      </x-alert>
+    @endif
+
     {{-- Mobile summary mirrors the native Android hero before the estimator steps. --}}
     <section class="estimate-hero lg:hidden px-5 py-5 mb-5 text-white" aria-label="Current estimate" aria-live="polite">
       <p class="text-[11px] font-bold text-white/60 uppercase tracking-wider">Your Estimate</p>
@@ -368,7 +379,7 @@
               [$icon, $iconColor, $iconBg] = $addonArt[$addonKey] ?? ['M3 3h18v18H3z', 'text-surface-500', 'bg-surface-100'];
             @endphp
             <label class="addon-item cursor-pointer">
-              <input type="checkbox" id="{{ $id }}" data-amount="{{ $amount }}" class="sr-only" onchange="calculate(); updateAddonCount()">
+              <input type="checkbox" id="{{ $id }}" data-addon-key="{{ $addonKey }}" data-amount="{{ $amount }}" class="sr-only" onchange="calculate(); updateAddonCount()">
               <div class="addon-box border border-surface-200 rounded-xl p-3.5 hover:border-brand-200 flex items-start gap-3 relative">
                 {{-- Checkmark badge (top-right) --}}
                 <div class="addon-check absolute top-2.5 right-2.5 w-5 h-5 bg-brand-600 rounded-full flex items-center justify-center">
@@ -412,6 +423,7 @@
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 @foreach ($estimateProducts as $product)
                   <div class="estimate-product border border-surface-200 rounded-xl p-3.5 hover:border-brand-200 transition-colors"
+                       data-id="{{ $product->id }}"
                        data-name="{{ $product->name }}"
                        data-price="{{ (float) $product->price }}">
                     <div class="flex items-start gap-3">
@@ -429,7 +441,7 @@
                         </div>
                         <div class="estimate-product-qty mt-3 hidden items-center justify-between gap-3">
                           <span class="text-[10px] text-surface-400">Quantity</span>
-                          <input type="number" min="1" step="1" value="1"
+                          <input type="number" min="1" max="{{ $product->stock_qty }}" step="1" value="1"
                                  aria-label="Quantity of {{ $product->name }}"
                                  class="w-20 border border-surface-200 rounded-lg px-2 py-1.5 text-xs text-surface-700 outline-none focus:border-brand-500"
                                  oninput="calculate()">
@@ -536,11 +548,15 @@
 
           {{-- CTA --}}
           <div class="p-5 space-y-2.5">
-            <a href="{{ route('schedule') }}"
-               class="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-3 rounded-xl text-sm transition-colors flex justify-center items-center gap-2 shadow-sm">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              Book Consultation
-            </a>
+            <form method="POST" action="{{ route('estimator.prepare') }}" id="estimate-booking-form" onsubmit="return prepareConsultation(event)">
+              @csrf
+              <div id="estimate-booking-fields"></div>
+              <button type="submit"
+                      class="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-3 rounded-xl text-sm transition-colors flex justify-center items-center gap-2 shadow-sm">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                Book Consultation
+              </button>
+            </form>
 
             {{-- AR lives in the Android app, which owns the camera and ARCore.
                  This used to be a button that deep-linked to `ferosa://ar`; in a
@@ -871,6 +887,52 @@
     text.textContent = checked;
     badge.classList.toggle('hidden', checked === 0);
     badge.classList.toggle('inline-flex', checked > 0);
+  }
+
+  // Build the estimator handoff from selection keys only. Prices, totals and
+  // the mapped consultation service are deliberately recalculated on the
+  // server, so changing HTML in the browser cannot change the booking.
+  function prepareConsultation(event) {
+    const sizeInput = document.getElementById('size-input');
+    const size = parseInt(sizeInput.value, 10);
+    if (!Number.isInteger(size) || size < 1) {
+      event.preventDefault();
+      sizeInput.focus();
+      updateSizeUI();
+      return false;
+    }
+
+    const fields = document.getElementById('estimate-booking-fields');
+    fields.replaceChildren();
+
+    const appendField = (name, value) => {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = name;
+      input.value = String(value);
+      fields.appendChild(input);
+    };
+
+    appendField('project_type', document.querySelector('input[name="project_type"]:checked').value);
+    appendField('size', size);
+    appendField('tier', document.querySelector('input[name="quality_tier"]:checked').value);
+
+    document.querySelectorAll('.addon-item input[type="checkbox"]:checked').forEach((checkbox, index) => {
+      appendField(`addons[${index}]`, checkbox.dataset.addonKey);
+    });
+
+    let productIndex = 0;
+    document.querySelectorAll('.estimate-product').forEach(card => {
+      const checkbox = card.querySelector('.estimate-product-check');
+      if (!checkbox?.checked) return;
+
+      const quantity = Math.max(1, parseInt(card.querySelector('.estimate-product-qty input')?.value, 10) || 1);
+      appendField(`products[${productIndex}][id]`, card.dataset.id);
+      appendField(`products[${productIndex}][qty]`, quantity);
+      productIndex++;
+    });
+
+    return true;
   }
 
   // ─── Share ────────────────────────────────────────────────────────────────

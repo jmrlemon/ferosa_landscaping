@@ -18,8 +18,10 @@ class StoreScheduleRequest extends FormRequest
         $minimumAppointmentAt = Carbon::now()->addHours(24)->format('Y-m-d H:i:s');
 
         return [
-            'service_type_id' => ['required', 'exists:service_types,id'],
-            'service_name' => ['nullable', 'string', 'max:255'], // legacy/compat
+            // The prepared estimator session is the authority for the service.
+            // These optional legacy fields are accepted but never trusted.
+            'service_type_id' => ['sometimes', 'integer', 'exists:service_types,id'],
+            'service_name' => ['nullable', 'string', 'max:255'],
             'appointment_at' => [
                 'required',
                 'date',
