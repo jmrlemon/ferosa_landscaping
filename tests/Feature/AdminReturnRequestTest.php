@@ -18,6 +18,21 @@ class AdminReturnRequestTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_returns_pages_use_the_shared_admin_workspace_sidebar(): void
+    {
+        [$claim] = $this->claim();
+        $staff = User::factory()->create(['role' => 'staff']);
+
+        foreach ([route('admin.returns.index'), route('admin.returns.show', $claim)] as $url) {
+            $this->actingAs($staff)
+                ->get($url)
+                ->assertOk()
+                ->assertSee('aria-label="Admin navigation"', false)
+                ->assertSee('aria-current="page"', false)
+                ->assertSeeText('Returns & Replacements');
+        }
+    }
+
     public function test_staff_can_review_claim_but_cannot_make_admin_decision(): void
     {
         [$claim] = $this->claim();

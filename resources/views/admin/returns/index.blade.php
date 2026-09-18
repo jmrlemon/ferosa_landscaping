@@ -1,27 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  @include('partials.favicon')
-  <title>Return Claims - Ferosa Landscaping</title>
-  <link rel="stylesheet" href="{{ asset('fonts/ferosa-fonts.css') }}">
-  @vite(['resources/css/app.css', 'resources/js/app.js'])
-  @include('admin.partials.premium-theme')
-</head>
-<body class="min-h-screen bg-surface-100 font-sans text-surface-900 antialiased">
-  <a href="#admin-main" class="skip-link">Skip to claims</a>
-  <header class="border-b border-surface-200 bg-white px-5 py-4">
-    <div class="mx-auto flex max-w-7xl items-center justify-between gap-4">
-      <div>
-        <p class="text-xs font-bold uppercase tracking-widest text-brand-700">Ordering &amp; delivery</p>
-        <h1 class="text-2xl font-bold text-brand-950">Return and replacement claims</h1>
-      </div>
-      <a href="{{ route('admin.ordering-delivery') }}" class="rounded-lg border border-surface-300 px-4 py-2 text-sm font-semibold hover:bg-surface-50">&larr; Admin workspace</a>
-    </div>
-  </header>
+@extends('admin.layouts.workspace')
 
-  <main id="admin-main" tabindex="-1" class="mx-auto max-w-7xl p-5">
+@section('title', 'Return Claims - Ferosa Admin')
+@section('admin-section', 'returns')
+@section('skip-label', 'Skip to return claims')
+@section('header-eyebrow', 'Ordering & delivery')
+@section('header-title', 'Return & replacement claims')
+
+@section('content')
     <form method="GET" class="mb-5 flex flex-wrap items-end gap-3 rounded-xl border border-surface-200 bg-white p-4">
       <label class="text-sm font-semibold">Status
         <select name="status" class="mt-1 block rounded-lg border-surface-300 text-sm">
@@ -58,6 +43,4 @@
       </div>
     </section>
     <div class="mt-5">{{ $claims->links() }}</div>
-  </main>
-</body>
-</html>
+@endsection

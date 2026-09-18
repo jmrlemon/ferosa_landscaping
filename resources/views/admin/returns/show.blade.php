@@ -1,31 +1,19 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  @include('partials.favicon')
-  <meta name="csrf-token" content="{{ csrf_token() }}">
-  <title>{{ $claim->claim_number }} - Ferosa Landscaping</title>
-  <link rel="stylesheet" href="{{ asset('fonts/ferosa-fonts.css') }}">
-  @vite(['resources/css/app.css', 'resources/js/app.js'])
-  @include('admin.partials.premium-theme')
-</head>
-<body class="min-h-screen bg-surface-100 font-sans text-surface-900 antialiased">
-  <a href="#admin-main" class="skip-link">Skip to claim</a>
-  <header class="border-b border-surface-200 bg-white px-5 py-4">
-    <div class="mx-auto flex max-w-7xl items-center justify-between gap-4">
-      <div>
-        <p class="text-xs font-bold uppercase tracking-widest text-brand-700">Return claim</p>
-        <div class="flex flex-wrap items-center gap-3">
-          <h1 class="text-2xl font-bold text-brand-950">{{ $claim->claim_number }}</h1>
-          <span class="badge badge-neutral">{{ ucfirst(str_replace('_', ' ', $claim->status)) }}</span>
-        </div>
-      </div>
-      <a href="{{ route('admin.returns.index') }}" class="rounded-lg border border-surface-300 px-4 py-2 text-sm font-semibold hover:bg-surface-50">&larr; Claims queue</a>
-    </div>
-  </header>
+@extends('admin.layouts.workspace')
 
-  <main id="admin-main" tabindex="-1" class="mx-auto max-w-7xl p-5">
+@section('title', $claim->claim_number . ' - Ferosa Admin')
+@section('admin-section', 'returns')
+@section('skip-label', 'Skip to return claim')
+@section('header-eyebrow', 'Ordering & delivery')
+@section('header-title', 'Return claim review')
+
+@section('content')
+    <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div class="flex flex-wrap items-center gap-3">
+        <h2 class="text-2xl font-bold text-brand-950">{{ $claim->claim_number }}</h2>
+        <span class="badge badge-neutral">{{ ucfirst(str_replace('_', ' ', $claim->status)) }}</span>
+      </div>
+      <a href="{{ route('admin.returns.index') }}" class="inline-flex min-h-11 items-center justify-center rounded-lg border border-surface-300 bg-white px-4 py-2 text-sm font-semibold hover:bg-surface-50">&larr; Claims queue</a>
+    </div>
     @if(session('status'))<div class="mb-5 rounded-lg border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-800">{{ session('status') }}</div>@endif
     @if($errors->any())
       <div class="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800"><p class="font-bold">Please correct the following:</p><ul class="mt-2 list-disc pl-5">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
@@ -203,6 +191,4 @@
         @endif
       </aside>
     </div>
-  </main>
-</body>
-</html>
+@endsection
