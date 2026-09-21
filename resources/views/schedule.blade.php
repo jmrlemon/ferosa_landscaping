@@ -37,7 +37,7 @@
     title="{{ $rescheduling ? 'Reschedule your visit' : 'Schedule a service' }}"
     sub="{{ $rescheduling
       ? 'Pick a new date and time. The service and starting fee stay the same.'
-      : 'Your estimate is ready. Pick a date and time for the consultation.' }}">
+      : ($estimate ? 'Your estimate is ready. Pick a date and time for the consultation.' : 'Complete a cost estimate first, then choose a date and time for your consultation.') }}">
     <x-slot:icon>
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18M12 14v4M10 16h4"/>
@@ -45,7 +45,39 @@
     </x-slot:icon>
   </x-page-head>
 
-  {{-- Booking progress. The steps are driven by what the customer has actually
+  @if (! $rescheduling && ! $estimate)
+    <section class="customer-card reveal reveal-1 overflow-hidden" role="region" aria-labelledby="schedule-estimator-gate-title">
+      <div class="grid gap-6 p-6 sm:p-8 md:grid-cols-[auto_1fr] md:items-center">
+        <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 text-brand-700" aria-hidden="true">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h2m4 0h2M8 15h2m4 0h2M8 19h8"/>
+          </svg>
+        </div>
+        <div>
+          <p class="text-[10px] font-bold uppercase tracking-[.15em] text-brand-600">Step 1 of 2</p>
+          <h2 id="schedule-estimator-gate-title" class="mt-2 font-display text-2xl font-bold text-surface-900">Start with a cost estimate</h2>
+          <p class="mt-2 max-w-2xl text-sm leading-6 text-surface-600">
+            Scheduling uses your project details to prepare the right consultation. Complete the cost estimator first, then select <span class="font-semibold text-brand-800">Book Consultation</span> to bring your estimate here.
+          </p>
+          <div class="mt-5 flex flex-wrap items-center gap-3">
+            <a href="{{ route('estimator') }}" class="customer-action min-h-[46px] bg-brand-700 px-5 py-3 text-sm font-bold text-white shadow-soft hover:bg-brand-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
+              Go to Cost Estimator
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </a>
+            <span class="text-xs text-surface-400">Your estimate will stay connected to the booking.</span>
+          </div>
+        </div>
+      </div>
+      <div class="border-t border-brand-100 bg-brand-50/60 px-6 py-4 sm:px-8">
+        <ol class="grid gap-3 text-xs text-brand-900 sm:grid-cols-3">
+          <li class="flex items-center gap-2"><span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-700 text-[10px] font-bold text-white">1</span>Build your estimate</li>
+          <li class="flex items-center gap-2"><span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-100 text-[10px] font-bold text-brand-700">2</span>Book the consultation</li>
+          <li class="flex items-center gap-2"><span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-100 text-[10px] font-bold text-brand-700">3</span>Choose your date and time</li>
+        </ol>
+      </div>
+    </section>
+  @else
+    {{-- Booking progress. The steps are driven by what the customer has actually
        chosen (see updateStepper below); a strip that always highlighted step 1
        told them nothing about where they were. --}}
   <section class="mb-6 overflow-hidden rounded-2xl border border-brand-100 bg-white reveal reveal-1" aria-label="Booking progress">
@@ -281,6 +313,7 @@
     </div>
     <p class="mt-4 text-xs leading-5 text-brand-800/75">The displayed fee is a starting amount. Final scope and cost may be confirmed after Ferosa reviews your space and requirements.</p>
   </section>
+  @endif
 
 </main>
 
@@ -288,6 +321,7 @@
 @endsection
 
 @section('scripts')
+@if ($rescheduling || $estimate)
 <script>
   const SCHEDULE_AVAILABILITY_URL = @json(route('schedule.availability'));
   // Declared here rather than beside IS_RESCHEDULING further down: the first
@@ -620,4 +654,5 @@
     updateStepper();
   });
 </script>
+@endif
 @endsection

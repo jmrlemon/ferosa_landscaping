@@ -626,25 +626,23 @@ class PageController extends Controller
 
         if (! $rescheduling) {
             $draft = $estimator->current($request);
-            if (! $draft) {
-                return redirect()->route('estimator')->with('estimator_guidance', true);
+            if ($draft) {
+                $bookingService = ServiceType::query()
+                    ->whereKey($draft['service_type_id'])
+                    ->where('is_active', true)
+                    ->whereNull('archived_at')
+                    ->first();
+
+                if (! $bookingService) {
+                    $estimator->forget($request);
+
+                    return redirect()->route('estimator')->withErrors([
+                        'project_type' => 'That consultation service is no longer available. Please prepare a new estimate.',
+                    ]);
+                }
+
+                $estimate = $draft['snapshot'];
             }
-
-            $bookingService = ServiceType::query()
-                ->whereKey($draft['service_type_id'])
-                ->where('is_active', true)
-                ->whereNull('archived_at')
-                ->first();
-
-            if (! $bookingService) {
-                $estimator->forget($request);
-
-                return redirect()->route('estimator')->withErrors([
-                    'project_type' => 'That consultation service is no longer available. Please prepare a new estimate.',
-                ]);
-            }
-
-            $estimate = $draft['snapshot'];
         }
 
         // The one-active-booking limit does not apply while moving that very
