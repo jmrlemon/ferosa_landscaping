@@ -195,10 +195,8 @@ Route::middleware('auth')->group(function () {
         // Billing: the payment ledger behind every invoice.
         Route::post('/orders/{order}/payments', [BillingController::class, 'storeOrderPayment'])->name('orders.payments.store');
         Route::post('/appointments/{appointment}/payments', [BillingController::class, 'storeAppointmentPayment'])->name('appointments.payments.store');
-        Route::put('/payments/{payment}/void', [BillingController::class, 'voidPayment'])->name('payments.void');
         Route::put('/returns/{returnRequest}/decision', [AdminReturnRequestController::class, 'decision'])->name('returns.decision');
         Route::post('/returns/{returnRequest}/refunds', [AdminReturnRequestController::class, 'refund'])->name('returns.refunds.store');
-        Route::put('/returns/{returnRequest}/refunds/{refund}/void', [AdminReturnRequestController::class, 'voidRefund'])->name('returns.refunds.void');
         Route::post('/returns/{returnRequest}/items/{item}/restock', [AdminReturnRequestController::class, 'restock'])->name('returns.items.restock');
 
         // Inventory: manual stock movements and history.

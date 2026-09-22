@@ -202,7 +202,7 @@ class AdminReturnRequestTest extends TestCase
         $this->assertNotNull($claim->replacement_delivered_at);
     }
 
-    public function test_admin_can_void_a_refund_without_deleting_ledger_history(): void
+    public function test_refund_void_endpoint_is_removed_and_legacy_refund_history_is_retained(): void
     {
         [$claim, $claimItem, , $order] = $this->claim(itemPrice: 500);
         $admin = User::factory()->create(['role' => 'admin']);
@@ -222,16 +222,28 @@ class AdminReturnRequestTest extends TestCase
             'method' => 'cash',
             'refunded_at' => now(),
             'processed_by' => $admin->id,
+            'voided_at' => now(),
+            'voided_by' => $admin->id,
+            'void_reason' => 'Previous correction retained in history.',
         ]);
         $order->update(['payment_status' => 'refunded']);
 
-        $this->actingAs($admin)->put(route('admin.returns.refunds.void', [$claim, $refund]), [
-            'void_reason' => 'Cash handover was entered against the wrong claim.',
-        ])->assertRedirect(route('admin.returns.show', $claim));
+        $this->actingAs($admin)->put('/admin/returns/'.$claim->id.'/refunds/'.$refund->id.'/void', [
+            'void_reason' => 'A second correction attempt.',
+        ])->assertNotFound();
 
-        $this->assertNotNull($refund->refresh()->voided_at);
-        $this->assertDatabaseHas('refunds', ['id' => $refund->id]);
-        $this->assertSame('partial', $order->refresh()->payment_status);
+        $this->assertDatabaseHas('refunds', [
+            'id' => $refund->id,
+            'void_reason' => 'Previous correction retained in history.',
+        ]);
+        $this->assertSame(0, $order->activeRefunds()->count());
+
+        $this->actingAs($admin)
+            ->get(route('admin.returns.show', $claim))
+            ->assertOk()
+            ->assertSee('Voided: Previous correction retained in history.')
+            ->assertDontSee('Reason for correction')
+            ->assertDontSee('>Void</button>', false);
     }
 
     public function test_returned_item_is_restocked_only_by_explicit_admin_action_once(): void

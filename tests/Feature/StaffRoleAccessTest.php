@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\Appointment;
 use App\Models\Order;
-use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ServiceType;
 use App\Models\User;
@@ -260,13 +259,6 @@ class StaffRoleAccessTest extends TestCase
         $service = $this->service();
         $appointment = $this->appointmentFor($customer);
         $order = $this->orderFor($customer);
-        $payment = Payment::query()->create([
-            'payable_type' => Order::class,
-            'payable_id' => $order->id,
-            'amount' => 100,
-            'method' => 'cash',
-            'paid_at' => now(),
-        ]);
 
         $forbidden = [
             'archived tab' => fn () => $this->get(route('admin.dashboard', ['tab' => 'archived'])),
@@ -305,7 +297,6 @@ class StaffRoleAccessTest extends TestCase
             'order restore' => fn () => $this->put(route('admin.orders.restore', $order)),
             'bulk order status' => fn () => $this->post(route('admin.orders.bulk-status')),
             'order payment' => fn () => $this->post(route('admin.orders.payments.store', $order)),
-            'void payment' => fn () => $this->put(route('admin.payments.void', $payment)),
         ];
 
         $this->actingAs($staff);

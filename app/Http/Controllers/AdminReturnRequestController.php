@@ -233,27 +233,6 @@ class AdminReturnRequestController extends Controller
         return redirect()->route('admin.returns.show', $returnRequest)->with('status', 'Inspected item returned to saleable stock.');
     }
 
-    public function voidRefund(
-        Request $request,
-        ReturnRequest $returnRequest,
-        Refund $refund,
-        ReturnResolutionService $returns,
-    ): RedirectResponse {
-        $data = $request->validate([
-            'void_reason' => ['required', 'string', 'min:10', 'max:500'],
-        ]);
-        /** @var User $admin */
-        $admin = $request->user();
-        $before = Audit::snapshot($refund, ['voided_at', 'voided_by', 'void_reason']);
-        $returns->voidRefund($returnRequest, $refund, $admin, $data['void_reason']);
-        $refund->refresh();
-        Audit::log($request, 'return_request.refund.void', $refund, $before, Audit::snapshot($refund, [
-            'voided_at', 'voided_by', 'void_reason',
-        ]));
-
-        return redirect()->route('admin.returns.show', $returnRequest)->with('status', 'Refund entry voided; its audit history was preserved.');
-    }
-
     private function assertAccessible(ReturnRequest $claim): void
     {
         $claim->loadMissing('order');

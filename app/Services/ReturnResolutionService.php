@@ -227,12 +227,6 @@ class ReturnResolutionService
         return $refund;
     }
 
-    public function voidRefund(ReturnRequest $claim, Refund $refund, User $admin, string $reason): void
-    {
-        abort_unless((int) $refund->return_request_id === (int) $claim->id, 404);
-        $this->billing->voidRefund($claim->order, $refund, $admin->id, $reason);
-    }
-
     public function restock(ReturnRequestItem $item, User $admin, int $quantity): ReturnRequestItem
     {
         return DB::transaction(function () use ($item, $admin, $quantity): ReturnRequestItem {

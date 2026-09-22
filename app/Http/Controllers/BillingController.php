@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Appointment;
 use App\Models\Order;
 use App\Models\Payment;
-use App\Notifications\PaymentVoided;
 use App\Services\BillingService;
 use App\Support\Audit;
 use Illuminate\Contracts\View\View;
@@ -17,7 +16,7 @@ use Illuminate\Validation\Rule;
  * Invoices and the payment ledger.
  *
  * Invoice views are readable by the customer who owns the record and by staff.
- * Recording and voiding payments is admin-only, matching the billing tab.
+ * Recording payments is admin-only, matching the billing tab.
  */
 class BillingController extends Controller
 {
@@ -49,45 +48,6 @@ class BillingController extends Controller
     public function storeAppointmentPayment(Request $request, Appointment $appointment): RedirectResponse
     {
         return $this->storePayment($request, $appointment, route('admin.appointments.show', $appointment));
-    }
-
-    public function voidPayment(Request $request, Payment $payment): RedirectResponse
-    {
-        $data = $request->validate([
-            'void_reason' => ['required', 'string', 'max:255'],
-        ]);
-
-        $payable = $payment->payable;
-
-        if (! $payable instanceof Order && ! $payable instanceof Appointment) {
-            abort(404);
-        }
-
-        if ($payment->isVoided()) {
-            return back()->withErrors(['void_reason' => 'This payment has already been voided.']);
-        }
-
-        $before = Audit::snapshot($payment, ['amount', 'method', 'voided_at', 'void_reason']);
-
-        $this->billing->void($payable, $payment, $request->user()->id, $data['void_reason']);
-
-        $payment->refresh();
-        Audit::log($request, 'payment.void', $payment, $before, Audit::snapshot($payment, ['amount', 'method', 'voided_at', 'void_reason']));
-
-        $notificationQueued = true;
-
-        try {
-            $payable->user->notify(new PaymentVoided($payment));
-        } catch (\Throwable $exception) {
-            $notificationQueued = false;
-            report($exception);
-        }
-
-        $message = $notificationQueued
-            ? 'Payment voided. The history was retained, the balance was recalculated, and the customer notification was queued.'
-            : 'Payment voided and history retained, but the customer notification could not be queued. Please contact the customer directly.';
-
-        return back()->with('status', $message);
     }
 
     /**

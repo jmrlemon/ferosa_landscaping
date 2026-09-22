@@ -45,28 +45,6 @@ class BillingService
     }
 
     /**
-     * Void a payment recorded in error. The row survives; it stops counting.
-     *
-     * @param  Order|Appointment  $payable
-     */
-    public function void(Model $payable, Payment $payment, ?int $userId, ?string $reason): void
-    {
-        DB::transaction(function () use ($payable, $payment, $userId, $reason): void {
-            if ($payment->isVoided()) {
-                return;
-            }
-
-            $payment->update([
-                'voided_at' => now(),
-                'voided_by' => $userId,
-                'void_reason' => $reason,
-            ]);
-
-            $this->syncPaymentStatus($payable);
-        }, 3);
-    }
-
-    /**
      * Total billed for the record - the figure the invoice is drawn against.
      *
      * @param  Order|Appointment  $payable
@@ -156,41 +134,6 @@ class BillingService
             }
 
             return $refund;
-        }, 3);
-    }
-
-    public function voidRefund(
-        Order $order,
-        Refund $refund,
-        ?int $userId,
-        string $reason,
-    ): void {
-        DB::transaction(function () use ($order, $refund, $userId, $reason): void {
-            /** @var Order $lockedOrder */
-            $lockedOrder = Order::query()->lockForUpdate()->findOrFail($order->id);
-            /** @var Refund $lockedRefund */
-            $lockedRefund = Refund::query()->lockForUpdate()->findOrFail($refund->id);
-            abort_unless((int) $lockedRefund->order_id === (int) $lockedOrder->id, 422);
-            if ($lockedRefund->isVoided()) {
-                return;
-            }
-
-            $lockedRefund->update([
-                'voided_at' => now(),
-                'voided_by' => $userId,
-                'void_reason' => $reason,
-            ]);
-
-            if ($lockedOrder->payment_status === 'refunded') {
-                $paid = $this->totalPaid($lockedOrder);
-                $billed = $this->totalBilled($lockedOrder);
-                $status = match (true) {
-                    $paid <= 0 => 'unpaid',
-                    $billed > 0 && $paid >= $billed => 'paid',
-                    default => 'partial',
-                };
-                $lockedOrder->forceFill(['payment_status' => $status])->save();
-            }
         }, 3);
     }
 

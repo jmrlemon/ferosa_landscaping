@@ -127,12 +127,6 @@
                   <p class="{{ $refund->isVoided() ? 'line-through text-surface-400' : '' }}">₱{{ number_format((float)$refund->amount, 2) }} via {{ $refund->methodLabel() }} · {{ optional($refund->refunded_at)->format('M d, Y') }}</p>
                   @if($refund->isVoided())
                     <p class="mt-1 text-red-700">Voided: {{ $refund->void_reason }}</p>
-                  @elseif($isAdmin)
-                    <form method="POST" action="{{ route('admin.returns.refunds.void', [$claim, $refund]) }}" class="mt-2 flex flex-wrap gap-2">
-                      @csrf @method('PUT')
-                      <input name="void_reason" required minlength="10" maxlength="500" placeholder="Reason for correction" class="min-w-0 flex-1 rounded-lg border-surface-300 text-xs">
-                      <button class="rounded-lg border border-red-200 px-2 py-1 font-bold text-red-700">Void</button>
-                    </form>
                   @endif
                 </div>
               @endforeach

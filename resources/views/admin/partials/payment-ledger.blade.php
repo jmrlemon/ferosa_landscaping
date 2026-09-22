@@ -57,7 +57,6 @@
             <th class="py-2 pr-3 font-semibold">Method</th>
             <th class="py-2 pr-3 font-semibold">Reference</th>
             <th class="py-2 pr-3 text-right font-semibold">Amount</th>
-            @if($isAdmin)<th class="py-2 text-right font-semibold">Action</th>@endif
           </tr>
         </thead>
         <tbody class="divide-y divide-surface-50">
@@ -85,26 +84,6 @@
               </td>
               <td class="py-2.5 pr-3 font-mono text-[11px] text-surface-500">{{ $payment->reference ?: '—' }}</td>
               <td @class(['whitespace-nowrap py-2.5 pr-3 text-right font-bold', 'text-surface-900' => ! $payment->isVoided(), 'text-surface-400 line-through' => $payment->isVoided()])>PHP {{ number_format((float) $payment->amount, 2) }}</td>
-              @if($isAdmin)
-                <td class="py-2.5 text-right">
-                  @if($payment->isVoided())
-                    <span class="text-[11px] font-medium text-surface-400">History retained</span>
-                  @else
-                    <details class="inline-block text-left">
-                      <summary class="cursor-pointer list-none rounded border border-red-200 px-2 py-1 text-[11px] font-semibold text-red-600 hover:bg-red-50">Void</summary>
-                      <form method="POST" action="{{ route('admin.payments.void', $payment) }}" class="mt-2 w-56 rounded-lg border border-surface-200 bg-white p-2 shadow-sm">
-                        @csrf @method('PUT')
-                        <input type="text" name="void_reason" required maxlength="255" placeholder="Reason for voiding"
-                               aria-label="Reason for voiding this payment"
-                               class="w-full rounded border border-surface-200 px-2 py-1 text-[11px] outline-none focus:border-red-400">
-                        <button type="submit" class="mt-1.5 w-full rounded bg-red-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-red-700">
-                          Void this payment
-                        </button>
-                      </form>
-                    </details>
-                  @endif
-                </td>
-              @endif
             </tr>
           @endforeach
         </tbody>
