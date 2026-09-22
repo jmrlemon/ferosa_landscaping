@@ -657,7 +657,7 @@ class PageController extends Controller
         ]);
     }
 
-    public function prepareEstimate(Request $request, EstimatorQuoteService $estimator): RedirectResponse
+    public function prepareEstimate(Request $request, EstimatorQuoteService $estimator): JsonResponse|RedirectResponse
     {
         $projectTypes = array_keys((array) config('estimator.project_types', []));
         $tiers = array_keys((array) config('estimator.tiers', []));
@@ -677,6 +677,10 @@ class PageController extends Controller
         ]);
 
         $request->session()->put(EstimatorQuoteService::SESSION_KEY, $estimator->prepare($data));
+
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true]);
+        }
 
         return redirect()->route('schedule');
     }

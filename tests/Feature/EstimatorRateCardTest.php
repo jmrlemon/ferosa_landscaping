@@ -35,6 +35,7 @@ class EstimatorRateCardTest extends TestCase
                 'tiers',
                 'addons',
                 'quick_sizes',
+                'estimate_products',
                 'range' => ['low', 'high'],
                 'defaults' => ['project_type', 'tier', 'size'],
             ]);
@@ -53,14 +54,14 @@ class EstimatorRateCardTest extends TestCase
         );
     }
 
-    public function test_the_rate_card_is_served_to_the_app_exactly_as_configured(): void
+    public function test_the_rate_card_is_served_as_configured_with_an_empty_product_catalog(): void
     {
         $customer = User::factory()->create(['role' => 'user']);
 
         $this->actingAs($customer)
             ->getJson('/api/mobile/estimator-rates')
             ->assertOk()
-            ->assertExactJson(config('estimator'));
+            ->assertExactJson(array_merge(config('estimator'), ['estimate_products' => []]));
     }
 
     public function test_the_web_estimator_renders_rates_from_the_config(): void

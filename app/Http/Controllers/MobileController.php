@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Product;
 use App\Services\CustomerSummaryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -33,6 +34,24 @@ class MobileController extends Controller
      */
     public function estimatorRates(): JsonResponse
     {
-        return response()->json(config('estimator'));
+        $rateCard = (array) config('estimator');
+        $rateCard['estimate_products'] = Product::query()
+            ->where('is_active', true)
+            ->whereNull('archived_at')
+            ->where('stock_qty', '>', 0)
+            ->orderBy('category')
+            ->orderBy('name')
+            ->take(12)
+            ->get(['id', 'name', 'category', 'price', 'stock_qty'])
+            ->map(fn (Product $product): array => [
+                'id' => (int) $product->id,
+                'name' => $product->name,
+                'category' => $product->category,
+                'price' => (float) $product->price,
+                'stock_qty' => (int) $product->stock_qty,
+            ])
+            ->all();
+
+        return response()->json($rateCard);
     }
 }
