@@ -1927,6 +1927,14 @@ class AdminController extends Controller
                 : back()->withErrors(['status' => $message]);
         }
 
+        if ($data['status'] === 'completed' && $paymentStatus !== 'paid') {
+            $message = 'Payment must be marked paid before this appointment can be completed.';
+
+            return $request->expectsJson()
+                ? response()->json(['message' => $message, 'errors' => ['payment_status' => [$message]]], 422)
+                : back()->withErrors(['payment_status' => $message]);
+        }
+
         $updates = [
             'status' => $data['status'],
             'slot_key' => in_array($data['status'], ['scheduled', 'confirmed'], true)
@@ -1954,6 +1962,14 @@ class AdminController extends Controller
         DB::transaction(function () use ($appointment, $updates, $data): void {
             $lockedAppointment = Appointment::query()->lockForUpdate()->findOrFail($appointment->id);
             abort_unless($lockedAppointment->canTransitionTo($data['status']), 422, 'Appointment status changed. Refresh and try again.');
+
+            $effectivePaymentStatus = $updates['payment_status'] ?? ($lockedAppointment->payment_status ?? 'unpaid');
+            if ($data['status'] === 'completed' && $effectivePaymentStatus !== 'paid') {
+                throw ValidationException::withMessages([
+                    'payment_status' => 'Payment must be marked paid before this appointment can be completed.',
+                ]);
+            }
+
             $lockedAppointment->update($updates);
         }, 3);
 

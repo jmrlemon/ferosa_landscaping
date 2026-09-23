@@ -70,7 +70,7 @@ class StaffRoleAccessTest extends TestCase
         ]);
     }
 
-    public function test_staff_can_complete_appointments_without_touching_payment_state(): void
+    public function test_staff_can_complete_only_paid_appointments_without_changing_payment_state(): void
     {
         Notification::fake();
         $staff = $this->staff();
@@ -82,12 +82,22 @@ class StaffRoleAccessTest extends TestCase
 
         $this->actingAs($staff)
             ->put(route('admin.appointments.status', $appointment), ['status' => 'completed'])
+            ->assertSessionHasErrors('payment_status');
+
+        $appointment->refresh();
+        $this->assertSame('confirmed', $appointment->status);
+        $this->assertSame('unpaid', $appointment->payment_status);
+        $this->assertDatabaseCount('payments', 0);
+
+        $appointment->forceFill(['payment_status' => 'paid'])->save();
+
+        $this->actingAs($staff)
+            ->put(route('admin.appointments.status', $appointment), ['status' => 'completed'])
             ->assertSessionHasNoErrors();
 
         $appointment->refresh();
         $this->assertSame('completed', $appointment->status);
-        $this->assertSame('unpaid', $appointment->payment_status);
-        $this->assertDatabaseCount('payments', 0);
+        $this->assertSame('paid', $appointment->payment_status);
     }
 
     public function test_staff_can_cancel_an_appointment_without_creating_a_financial_entry(): void

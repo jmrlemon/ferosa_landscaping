@@ -189,6 +189,39 @@ class AdminMutationTest extends TestCase
         $this->assertSame('cancelled', $cancelled->refresh()->status);
     }
 
+    public function test_a_confirmed_appointment_cannot_move_back_to_scheduled(): void
+    {
+        Notification::fake();
+        $admin = $this->admin();
+        $appointment = $this->appointmentFor($this->customer(), 'confirmed');
+
+        $this->actingAs($admin)
+            ->put(route('admin.appointments.status', $appointment), [
+                'status' => 'scheduled',
+                'payment_status' => 'unpaid',
+            ])
+            ->assertSessionHasErrors('status');
+
+        $this->assertSame('confirmed', $appointment->refresh()->status);
+    }
+
+    public function test_an_unpaid_appointment_cannot_be_completed(): void
+    {
+        Notification::fake();
+        $admin = $this->admin();
+        $appointment = $this->appointmentFor($this->customer(), 'confirmed');
+
+        $this->actingAs($admin)
+            ->put(route('admin.appointments.status', $appointment), [
+                'status' => 'completed',
+                'payment_status' => 'unpaid',
+            ])
+            ->assertSessionHasErrors('payment_status');
+
+        $this->assertSame('confirmed', $appointment->refresh()->status);
+        $this->assertSame('unpaid', $appointment->payment_status);
+    }
+
     public function test_archiving_a_visit_hides_it_without_destroying_it_and_restore_brings_it_back(): void
     {
         $admin = $this->admin();

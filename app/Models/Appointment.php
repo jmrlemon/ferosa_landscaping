@@ -22,16 +22,10 @@ class Appointment extends Model
 {
     use Concerns\HasPayments;
 
-    /**
-     * Staff can reopen a confirmed appointment when the workflow requires it.
-     * Customer rescheduling has its own stricter rule below and stops as soon
-     * as the team confirms the booking.
-     *
-     * @var array<string, list<string>>
-     */
+    /** @var array<string, list<string>> */
     public const STATUS_TRANSITIONS = [
         'scheduled' => ['confirmed', 'cancelled'],
-        'confirmed' => ['scheduled', 'completed', 'cancelled'],
+        'confirmed' => ['completed', 'cancelled'],
         'completed' => [],
         'cancelled' => [],
     ];
