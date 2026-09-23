@@ -969,14 +969,13 @@
                         @method('PUT')
                         <div class="flex flex-col gap-1 min-w-[90px]">
                           @php
-                            $appointmentStatuses = $isAdmin
-                              ? ['scheduled', 'confirmed', 'completed', 'cancelled']
-                              : array_values(array_unique([$appt->status, ...($appt::STATUS_TRANSITIONS[$appt->status] ?? [])]));
+                            $appointmentStatuses = array_values(array_unique([$appt->status, ...($appt::STATUS_TRANSITIONS[$appt->status] ?? [])]));
                             $hasAppointmentTransition = count($appointmentStatuses) > 1;
+                            $appointmentPaymentStatus = $appt->payment_status ?? 'unpaid';
                           @endphp
                           <select aria-label="Change status for appointment {{ $appt->id }}" name="status" class="border border-surface-200 rounded px-2 py-0.5 text-[10px] text-surface-600 outline-none focus:border-brand-500 w-full" {{ $isAdmin || $hasAppointmentTransition ? '' : 'disabled' }}>
                             @foreach ($appointmentStatuses as $st)
-                              <option value="{{ $st }}" {{ $appt->status === $st ? 'selected' : '' }}>{{ ucfirst($st) }}</option>
+                              <option value="{{ $st }}" @if($st === 'completed') @disabled($appointmentPaymentStatus !== 'paid' && $appt->status !== 'completed') @endif {{ $appt->status === $st ? 'selected' : '' }}>{{ ucfirst($st) }}</option>
                             @endforeach
                           </select>
                           @if($isAdmin)

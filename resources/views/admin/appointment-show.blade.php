@@ -21,10 +21,18 @@
   };
   $amount = (float) ($appointment->appointment_amount ?? $appointment->serviceType->default_fee ?? 0);
   $isAdmin = (bool) ($isAdmin ?? auth()->user()?->isAdmin());
-  $availableStatuses = $isAdmin
-    ? ['scheduled', 'confirmed', 'completed', 'cancelled']
-    : array_values(array_unique([$appointment->status, ...($appointment::STATUS_TRANSITIONS[$appointment->status] ?? [])]));
+  $availableStatuses = array_values(array_unique([$appointment->status, ...($appointment::STATUS_TRANSITIONS[$appointment->status] ?? [])]));
   $hasOperationalTransition = count($availableStatuses) > 1;
+  $selectedPaymentStatus = $isAdmin
+    ? old('payment_status', $appointment->payment_status ?? 'unpaid')
+    : ($appointment->payment_status ?? 'unpaid');
+  $requestedStatus = old('status');
+  $selectedStatus = is_string($requestedStatus) && in_array($requestedStatus, $availableStatuses, true)
+    ? $requestedStatus
+    : $appointment->status;
+  if ($selectedStatus === 'completed' && $selectedPaymentStatus !== 'paid' && $appointment->status !== 'completed') {
+    $selectedStatus = $appointment->status;
+  }
   $closedStatusLabel = $appointment->status === 'cancelled' ? 'cancelled' : 'complete';
 @endphp
 <body class="min-h-screen bg-surface-100 font-sans text-surface-900 antialiased">
@@ -194,17 +202,20 @@
             @csrf @method('PUT')
             <input type="hidden" name="redirect_to" value="show">
             <label class="block text-sm font-medium">Status
-              <select name="status" class="mt-2 h-10 w-full rounded-lg border border-surface-200 px-3 outline-none focus:border-brand-600" {{ $isAdmin || $hasOperationalTransition ? '' : 'disabled' }}>
+              <select id="appointment-status-select" name="status" data-current-status="{{ $appointment->status }}" data-payment-status="{{ $selectedPaymentStatus }}" @if(in_array('completed', $availableStatuses, true)) aria-describedby="appointment-completion-payment-notice" @endif class="mt-2 h-10 w-full rounded-lg border border-surface-200 px-3 outline-none focus:border-brand-600" {{ $isAdmin || $hasOperationalTransition ? '' : 'disabled' }}>
                 @foreach($availableStatuses as $status)
-                  <option value="{{ $status }}" {{ $appointment->status === $status ? 'selected' : '' }}>{{ ucfirst($status) }}</option>
+                  <option value="{{ $status }}" @if($status === 'completed') data-requires-paid @disabled($selectedPaymentStatus !== 'paid' && $appointment->status !== 'completed') @endif {{ $selectedStatus === $status ? 'selected' : '' }}>{{ ucfirst($status) }}</option>
                 @endforeach
               </select>
             </label>
+            @if(in_array('completed', $availableStatuses, true))
+              <p id="appointment-completion-payment-notice" role="status" class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800" @if($selectedPaymentStatus === 'paid' || $appointment->status === 'completed') hidden @endif>Payment must be marked Paid before this appointment can be completed. Record the payment first.</p>
+            @endif
             @if($isAdmin)
               <label class="block text-sm font-medium">Payment Status
-                <select name="payment_status" class="mt-2 h-10 w-full rounded-lg border border-surface-200 px-3 outline-none focus:border-brand-600">
-                  <option value="unpaid" {{ ($appointment->payment_status ?? 'unpaid') === 'unpaid' ? 'selected' : '' }}>Unpaid</option>
-                  <option value="paid" {{ ($appointment->payment_status ?? 'unpaid') === 'paid' ? 'selected' : '' }}>Paid</option>
+                <select name="payment_status" data-appointment-payment-status-select class="mt-2 h-10 w-full rounded-lg border border-surface-200 px-3 outline-none focus:border-brand-600">
+                  <option value="unpaid" {{ $selectedPaymentStatus === 'unpaid' ? 'selected' : '' }}>Unpaid</option>
+                  <option value="paid" {{ $selectedPaymentStatus === 'paid' ? 'selected' : '' }}>Paid</option>
                 </select>
               </label>
             @else
@@ -293,6 +304,30 @@
       </aside>
     </div>
   </main>
+  <script>
+    const appointmentStatusSelect = document.getElementById('appointment-status-select');
+    const appointmentPaymentSelect = document.querySelector('[data-appointment-payment-status-select]');
+    const completedStatusOption = appointmentStatusSelect?.querySelector('option[value="completed"]');
+    const completionPaymentNotice = document.getElementById('appointment-completion-payment-notice');
+
+    function syncAppointmentCompletionGate() {
+      const paymentStatus = appointmentPaymentSelect?.value || appointmentStatusSelect?.dataset.paymentStatus || 'unpaid';
+      const isPaid = paymentStatus === 'paid';
+      const isAlreadyCompleted = appointmentStatusSelect?.dataset.currentStatus === 'completed';
+
+      if (completedStatusOption) completedStatusOption.disabled = !isPaid && !isAlreadyCompleted;
+      if (completionPaymentNotice) completionPaymentNotice.hidden = isPaid || isAlreadyCompleted;
+
+      if (!isPaid && appointmentStatusSelect?.value === 'completed' && !isAlreadyCompleted) {
+        appointmentStatusSelect.value = appointmentStatusSelect.dataset.currentStatus;
+      }
+    }
+
+    if (appointmentPaymentSelect) {
+      appointmentPaymentSelect.addEventListener('change', syncAppointmentCompletionGate);
+    }
+    syncAppointmentCompletionGate();
+  </script>
   @include('partials.confirm-dialog')
 </body>
 </html>
