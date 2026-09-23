@@ -154,7 +154,7 @@ class Appointment extends Model
     public function canTransitionTo(string $status): bool
     {
         return $status === $this->status
-            || in_array($status, self::STATUS_TRANSITIONS[$this->status] ?? [], true);
+            || in_array($status, self::STATUS_TRANSITIONS[$this->status], true);
     }
 
     protected function invoiceSeriesLetter(): string

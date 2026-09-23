@@ -88,10 +88,13 @@ class AppointmentStatusWorkflowTest extends TestCase
         $options = $xpath->query('//select[@id="appointment-status-select"]/option');
         $this->assertNotFalse($options);
 
-        return array_map(
-            static fn (DOMElement $option): string => $option->getAttribute('value'),
-            iterator_to_array($options)
-        );
+        $statuses = [];
+        foreach ($options as $option) {
+            $this->assertInstanceOf(DOMElement::class, $option);
+            $statuses[] = $option->getAttribute('value');
+        }
+
+        return $statuses;
     }
 
     private function statusOption(TestResponse $response, string $status): DOMElement
