@@ -435,6 +435,21 @@ class AdminReturnRequestTest extends TestCase
         $this->assertSame(4, $product->refresh()->stock_qty);
     }
 
+    public function test_return_detail_does_not_show_the_manual_restock_control(): void
+    {
+        [$claim, $claimItem] = $this->claim();
+        $admin = User::factory()->create(['role' => 'admin']);
+        $claim->update(['status' => 'approved', 'return_required' => true]);
+        $claimItem->update(['disposition' => 'awaiting_return']);
+
+        $this->actingAs($admin)
+            ->get(route('admin.returns.show', $claim))
+            ->assertOk()
+            ->assertDontSeeText('Inspected saleable quantity')
+            ->assertDontSeeText('Return to stock')
+            ->assertDontSee(route('admin.returns.items.restock', [$claim, $claimItem]), false);
+    }
+
     public function test_staff_cannot_resolve_before_replacement_delivery_or_approved_refund(): void
     {
         [$replacementClaim, $replacementItem] = $this->claim(stock: 3);

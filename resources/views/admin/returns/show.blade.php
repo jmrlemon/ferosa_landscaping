@@ -65,13 +65,6 @@
                     @if($item->decision_note)<p class="mt-1">{{ $item->decision_note }}</p>@endif
                   </div>
                 @endif
-                @if($isAdmin && $claim->return_required && $item->disposition !== 'restocked')
-                  <form method="POST" action="{{ route('admin.returns.items.restock', [$claim, $item]) }}" class="mt-3 flex flex-wrap items-end gap-2">
-                    @csrf
-                    <label class="text-xs font-semibold">Inspected saleable quantity<input name="quantity" type="number" min="1" max="{{ $item->quantity_claimed }}" value="1" class="mt-1 block w-28 rounded-lg border-surface-300"></label>
-                    <button class="rounded-lg border border-brand-300 px-3 py-2 text-xs font-bold text-brand-800">Return to stock</button>
-                  </form>
-                @endif
               </article>
             @endforeach
           </div>
