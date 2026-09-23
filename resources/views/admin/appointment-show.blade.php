@@ -235,8 +235,8 @@
               <p class="mt-1 text-xs text-surface-500">
                 Customers can move their own visit until it is
                 {{ \App\Models\Appointment::CHANGE_NOTICE_HOURS }} hours away. After that they are
-                told to message the team - this is how you do it for them. The same booking, its
-                fee and its scope all stay as they are.
+                told to message the team - this is how you do it for them. The same booking and
+                service fee stay as they are.
               </p>
             </div>
             <form method="POST" action="{{ route('admin.appointments.reschedule', $appointment) }}" class="space-y-4 p-5">
@@ -271,35 +271,6 @@
               <button class="w-full rounded-lg bg-brand-700 py-2.5 font-semibold text-white hover:bg-brand-800">Move Visit</button>
             </form>
           </section>
-          @if($isAdmin)
-          <section class="rounded-xl border border-surface-100 bg-white shadow-sm">
-            <div class="border-b border-surface-200 px-5 py-4">
-              <h3 class="font-semibold">Adjust Scope &amp; Cost</h3>
-              <p class="mt-1 text-xs text-surface-500">One visit, one slot. Add the extra work the customer asked for here rather than booking a second appointment.</p>
-            </div>
-            <form method="POST" action="{{ route('admin.appointments.scope', $appointment) }}" class="space-y-4 p-5">
-              @csrf @method('PUT')
-              <label class="block text-sm font-medium">Confirmed scope
-                <textarea name="scope_notes"
-                          rows="4"
-                          maxlength="1000"
-                          placeholder="e.g. Hardscaping (front walkway) + Lawn Care (front and side lawn)"
-                          class="mt-2 w-full rounded-lg border border-surface-200 p-3 text-sm outline-none focus:border-brand-600">{{ old('scope_notes', $appointment->scope_notes) }}</textarea>
-              </label>
-              <label class="block text-sm font-medium">Total service fee (PHP)
-                <input type="number"
-                       name="appointment_amount"
-                       step="0.01"
-                       min="0"
-                       required
-                       value="{{ old('appointment_amount', number_format($amount, 2, '.', '')) }}"
-                       class="mt-2 h-10 w-full rounded-lg border border-surface-200 px-3 outline-none focus:border-brand-600">
-              </label>
-              <p class="text-xs text-surface-500">Booking fee was PHP {{ number_format((float) ($appointment->serviceType->default_fee ?? 0), 2) }}. The customer is notified of the new total.</p>
-              <button class="w-full rounded-lg bg-brand-700 py-2.5 font-semibold text-white hover:bg-brand-800">Save Scope</button>
-            </form>
-          </section>
-          @endif
         @endif
       </aside>
     </div>

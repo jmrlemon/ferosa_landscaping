@@ -3,19 +3,15 @@
 namespace Tests\Feature;
 
 use App\Models\Appointment;
-use App\Models\Payment;
 use App\Models\ServiceType;
 use App\Models\User;
-use App\Notifications\AppointmentScopeUpdated;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 /**
- * A customer who wants two services on one date and time is asking for one
- * crew visit with two jobs in it, not two appointments. The booking stays a
- * single row; an administrator widens its scope and total afterwards.
+ * Appointment scope adjustments were removed. Existing scope notes remain
+ * readable as historical data, but no user can create or change them.
  */
 class AppointmentScopeTest extends TestCase
 {
@@ -49,30 +45,29 @@ class AppointmentScopeTest extends TestCase
         return [$admin, $customer, $service];
     }
 
-    public function test_an_admin_can_widen_the_scope_and_total_of_a_visit(): void
+    public function test_scope_and_cost_adjustment_is_not_available_to_admins(): void
     {
-        Notification::fake();
         [$admin, $customer, $service] = $this->seedActors();
         $appointment = $this->makeAppointment($customer, $service);
 
         $this->actingAs($admin)
-            ->put(route('admin.appointments.scope', $appointment), [
+            ->get(route('admin.appointments.show', $appointment))
+            ->assertOk()
+            ->assertDontSeeText('Adjust Scope & Cost')
+            ->assertDontSeeText('Save Scope');
+
+        $this->actingAs($admin)
+            ->put('/admin/appointments/'.$appointment->id.'/scope', [
                 'appointment_amount' => '3800.00',
                 'scope_notes' => 'Hardscaping (front walkway) + Lawn Care (front and side lawn)',
             ])
-            ->assertSessionHasNoErrors()
-            ->assertRedirect(route('admin.appointments.show', $appointment));
+            ->assertNotFound();
 
         $this->assertDatabaseHas('appointments', [
             'id' => $appointment->id,
-            'appointment_amount' => 3800,
-            'scope_notes' => 'Hardscaping (front walkway) + Lawn Care (front and side lawn)',
+            'appointment_amount' => 3000,
+            'scope_notes' => null,
         ]);
-
-        // Still one visit occupying one slot.
-        $this->assertSame(1, Appointment::query()->where('user_id', $customer->id)->count());
-
-        Notification::assertSentTo($customer, AppointmentScopeUpdated::class);
     }
 
     public function test_the_customer_sees_the_confirmed_scope(): void
@@ -87,52 +82,31 @@ class AppointmentScopeTest extends TestCase
             ->assertSee('Hardscaping + Lawn Care');
     }
 
-    public function test_scope_cannot_be_quoted_below_what_was_already_paid(): void
+    public function test_booking_page_does_not_promise_scope_or_cost_adjustments(): void
     {
-        [$admin, $customer, $service] = $this->seedActors();
-        $appointment = $this->makeAppointment($customer, $service);
-
-        Payment::query()->create([
-            'payable_type' => Appointment::class,
-            'payable_id' => $appointment->id,
-            'amount' => 3000,
-            'method' => 'cash',
-            'paid_at' => now(),
-            'recorded_by' => $admin->id,
+        [, $customer] = $this->seedActors();
+        ServiceType::query()->create([
+            'name' => 'Garden Design Consultation',
+            'default_fee' => 1500,
+            'is_active' => true,
         ]);
 
-        $this->actingAs($admin)
-            ->put(route('admin.appointments.scope', $appointment), [
-                'appointment_amount' => '500.00',
+        $this->actingAs($customer)
+            ->post(route('estimator.prepare'), [
+                'project_type' => 'design',
+                'size' => 100,
+                'tier' => 'standard',
+                'addons' => [],
+                'products' => [],
             ])
-            ->assertSessionHasErrors('appointment_amount');
-
-        $this->assertSame(3000.0, (float) $appointment->refresh()->appointment_amount);
-    }
-
-    public function test_scope_is_locked_once_the_visit_is_completed(): void
-    {
-        [$admin, $customer, $service] = $this->seedActors();
-        $appointment = $this->makeAppointment($customer, $service, 'completed');
-
-        $this->actingAs($admin)
-            ->put(route('admin.appointments.scope', $appointment), [
-                'appointment_amount' => '9000.00',
-            ])
-            ->assertSessionHasErrors('appointment_amount');
-
-        $this->assertSame(3000.0, (float) $appointment->refresh()->appointment_amount);
-    }
-
-    public function test_customers_cannot_adjust_their_own_scope(): void
-    {
-        [, $customer, $service] = $this->seedActors();
-        $appointment = $this->makeAppointment($customer, $service);
+            ->assertRedirect(route('schedule'));
 
         $this->actingAs($customer)
-            ->put(route('admin.appointments.scope', $appointment), [
-                'appointment_amount' => '0.00',
-            ])
-            ->assertForbidden();
+            ->get(route('schedule'))
+            ->assertOk()
+            ->assertSee('id="booking-form"', false)
+            ->assertDontSeeText('Need more than one service on this visit?')
+            ->assertDontSee('Also need lawn care on the same visit.', false)
+            ->assertDontSeeText('Final scope and cost may be confirmed after Ferosa reviews your space and requirements.');
     }
 }

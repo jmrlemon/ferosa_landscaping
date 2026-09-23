@@ -186,7 +186,6 @@ Route::middleware('auth')->group(function () {
         Route::delete('/services/{serviceType}', [AdminController::class, 'deleteService'])->name('services.delete');
         Route::put('/services/{serviceType}/restore', [AdminController::class, 'restoreService'])->name('services.restore');
 
-        Route::put('/appointments/{appointment}/scope', [AdminController::class, 'updateAppointmentScope'])->name('appointments.scope');
         Route::put('/appointments/{appointment}/archive', [AdminController::class, 'archiveAppointment'])->name('appointments.archive');
         Route::put('/appointments/{appointment}/restore', [AdminController::class, 'restoreAppointment'])->name('appointments.restore');
 

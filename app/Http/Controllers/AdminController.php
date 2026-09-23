@@ -18,7 +18,6 @@ use App\Models\ServiceType;
 use App\Models\StockMovement;
 use App\Models\User;
 use App\Notifications\AppointmentMovedByTeam;
-use App\Notifications\AppointmentScopeUpdated;
 use App\Notifications\AppointmentStatusChanged;
 use App\Notifications\OrderPaymentReviewed;
 use App\Notifications\OrderStatusChanged;
@@ -2024,81 +2023,6 @@ class AdminController extends Controller
 
         return redirect()->route('admin.dashboard', ['tab' => 'appointments'])
             ->with('status', $message);
-    }
-
-    /**
-     * Widen (or narrow) an existing visit instead of booking a second one.
-     *
-     * A customer who wants hardscaping *and* lawn care on the same slot is
-     * asking for one crew visit with two jobs in it. Booking that as two
-     * appointments would pass every existing guard -- `slot_key` is
-     * `service_type_id|datetime`, so two different services never collide --
-     * and would then burn two slots, raise two invoices and appear twice on
-     * the scheduler. The booking form promises the team confirms final scope
-     * and cost; this is the action that lets them actually do it.
-     */
-    public function updateAppointmentScope(Request $request, Appointment $appointment, BillingService $billing): RedirectResponse
-    {
-        $data = $request->validate([
-            'appointment_amount' => ['required', 'numeric', 'min:0', 'max:9999999.99'],
-            'scope_notes' => ['nullable', 'string', 'max:1000'],
-        ]);
-
-        // Scope is agreed before the crew rolls out. A completed or cancelled
-        // visit is history, and its invoice has already been settled against.
-        if (! in_array($appointment->status, ['scheduled', 'confirmed'], true)) {
-            return back()->withErrors([
-                'appointment_amount' => 'Scope can only be adjusted while the visit is still scheduled or confirmed.',
-            ]);
-        }
-
-        // BillingService clamps a negative balance to zero, so quoting below
-        // what the customer already handed over would silently swallow the
-        // difference instead of showing it as a refund owed.
-        $alreadyPaid = $billing->totalPaid($appointment);
-        if ((float) $data['appointment_amount'] < $alreadyPaid) {
-            return back()->withErrors([
-                'appointment_amount' => 'The customer has already paid PHP '.number_format($alreadyPaid, 2).'. Refund the difference before quoting less than that.',
-            ]);
-        }
-
-        $before = Audit::snapshot($appointment, ['appointment_amount', 'scope_notes', 'payment_status']);
-
-        DB::transaction(function () use ($appointment, $data): void {
-            $locked = Appointment::query()->lockForUpdate()->findOrFail($appointment->id);
-            abort_unless(
-                in_array($locked->status, ['scheduled', 'confirmed'], true),
-                422,
-                'Appointment status changed. Refresh and try again.'
-            );
-            $locked->update([
-                'appointment_amount' => $data['appointment_amount'],
-                'scope_notes' => $data['scope_notes'] ?? null,
-            ]);
-        }, 3);
-
-        // A wider scope reopens a balance that was previously settled, so the
-        // paid/partial/unpaid label has to be recomputed from the ledger.
-        $appointment->refresh();
-        $billing->syncPaymentStatus($appointment);
-
-        $appointment->refresh()->load(['user', 'serviceType']);
-        Audit::log(
-            $request,
-            'appointment.scope.update',
-            $appointment,
-            $before,
-            Audit::snapshot($appointment, ['appointment_amount', 'scope_notes', 'payment_status'])
-        );
-
-        try {
-            $appointment->user->notify(new AppointmentScopeUpdated($appointment));
-        } catch (\Throwable $e) {
-            report($e);
-        }
-
-        return redirect()->route('admin.appointments.show', $appointment)
-            ->with('status', 'Scope updated. The customer has been notified of the new total.');
     }
 
     /**

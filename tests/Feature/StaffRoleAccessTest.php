@@ -352,7 +352,6 @@ class StaffRoleAccessTest extends TestCase
             'business profile' => fn () => $this->get(route('admin.business-profile.edit')),
             'business profile update' => fn () => $this->put(route('admin.business-profile.update')),
             'user role' => fn () => $this->put(route('admin.users.role', $customer), ['role' => 'admin']),
-            'appointment scope' => fn () => $this->put(route('admin.appointments.scope', $appointment)),
             'appointment archive' => fn () => $this->put(route('admin.appointments.archive', $appointment)),
             'appointment restore' => fn () => $this->put(route('admin.appointments.restore', $appointment)),
             'appointment payment' => fn () => $this->post(route('admin.appointments.payments.store', $appointment)),

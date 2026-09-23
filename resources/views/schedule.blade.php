@@ -318,9 +318,9 @@
         {{-- Notes --}}
         <div class="customer-card p-5">
           <label for="notes-field" class="block text-sm font-bold text-surface-900 mb-1">Project notes <span class="font-normal text-surface-400">(optional)</span></label>
-          <p class="text-[11px] text-surface-400 mb-3">Tell us about your space, goals, or anything we should prepare for. <span class="font-semibold text-surface-500">Need more than one service on this visit?</span> Name the extras here - the team confirms the combined scope and total before your visit.</p>
+          <p class="text-[11px] text-surface-400 mb-3">Tell us about your space, goals, or anything the team should prepare for during this service visit.</p>
           <textarea id="notes-field"
-            placeholder="For example: front garden, partial shade, easy-care plants. Also need lawn care on the same visit."
+            placeholder="For example: front garden, partial shade, easy-care plants, or gate access instructions."
             class="w-full border border-surface-200 rounded-xl px-3.5 py-3 text-sm text-surface-700 outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-100 h-24 resize-none transition-colors"></textarea>
         </div>
 
@@ -356,7 +356,7 @@
         <div class="rounded-xl border border-brand-100 bg-white/80 p-4"><span class="flex h-7 w-7 items-center justify-center rounded-full bg-brand-700 text-[10px] font-bold text-white">{{ $number }}</span><h3 class="mt-3 text-sm font-bold text-brand-950">{{ $title }}</h3><p class="mt-1 text-xs leading-5 text-brand-800/70">{{ $copy }}</p></div>
       @endforeach
     </div>
-    <p class="mt-4 text-xs leading-5 text-brand-800/75">The displayed fee is a starting amount. Final scope and cost may be confirmed after Ferosa reviews your space and requirements.</p>
+    <p class="mt-4 text-xs leading-5 text-brand-800/75">The displayed consultation fee is the amount recorded for this booking.</p>
   </section>
   @endif
 
