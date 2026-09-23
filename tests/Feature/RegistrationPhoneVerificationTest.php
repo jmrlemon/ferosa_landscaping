@@ -20,7 +20,7 @@ class RegistrationPhoneVerificationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_new_customer_must_verify_the_textbee_otp_before_being_logged_in(): void
+    public function test_new_customer_remains_logged_out_after_successful_phone_verification(): void
     {
         $sms = new FakeSmsService(true);
         $this->app->instance(SmsService::class, $sms);
@@ -44,9 +44,13 @@ class RegistrationPhoneVerificationTest extends TestCase
 
         $this->postJson(route('register.verify'), ['otp' => $sentCode])
             ->assertOk()
-            ->assertJsonPath('redirectUrl', route('home'));
+            ->assertJsonPath('message', 'Your mobile number has been verified. Please sign in to continue.')
+            ->assertJsonPath('redirectUrl', route('login'))
+            ->assertSessionHas('status', 'Your mobile number has been verified. Please sign in to continue.');
 
-        $this->assertAuthenticatedAs($user);
+        $this->assertGuest();
+        $this->assertFalse(session()->has('pending_registration_user_id'));
+        $this->assertFalse(session()->has('pending_registration_phone'));
         $this->assertNotNull($user->refresh()->phone_verified_at);
         $this->assertNotNull(DB::table('registration_otps')->where('id', $otp->id)->value('used_at'));
     }
@@ -284,7 +288,10 @@ class RegistrationPhoneVerificationTest extends TestCase
         $this->postJson(route('register.resend'))->assertStatus(503);
         $this->postJson(route('register.verify'), ['otp' => $firstCode])->assertOk();
 
-        $this->assertAuthenticated();
+        $this->assertGuest();
+        $this->assertNotNull(
+            User::query()->where('email', 'juan@example.test')->value('phone_verified_at'),
+        );
     }
 
     public function test_failed_initial_sms_delivery_does_not_leave_an_unverified_account(): void

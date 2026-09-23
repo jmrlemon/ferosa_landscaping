@@ -126,6 +126,10 @@
               <p class="text-lg font-semibold">{{ optional($appointment->created_at)->format('M d, Y h:i A') }}</p>
             </div>
             <div class="sm:col-span-2">
+              <p class="text-xs text-surface-400">Visit Location</p>
+              <p class="mt-1 rounded-lg border border-brand-100 bg-brand-50 p-3 text-sm font-medium text-brand-900">{{ $appointment->site_address ?: 'No visit location recorded.' }}</p>
+            </div>
+            <div class="sm:col-span-2">
               <p class="text-xs text-surface-400">Customer Notes</p>
               <p class="mt-1 rounded-lg border border-surface-100 bg-surface-50 p-3 text-sm text-surface-700">{{ $appointment->notes ?: 'No notes provided.' }}</p>
             </div>

@@ -7,7 +7,6 @@ use App\Services\RegistrationOtpService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 use Throwable;
 
@@ -40,15 +39,21 @@ class RegistrationVerificationController extends Controller
                 : back()->withErrors(['otp' => $message]);
         }
 
-        Auth::login($user);
         $request->session()->forget(['pending_registration_user_id', 'pending_registration_phone']);
         $request->session()->regenerate();
+        $message = 'Your mobile number has been verified. Please sign in to continue.';
 
         if ($request->expectsJson()) {
-            return response()->json(['ok' => true, 'redirectUrl' => route('home')]);
+            $request->session()->flash('status', $message);
+
+            return response()->json([
+                'ok' => true,
+                'message' => $message,
+                'redirectUrl' => route('login'),
+            ]);
         }
 
-        return redirect()->route('home')->with('status', 'Your mobile number has been verified.');
+        return redirect()->route('login')->with('status', $message);
     }
 
     public function resend(Request $request, RegistrationOtpService $verification): JsonResponse|RedirectResponse

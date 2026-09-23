@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ReturnRequest;
 use App\Models\User;
+use App\Services\ReturnRequestService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
@@ -15,6 +16,39 @@ use Tests\TestCase;
 class ReturnRequestWorkflowTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_item_descriptions_replace_the_redundant_overall_summary(): void
+    {
+        Storage::fake('local');
+        $customer = User::factory()->create(['role' => 'user']);
+        $order = $this->deliveredOrder($customer);
+        $item = $this->item($order, 'Areca Palm', 500, 1);
+        $payload = [
+            'items' => [[
+                'order_item_id' => $item->id,
+                'quantity' => 1,
+                'issue_type' => 'damaged_on_arrival',
+                'issue_description' => 'The main stem was snapped.',
+                'preferred_resolution' => 'replacement',
+            ]],
+        ];
+
+        $this->actingAs($customer)
+            ->get(route('returns.create', $order))
+            ->assertOk()
+            ->assertDontSeeText('Overall summary')
+            ->assertDontSee('name="customer_summary"', false);
+
+        $this->actingAs($customer)
+            ->from(route('returns.create', $order))
+            ->post(route('returns.store', $order), $payload)
+            ->assertSessionDoesntHaveErrors('customer_summary')
+            ->assertSessionHasErrors('evidence');
+
+        $claim = app(ReturnRequestService::class)->submit($order, $customer, $payload, []);
+
+        $this->assertSame('Areca Palm: The main stem was snapped.', $claim->customer_summary);
+    }
 
     public function test_customer_can_submit_and_view_a_multi_item_damage_claim(): void
     {

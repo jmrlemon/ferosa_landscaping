@@ -77,11 +77,24 @@
   }
   input:not([type="checkbox"]):not([type="radio"]), select, textarea {
     min-height: 2.75rem;
-    border-color: var(--admin-stone-200) !important;
+    border: 1px solid var(--admin-stone-200) !important;
     border-radius: .75rem !important;
     background: #fff;
+    color: var(--admin-ink);
+    transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+  }
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea {
+    padding: .65rem .8rem;
+  }
+  textarea {
+    min-height: 5.5rem;
+    resize: vertical;
+  }
+  input::placeholder, textarea::placeholder {
+    color: #9b958a;
   }
   input:focus, select:focus, textarea:focus {
+    outline: none;
     border-color: var(--admin-forest-600) !important;
     box-shadow: 0 0 0 3px rgba(52,127,87,.12) !important;
   }

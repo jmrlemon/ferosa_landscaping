@@ -39,6 +39,8 @@
   $selectedPaymentStatus = $isAdmin
     ? old('payment_status', $order->payment_status ?? 'unpaid')
     : ($order->payment_status ?? 'unpaid');
+  $currentDriver = $staffMembers->first(fn ($staffMember) => $staffMember->name === $order->driver_name);
+  $selectedDriverStaffId = old('driver_staff_id', $currentDriver?->id);
   $paymentStatusLabel = ucfirst(str_replace('_', ' ', $order->payment_status ?? 'unpaid'));
   $fulfillmentStatusLabel = fn (string $status) => $isPickupOrder
     ? match($status) {
@@ -288,11 +290,6 @@
             @if(in_array('delivered', $availableStatuses, true))
               <p id="order-delivery-payment-notice" class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800" @if($selectedPaymentStatus === 'paid') hidden @endif>Payment must be marked Paid before this order can be delivered. Record or verify the payment first.</p>
             @endif
-            @if(!$isPickupOrder && !in_array($order->status, ['delivered', 'completed', 'cancelled'], true))
-              <label class="block text-sm font-medium" for="estimated-delivery-date">Estimated Delivery Date</label>
-              <input id="estimated-delivery-date" name="estimated_delivery_date" type="date" min="{{ now()->toDateString() }}" value="{{ old('estimated_delivery_date', $order->estimated_delivery_date?->toDateString()) }}" class="-mt-2 h-10 w-full rounded-lg border border-surface-200 px-3 outline-none focus:border-brand-600">
-              <p class="-mt-2 text-xs text-surface-500">Date only. The customer can see this estimate until the order is delivered.</p>
-            @endif
             @if($isAdmin)
               <label class="block text-sm font-medium">Payment Status
                 <select name="payment_status" data-payment-status-select class="mt-2 h-10 w-full rounded-lg border border-surface-200 px-3 outline-none focus:border-brand-600">
@@ -312,9 +309,20 @@
             @unless($isPickupOrder)
             <div id="order-status-fields-out-for-delivery" data-order-status-fields="out_for_delivery" aria-hidden="{{ $selectedStatus === 'out_for_delivery' ? 'false' : 'true' }}" @if($selectedStatus !== 'out_for_delivery') hidden @endif class="rounded-xl border border-indigo-100 bg-indigo-50/60 p-4 space-y-3">
               <div><p class="text-sm font-semibold text-indigo-900">Out for Delivery</p><p class="text-xs text-indigo-700">Required when dispatching the order.</p></div>
-              <label class="block text-sm font-medium">Driver or Rider Name
-                <input name="driver_name" value="{{ old('driver_name', $order->driver_name) }}" maxlength="255" @disabled($selectedStatus !== 'out_for_delivery') class="mt-2 h-10 w-full rounded-lg border border-surface-200 bg-white px-3 outline-none focus:border-indigo-500">
-              </label>
+              <label class="block text-sm font-medium" for="estimated-delivery-date">Estimated Delivery Date</label>
+              <input id="estimated-delivery-date" name="estimated_delivery_date" type="date" min="{{ now()->toDateString() }}" value="{{ old('estimated_delivery_date', $order->estimated_delivery_date?->toDateString()) }}" @disabled($selectedStatus !== 'out_for_delivery') class="-mt-1 h-10 w-full rounded-lg border border-surface-200 bg-white px-3 outline-none focus:border-indigo-500">
+              <p class="-mt-1 text-xs text-indigo-700">The customer can see this date until the order is delivered.</p>
+              <label class="block text-sm font-medium" for="driver-staff-id">Driver or Rider Name</label>
+              <select id="driver-staff-id" name="driver_staff_id" required @disabled($selectedStatus !== 'out_for_delivery') class="-mt-1 h-10 w-full rounded-lg border border-surface-200 bg-white px-3 outline-none focus:border-indigo-500">
+                <option value="">Select a staff member</option>
+                @foreach($staffMembers as $staffMember)
+                  <option value="{{ $staffMember->id }}" @selected((string) $selectedDriverStaffId === (string) $staffMember->id)>{{ $staffMember->name }}</option>
+                @endforeach
+              </select>
+              <p class="-mt-1 text-xs text-indigo-700">Only accounts assigned the Staff role are shown.</p>
+              @if($staffMembers->isEmpty())
+                <p class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">No staff accounts are available. Add or promote a staff member before dispatching.</p>
+              @endif
               <label class="block text-sm font-medium">Driver Contact
                 <input name="driver_phone" type="tel" inputmode="numeric" pattern="[0-9]{11}" minlength="11" maxlength="11" title="Enter exactly 11 digits." value="{{ old('driver_phone', $order->driver_phone) }}" @disabled($selectedStatus !== 'out_for_delivery') class="mt-2 h-10 w-full rounded-lg border border-surface-200 bg-white px-3 outline-none focus:border-indigo-500">
               </label>

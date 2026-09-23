@@ -78,35 +78,61 @@
         </section>
 
         @if($isAdmin && in_array($claim->status, ['submitted', 'under_review'], true))
-          <section class="rounded-xl border border-brand-200 bg-white p-5 shadow-sm">
-            <h2 class="text-lg font-bold text-brand-950">Admin decision</h2>
-            <p class="mt-1 text-sm text-surface-600">Choose an outcome for every line. Replacement stock is reserved immediately.</p>
+          <section class="rounded-xl border border-brand-200 bg-white p-5 shadow-sm sm:p-6">
+            <div class="border-b border-surface-200 pb-4">
+              <h2 class="text-lg font-bold text-brand-950">Admin decision</h2>
+              <p class="mt-1 text-sm text-surface-600">Choose an outcome for every item. Replacement stock is reserved immediately.</p>
+            </div>
             <form method="POST" action="{{ route('admin.returns.decision', $claim) }}" class="mt-5 space-y-5">
               @csrf @method('PUT')
               @foreach($claim->items as $index => $item)
-                <fieldset class="rounded-xl border border-surface-200 p-4">
-                  <legend class="px-1 font-bold">{{ $item->orderItem->name ?? 'Order item' }}</legend>
+                @php
+                  $selectedResolution = old("items.$index.resolution", 'replacement');
+                  $showReplacement = $selectedResolution === 'replacement';
+                  $showRefund = in_array($selectedResolution, ['refund', 'partial_refund'], true);
+                  $fullRefundAmount = number_format($item->maximumRefundAmount(), 2, '.', '');
+                  $refundValue = $selectedResolution === 'refund'
+                      ? $fullRefundAmount
+                      : old("items.$index.refund_amount");
+                @endphp
+                <fieldset data-decision-item class="rounded-xl border border-surface-200 bg-surface-50 p-4 sm:p-5">
+                  <legend class="rounded-full border border-surface-200 bg-white px-3 py-1 text-sm font-bold text-brand-950">{{ $item->orderItem->name ?? 'Order item' }}</legend>
                   <input type="hidden" name="items[{{ $index }}][id]" value="{{ $item->id }}">
-                  <div class="grid gap-3 sm:grid-cols-3">
-                    <label class="text-sm font-semibold">Outcome
-                      <select name="items[{{ $index }}][resolution]" required class="mt-1 block w-full rounded-lg border-surface-300">
-                        <option value="replacement">Replacement</option>
-                        <option value="refund">Full refund</option>
-                        <option value="partial_refund">Partial refund</option>
-                        <option value="rejected">Reject line</option>
+                  <div class="mt-2 grid gap-4 sm:grid-cols-2">
+                    <label class="block text-sm font-semibold text-surface-800">Outcome
+                      <select name="items[{{ $index }}][resolution]" required data-resolution-select class="mt-1 block w-full rounded-lg border-surface-300">
+                        <option value="replacement" @selected(old("items.$index.resolution", 'replacement') === 'replacement')>Replacement</option>
+                        <option value="refund" @selected(old("items.$index.resolution") === 'refund')>Full refund</option>
+                        <option value="partial_refund" @selected(old("items.$index.resolution") === 'partial_refund')>Partial refund</option>
+                        <option value="rejected" @selected(old("items.$index.resolution") === 'rejected')>Reject item</option>
                       </select>
                     </label>
-                    <label class="text-sm font-semibold">Replacement qty<input name="items[{{ $index }}][replacement_quantity]" type="number" min="1" max="{{ $item->quantity_claimed }}" value="{{ $item->quantity_claimed }}" class="mt-1 block w-full rounded-lg border-surface-300"></label>
-                    <label class="text-sm font-semibold">Refund amount<input name="items[{{ $index }}][refund_amount]" type="number" min="0.01" max="{{ $item->maximumRefundAmount() }}" step="0.01" class="mt-1 block w-full rounded-lg border-surface-300"></label>
+                    <label data-resolution-field="replacement" @if(! $showReplacement) hidden @endif class="block text-sm font-semibold text-surface-800">Replacement quantity
+                      <input name="items[{{ $index }}][replacement_quantity]" type="number" min="1" max="{{ $item->quantity_claimed }}" value="{{ old("items.$index.replacement_quantity", $item->quantity_claimed) }}" data-replacement-input @disabled(! $showReplacement) @required($showReplacement) class="mt-1 block w-full rounded-lg border-surface-300">
+                    </label>
+                    <label data-resolution-field="refund" @if(! $showRefund) hidden @endif class="block text-sm font-semibold text-surface-800">Refund amount
+                      <input name="items[{{ $index }}][refund_amount]" type="number" min="0.01" max="{{ $fullRefundAmount }}" step="0.01" value="{{ $refundValue }}" placeholder="0.00" data-refund-input data-full-refund-amount="{{ $fullRefundAmount }}" @disabled(! $showRefund) @readonly($selectedResolution === 'refund') @required($selectedResolution === 'partial_refund') class="mt-1 block w-full rounded-lg border-surface-300">
+                    </label>
                   </div>
-                  <label class="mt-3 block text-sm font-semibold">Customer-visible line note<input name="items[{{ $index }}][decision_note]" maxlength="500" class="mt-1 block w-full rounded-lg border-surface-300"></label>
+                  <label class="mt-4 block text-sm font-semibold text-surface-800">Note for this item
+                    <input name="items[{{ $index }}][decision_note]" type="text" maxlength="500" value="{{ old("items.$index.decision_note") }}" placeholder="Optional note shown to the customer" class="mt-1 block w-full rounded-lg border-surface-300">
+                  </label>
                 </fieldset>
               @endforeach
-              <label class="block text-sm font-semibold">Customer-visible decision reason<textarea name="decision_reason" required minlength="5" maxlength="1000" rows="3" class="mt-1 block w-full rounded-lg border-surface-300">{{ old('decision_reason') }}</textarea></label>
-              <label class="block text-sm font-semibold">Private admin notes<textarea name="admin_notes" maxlength="2000" rows="2" class="mt-1 block w-full rounded-lg border-surface-300">{{ old('admin_notes') }}</textarea></label>
-              <label class="flex items-start gap-2 text-sm"><input type="checkbox" name="return_required" value="1" class="mt-1 rounded border-surface-300"><span><strong>Physical return required</strong><br><span class="text-surface-500">Leave clear by default for damaged live plants.</span></span></label>
-              <label class="block text-sm font-semibold">Return instructions<textarea name="return_instructions" maxlength="1000" rows="2" class="mt-1 block w-full rounded-lg border-surface-300"></textarea></label>
-              <button class="rounded-lg bg-brand-700 px-5 py-3 font-bold text-white hover:bg-brand-800">Save final decision</button>
+              <label class="block text-sm font-semibold text-surface-800">Decision message to customer
+                <textarea name="decision_reason" required minlength="5" maxlength="1000" rows="3" placeholder="Explain why this outcome was chosen" class="mt-1 block w-full rounded-lg border-surface-300">{{ old('decision_reason') }}</textarea>
+                <span class="mt-1 block text-xs font-normal text-surface-500">The customer will see this message with the final decision.</span>
+              </label>
+              <div class="rounded-xl border border-surface-200 bg-surface-50 p-4">
+                <label class="flex items-start gap-3 text-sm">
+                  <input type="checkbox" name="return_required" value="1" @checked(old('return_required')) class="mt-1 rounded border-surface-300">
+                  <span><strong class="text-surface-800">Physical return required</strong><br><span class="text-surface-500">Leave unchecked by default for damaged live plants.</span></span>
+                </label>
+                <label class="mt-4 block text-sm font-semibold text-surface-800">Return instructions
+                  <textarea name="return_instructions" maxlength="1000" rows="2" placeholder="Tell the customer where and when to return the item" class="mt-1 block w-full rounded-lg border-surface-300">{{ old('return_instructions') }}</textarea>
+                </label>
+              </div>
+              <button type="submit" class="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-brand-700 px-5 py-3 font-bold text-white hover:bg-brand-800 sm:w-auto">Save final decision</button>
             </form>
           </section>
         @endif
@@ -161,8 +187,11 @@
               <form method="POST" action="{{ route('admin.returns.refunds.store', $claim) }}" class="mt-4 space-y-3">
                 @csrf
                 <label class="block text-sm font-semibold">Amount<input name="amount" type="number" min="0.01" max="{{ number_format($maximumRefundAmount, 2, '.', '') }}" step="0.01" value="{{ number_format($maximumRefundAmount, 2, '.', '') }}" required class="mt-1 block w-full rounded-lg border-blue-300"></label>
-                <label class="block text-sm font-semibold">Method<select name="method" class="mt-1 block w-full rounded-lg border-blue-300"><option value="cash">Cash</option><option value="gcash">GCash</option><option value="bank_transfer">Bank transfer</option><option value="other">Other</option></select></label>
-                <label class="block text-sm font-semibold">Reference<input name="reference" maxlength="120" class="mt-1 block w-full rounded-lg border-blue-300"></label>
+                <div class="block text-sm font-semibold">
+                  <span>Refund method</span>
+                  <div class="mt-1 flex min-h-11 items-center rounded-lg border border-blue-300 bg-white px-3 py-2 text-surface-800">Cash</div>
+                  <input type="hidden" name="method" value="cash">
+                </div>
                 <label class="block text-sm font-semibold">Notes<textarea name="notes" maxlength="1000" rows="2" class="mt-1 block w-full rounded-lg border-blue-300"></textarea></label>
                 <button class="rounded-lg bg-blue-700 px-4 py-2 text-sm font-bold text-white">Record refund</button>
               </form>
@@ -175,8 +204,20 @@
             <h2 class="font-bold text-indigo-950">Dispatch replacement</h2>
             <form method="POST" action="{{ route('admin.returns.dispatch', $claim) }}" class="mt-4 space-y-3">
               @csrf
-              <label class="block text-sm font-semibold">Driver or rider<input name="replacement_driver_name" required maxlength="120" class="mt-1 block w-full rounded-lg border-indigo-300"></label>
+              <label class="block text-sm font-semibold">Driver or Rider Name
+                <select name="replacement_driver_staff_id" required class="mt-1 block w-full rounded-lg border-indigo-300">
+                  <option value="">Select a staff member</option>
+                  @foreach($staffMembers as $staffMember)
+                    <option value="{{ $staffMember->id }}" @selected((string) old('replacement_driver_staff_id') === (string) $staffMember->id)>{{ $staffMember->name }}</option>
+                  @endforeach
+                </select>
+              </label>
+              <p class="-mt-1 text-xs text-indigo-700">Only accounts assigned the Staff role are shown.</p>
+              @if($staffMembers->isEmpty())
+                <p class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">No staff accounts are available. Add or promote a staff member before dispatching.</p>
+              @endif
               <label class="block text-sm font-semibold">Contact<input name="replacement_driver_phone" maxlength="30" class="mt-1 block w-full rounded-lg border-indigo-300"></label>
+              <label class="block text-sm font-semibold">Estimated delivery date<input name="replacement_estimated_delivery_date" type="date" min="{{ now()->toDateString() }}" value="{{ old('replacement_estimated_delivery_date') }}" required class="mt-1 block w-full rounded-lg border-indigo-300"></label>
               <label class="block text-sm font-semibold">Notes<textarea name="replacement_dispatch_notes" maxlength="1000" rows="2" class="mt-1 block w-full rounded-lg border-indigo-300"></textarea></label>
               <button class="rounded-lg bg-indigo-700 px-4 py-2 text-sm font-bold text-white">Mark out for delivery</button>
             </form>
@@ -196,3 +237,46 @@
       </aside>
     </div>
 @endsection
+
+@push('head')
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      document.querySelectorAll('[data-decision-item]').forEach(function (item) {
+        const select = item.querySelector('[data-resolution-select]');
+        const replacementField = item.querySelector('[data-resolution-field="replacement"]');
+        const refundField = item.querySelector('[data-resolution-field="refund"]');
+        const replacementInput = item.querySelector('[data-replacement-input]');
+        const refundInput = item.querySelector('[data-refund-input]');
+
+        if (!select || !replacementField || !refundField || !replacementInput || !refundInput) return;
+
+        function updateOutcomeFields() {
+          const resolution = select.value;
+          const isReplacement = resolution === 'replacement';
+          const isRefund = resolution === 'refund' || resolution === 'partial_refund';
+          const isPartialRefund = resolution === 'partial_refund';
+
+          replacementField.hidden = !isReplacement;
+          replacementInput.disabled = !isReplacement;
+          replacementInput.required = isReplacement;
+
+          refundField.hidden = !isRefund;
+          refundInput.disabled = !isRefund;
+          refundInput.required = isPartialRefund;
+          refundInput.readOnly = resolution === 'refund';
+
+          if (resolution === 'refund') {
+            refundInput.value = refundInput.dataset.fullRefundAmount;
+          } else if (isPartialRefund && select.dataset.previousResolution === 'refund') {
+            refundInput.value = '';
+          }
+
+          select.dataset.previousResolution = resolution;
+        }
+
+        select.addEventListener('change', updateOutcomeFields);
+        updateOutcomeFields();
+      });
+    });
+  </script>
+@endpush

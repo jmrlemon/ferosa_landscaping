@@ -136,7 +136,13 @@
         <span class="block truncate text-[13px] font-bold text-surface-800">{{ auth()->user()->name }}</span>
         <span class="block text-[10px] font-medium text-surface-400">{{ ucfirst(auth()->user()->role) }} account</span>
       </a>
-      <form method="POST" action="{{ route('logout') }}" class="flex-shrink-0">
+      <form method="POST"
+            action="{{ route('logout') }}"
+            class="flex-shrink-0"
+            data-confirm-title="Log out?"
+            data-confirm="Are you sure you want to log out of your Ferosa account?"
+            data-confirm-action="Log out"
+            data-confirm-tone="default">
         @csrf
         <button type="submit" aria-label="Sign out" title="Sign out" class="flex h-9 w-9 items-center justify-center rounded-lg text-surface-400 transition-colors hover:bg-red-50 hover:text-red-600">
           <svg class="h-[17px] w-[17px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>

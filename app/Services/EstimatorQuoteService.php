@@ -19,7 +19,7 @@ class EstimatorQuoteService
     /**
      * Build an authoritative estimate from validated selection keys.
      *
-     * @param  array{project_type:string,size:int,tier:string,addons?:list<string>,products?:list<array{id:int,qty:int}>}  $data
+     * @param  array{project_type:string,size:int,coverage_area?:int,tier:string,addons?:list<string>,products?:list<array{id:int,qty:int}>}  $data
      * @return array{version:int,prepared_at:string,service_type_id:int,snapshot:array<string,mixed>}
      */
     public function prepare(array $data): array
@@ -61,6 +61,7 @@ class EstimatorQuoteService
         $requestedProducts = collect($data['products'] ?? [])->keyBy('id');
         $products = [];
         $productsAmount = 0.0;
+        $coverageArea = (int) ($data['coverage_area'] ?? $data['size']);
 
         if ($requestedProducts->isNotEmpty()) {
             $availableProducts = Product::query()
@@ -81,14 +82,24 @@ class EstimatorQuoteService
                 $product = $availableProducts->get((int) $productId);
                 $quantity = (int) $requested['qty'];
 
-                if (! $product || $quantity > $product->stock_qty) {
+                if (! $product || (! $product->supportsAreaCoverage() && $quantity > $product->stock_qty)) {
                     throw ValidationException::withMessages([
                         'products' => 'A selected product does not have enough stock. Please lower its quantity and try again.',
                     ]);
                 }
 
                 $price = round((float) $product->price, 2);
-                $amount = round($price * $quantity, 2);
+                $coverage = $product->supportsAreaCoverage()
+                    ? MaterialCoverageCalculator::calculate(
+                        areaSqm: $coverageArea,
+                        coverageSqmPerUnit: (float) $product->coverage_sqm_per_unit,
+                        wastePercent: (float) ($product->coverage_waste_percent ?? 10),
+                        unitPrice: $price,
+                        stockQty: (int) $product->stock_qty,
+                        selectedQuantity: $quantity,
+                    )
+                    : null;
+                $amount = $coverage['material_cost'] ?? round($price * $quantity, 2);
                 $productsAmount += $amount;
                 $products[] = [
                     'id' => $product->id,
@@ -96,6 +107,8 @@ class EstimatorQuoteService
                     'price' => $price,
                     'quantity' => $quantity,
                     'amount' => $amount,
+                    'sale_unit' => $product->sale_unit,
+                    'coverage' => $coverage,
                 ];
             }
         }
@@ -111,6 +124,7 @@ class EstimatorQuoteService
                 'project_type' => $data['project_type'],
                 'project_type_label' => (string) ($project['label'] ?? $data['project_type']),
                 'size' => $data['size'],
+                'coverage_area' => $coverageArea,
                 'tier' => $data['tier'],
                 'tier_label' => (string) ($tier['label'] ?? $data['tier']),
                 'addons' => $addons,

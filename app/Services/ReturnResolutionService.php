@@ -175,6 +175,7 @@ class ReturnResolutionService
                 'status' => 'replacement_dispatched',
                 'replacement_driver_name' => $details['replacement_driver_name'],
                 'replacement_driver_phone' => $details['replacement_driver_phone'] ?? null,
+                'replacement_estimated_delivery_date' => $details['replacement_estimated_delivery_date'],
                 'replacement_dispatch_notes' => $details['replacement_dispatch_notes'] ?? null,
                 'replacement_dispatched_at' => now(),
             ])->save();

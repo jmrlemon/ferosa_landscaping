@@ -79,6 +79,34 @@ class AdminReturnRequestTest extends TestCase
             ->assertSee('name="amount" type="number" min="0.01" max="250.00" step="0.01" value="250.00"', false);
     }
 
+    public function test_refund_form_is_cash_only_and_has_no_reference_field(): void
+    {
+        [$claim, $claimItem, , $order] = $this->claim(itemPrice: 250);
+        $admin = User::factory()->create(['role' => 'admin']);
+        $claim->forceFill(['status' => 'approved'])->save();
+        $claimItem->forceFill([
+            'quantity_claimed' => 1,
+            'resolution' => 'refund',
+            'refund_amount' => 250,
+        ])->save();
+        Payment::query()->create([
+            'payable_type' => Order::class,
+            'payable_id' => $order->id,
+            'amount' => 250,
+            'method' => 'cash',
+            'paid_at' => now(),
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.returns.show', $claim))
+            ->assertOk()
+            ->assertSee('name="method" value="cash"', false)
+            ->assertSeeText('Cash')
+            ->assertDontSee('name="reference"', false)
+            ->assertDontSeeText('GCash')
+            ->assertDontSeeText('Bank transfer');
+    }
+
     public function test_staff_can_review_claim_but_cannot_make_admin_decision(): void
     {
         [$claim] = $this->claim();
@@ -93,6 +121,60 @@ class AdminReturnRequestTest extends TestCase
         $this->assertSame('needs_information', $claim->refresh()->status);
 
         $this->actingAs($staff)->put(route('admin.returns.decision', $claim), [])->assertForbidden();
+    }
+
+    public function test_admin_decision_form_has_visible_controls_and_no_private_notes(): void
+    {
+        [$claim, $claimItem] = $this->claim();
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($admin)
+            ->get(route('admin.returns.show', $claim))
+            ->assertOk()
+            ->assertSee('border: 1px solid var(--admin-stone-200) !important;', false)
+            ->assertSee('placeholder="Optional note shown to the customer"', false)
+            ->assertSee('placeholder="Explain why this outcome was chosen"', false)
+            ->assertDontSeeText('Private admin notes')
+            ->assertDontSee('name="admin_notes"', false);
+
+        $payload = $this->replacementDecision($claimItem, 1);
+        $payload['admin_notes'] = 'This legacy field must not be accepted.';
+
+        $this->actingAs($admin)
+            ->put(route('admin.returns.decision', $claim), $payload)
+            ->assertRedirect(route('admin.returns.show', $claim));
+
+        $this->assertNull($claim->refresh()->admin_notes);
+    }
+
+    public function test_admin_decision_only_enables_fields_for_the_selected_outcome(): void
+    {
+        [$claim, $claimItem] = $this->claim();
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $response = $this->actingAs($admin)
+            ->withSession([
+                '_old_input' => [
+                    'items' => [[
+                        'id' => $claimItem->id,
+                        'resolution' => 'partial_refund',
+                        'refund_amount' => '125.50',
+                    ]],
+                ],
+            ])
+            ->get(route('admin.returns.show', $claim))
+            ->assertOk()
+            ->assertSee('data-decision-item', false)
+            ->assertSee('data-resolution-select', false)
+            ->assertSee('data-resolution-field="refund"', false)
+            ->assertSee('data-refund-input', false)
+            ->assertSee('replacementInput.disabled = !isReplacement;', false)
+            ->assertSee('refundInput.disabled = !isRefund;', false);
+
+        $this->assertMatchesRegularExpression(
+            '/data-resolution-field="replacement"\s+hidden/',
+            (string) $response->getContent(),
+        );
     }
 
     public function test_replacement_approval_decrements_stock_exactly_once(): void
@@ -159,20 +241,27 @@ class AdminReturnRequestTest extends TestCase
 
         $this->actingAs($admin)->post(route('admin.returns.refunds.store', $claim), [
             'amount' => 301,
-            'method' => 'gcash',
+            'method' => 'cash',
         ])->assertSessionHasErrors('amount');
         $this->assertDatabaseCount('refunds', 0);
 
         $this->actingAs($admin)->post(route('admin.returns.refunds.store', $claim), [
             'amount' => 300,
             'method' => 'gcash',
+        ])->assertSessionHasErrors('method');
+        $this->assertDatabaseCount('refunds', 0);
+
+        $this->actingAs($admin)->post(route('admin.returns.refunds.store', $claim), [
+            'amount' => 300,
+            'method' => 'cash',
             'reference' => 'GC-10001',
         ])->assertRedirect(route('admin.returns.show', $claim));
 
         $this->assertDatabaseHas('refunds', [
             'return_request_id' => $claim->id,
             'amount' => 300,
-            'method' => 'gcash',
+            'method' => 'cash',
+            'reference' => null,
         ]);
         $this->assertDatabaseMissing('payments', ['amount' => -300]);
         $this->assertSame('resolved', $claim->refresh()->status);
@@ -183,23 +272,105 @@ class AdminReturnRequestTest extends TestCase
         [$claim, $claimItem] = $this->claim(stock: 3);
         $admin = User::factory()->create(['role' => 'admin']);
         $staff = User::factory()->create(['role' => 'staff']);
+        $rider = User::factory()->create(['name' => 'Harvey Rider', 'role' => 'staff']);
+        $estimatedDeliveryDate = now()->addDays(2);
         $this->actingAs($admin)->put(
             route('admin.returns.decision', $claim),
             $this->replacementDecision($claimItem, 1)
         );
 
+        $response = $this->actingAs($staff)
+            ->get(route('admin.returns.show', $claim))
+            ->assertOk()
+            ->assertSee('name="replacement_driver_staff_id"', false)
+            ->assertSeeText('Select a staff member')
+            ->assertSeeText($rider->name)
+            ->assertSee('name="replacement_estimated_delivery_date"', false)
+            ->assertSee('type="date"', false)
+            ->assertSee('min="'.now()->toDateString().'"', false);
+
+        preg_match('/<select[^>]+name="replacement_driver_staff_id"[^>]*>(.*?)<\/select>/s', (string) $response->getContent(), $matches);
+        $driverOptions = $matches[1] ?? '';
+        $this->assertStringContainsString('value="'.$staff->id.'"', $driverOptions);
+        $this->assertStringContainsString('value="'.$rider->id.'"', $driverOptions);
+        $this->assertStringNotContainsString('value="'.$admin->id.'"', $driverOptions);
+        $this->assertStringNotContainsString('value="'.$claim->user_id.'"', $driverOptions);
+
         $this->actingAs($staff)->post(route('admin.returns.dispatch', $claim), [
-            'replacement_driver_name' => 'Juan Rider',
+            'replacement_driver_staff_id' => $rider->id,
             'replacement_driver_phone' => '09171234567',
+            'replacement_estimated_delivery_date' => $estimatedDeliveryDate->toDateString(),
             'replacement_dispatch_notes' => 'Handle upright.',
         ])->assertRedirect(route('admin.returns.show', $claim));
         $this->assertSame('replacement_dispatched', $claim->refresh()->status);
+        $this->assertSame($rider->name, $claim->replacement_driver_name);
+        $this->assertSame(
+            $estimatedDeliveryDate->toDateString(),
+            $claim->replacement_estimated_delivery_date?->toDateString(),
+        );
+
+        $this->actingAs($claim->user)
+            ->get(route('returns.show', $claim))
+            ->assertOk()
+            ->assertSeeText('Estimated delivery')
+            ->assertSeeText($estimatedDeliveryDate->format('M d, Y'));
 
         $this->actingAs($staff)->post(route('admin.returns.resolve', $claim), [
             'replacement_delivered' => '1',
         ])->assertRedirect(route('admin.returns.show', $claim));
         $this->assertSame('resolved', $claim->refresh()->status);
         $this->assertNotNull($claim->replacement_delivered_at);
+    }
+
+    public function test_replacement_dispatch_rejects_a_missing_or_past_estimated_delivery_date(): void
+    {
+        [$claim, $claimItem] = $this->claim(stock: 3);
+        $admin = User::factory()->create(['role' => 'admin']);
+        $staff = User::factory()->create(['role' => 'staff']);
+        $this->actingAs($admin)->put(
+            route('admin.returns.decision', $claim),
+            $this->replacementDecision($claimItem, 1)
+        );
+
+        $dispatch = [
+            'replacement_driver_staff_id' => $staff->id,
+            'replacement_driver_phone' => '09171234567',
+        ];
+
+        $this->actingAs($staff)
+            ->post(route('admin.returns.dispatch', $claim), $dispatch)
+            ->assertSessionHasErrors('replacement_estimated_delivery_date');
+
+        $this->actingAs($staff)
+            ->post(route('admin.returns.dispatch', $claim), $dispatch + [
+                'replacement_estimated_delivery_date' => now()->subDay()->toDateString(),
+            ])
+            ->assertSessionHasErrors('replacement_estimated_delivery_date');
+
+        $this->assertSame('approved', $claim->refresh()->status);
+        $this->assertNull($claim->replacement_estimated_delivery_date);
+    }
+
+    public function test_replacement_dispatch_rejects_a_non_staff_driver(): void
+    {
+        [$claim, $claimItem] = $this->claim(stock: 3);
+        $admin = User::factory()->create(['role' => 'admin']);
+        $staff = User::factory()->create(['role' => 'staff']);
+        $this->actingAs($admin)->put(
+            route('admin.returns.decision', $claim),
+            $this->replacementDecision($claimItem, 1)
+        );
+
+        $this->actingAs($staff)
+            ->post(route('admin.returns.dispatch', $claim), [
+                'replacement_driver_staff_id' => $claim->user_id,
+                'replacement_driver_phone' => '09171234567',
+                'replacement_estimated_delivery_date' => now()->addDay()->toDateString(),
+            ])
+            ->assertSessionHasErrors('replacement_driver_staff_id');
+
+        $this->assertSame('approved', $claim->refresh()->status);
+        $this->assertNull($claim->replacement_driver_name);
     }
 
     public function test_refund_void_endpoint_is_removed_and_legacy_refund_history_is_retained(): void
@@ -231,7 +402,6 @@ class AdminReturnRequestTest extends TestCase
         $this->actingAs($admin)->put('/admin/returns/'.$claim->id.'/refunds/'.$refund->id.'/void', [
             'void_reason' => 'A second correction attempt.',
         ])->assertNotFound();
-
         $this->assertDatabaseHas('refunds', [
             'id' => $refund->id,
             'void_reason' => 'Previous correction retained in history.',

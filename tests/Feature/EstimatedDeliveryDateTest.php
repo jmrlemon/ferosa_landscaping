@@ -12,17 +12,20 @@ class EstimatedDeliveryDateTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_staff_can_record_a_date_only_delivery_estimate(): void
+    public function test_staff_can_record_a_date_only_delivery_estimate_when_dispatching(): void
     {
         Carbon::setTestNow('2026-09-18 14:30:00');
         $staff = User::factory()->create(['role' => 'staff']);
         $customer = User::factory()->create(['role' => 'user']);
         $order = $this->deliveryOrderFor($customer);
+        $order->forceFill(['status' => 'confirmed'])->save();
 
         $this->actingAs($staff)
             ->put(route('admin.orders.status', $order), [
-                'status' => 'pending',
+                'status' => 'out_for_delivery',
                 'estimated_delivery_date' => '2026-09-21',
+                'driver_staff_id' => $staff->id,
+                'driver_phone' => '09171234567',
             ])
             ->assertSessionHasNoErrors();
 
@@ -38,7 +41,7 @@ class EstimatedDeliveryDateTest extends TestCase
             ->assertSee('value="2026-09-21"', false);
     }
 
-    public function test_active_order_rejects_a_past_delivery_estimate(): void
+    public function test_delivery_estimate_is_rejected_until_the_order_is_out_for_delivery(): void
     {
         Carbon::setTestNow('2026-09-18 14:30:00');
         $staff = User::factory()->create(['role' => 'staff']);
@@ -47,7 +50,26 @@ class EstimatedDeliveryDateTest extends TestCase
         $this->actingAs($staff)
             ->put(route('admin.orders.status', $order), [
                 'status' => 'pending',
+                'estimated_delivery_date' => '2026-09-21',
+            ])
+            ->assertSessionHasErrors('estimated_delivery_date');
+
+        $this->assertNull($order->fresh()->estimated_delivery_date);
+    }
+
+    public function test_active_order_rejects_a_past_delivery_estimate(): void
+    {
+        Carbon::setTestNow('2026-09-18 14:30:00');
+        $staff = User::factory()->create(['role' => 'staff']);
+        $order = $this->deliveryOrderFor(User::factory()->create(['role' => 'user']));
+        $order->forceFill(['status' => 'confirmed'])->save();
+
+        $this->actingAs($staff)
+            ->put(route('admin.orders.status', $order), [
+                'status' => 'out_for_delivery',
                 'estimated_delivery_date' => '2026-09-17',
+                'driver_staff_id' => $staff->id,
+                'driver_phone' => '09171234567',
             ])
             ->assertSessionHasErrors('estimated_delivery_date');
 
@@ -84,11 +106,14 @@ class EstimatedDeliveryDateTest extends TestCase
         Carbon::setTestNow('2026-09-18 14:30:00');
         $staff = User::factory()->create(['role' => 'staff']);
         $order = $this->deliveryOrderFor(User::factory()->create(['role' => 'user']));
-        $order->forceFill(['delivery_method' => 'pickup'])->save();
+        $order->forceFill([
+            'status' => 'confirmed',
+            'delivery_method' => 'pickup',
+        ])->save();
 
         $this->actingAs($staff)
             ->put(route('admin.orders.status', $order), [
-                'status' => 'pending',
+                'status' => 'out_for_delivery',
                 'estimated_delivery_date' => '2026-09-21',
             ])
             ->assertSessionHasErrors('estimated_delivery_date');

@@ -219,7 +219,13 @@
       <h2 class="text-sm font-bold text-surface-900">Signed in on this device</h2>
       <p class="mt-1 text-sm text-surface-500">Sign out when you are finished, especially on shared devices.</p>
     </div>
-    <form action="{{ route('logout') }}" method="POST" class="flex-shrink-0">
+    <form action="{{ route('logout') }}"
+          method="POST"
+          class="flex-shrink-0"
+          data-confirm-title="Log out?"
+          data-confirm="Are you sure you want to log out of your Ferosa account?"
+          data-confirm-action="Log out"
+          data-confirm-tone="default">
       @csrf
       <button type="submit" data-loading-label="Signing out..." class="btn btn-danger btn-sm">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h4a3 3 0 0 1 3 3v1"/></svg>

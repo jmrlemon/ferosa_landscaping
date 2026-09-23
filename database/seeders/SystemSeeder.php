@@ -44,13 +44,37 @@ class SystemSeeder extends Seeder
 
         $u = fn (string $photoId) => $this->unsplash($photoId);
 
+        /**
+         * @var list<array{
+         *     name: string,
+         *     category: string,
+         *     price: int,
+         *     image_url: string,
+         *     description?: string,
+         *     is_active?: bool,
+         *     stock_qty?: int,
+         *     sale_unit?: string,
+         *     coverage_sqm_per_unit?: int|float,
+         *     coverage_waste_percent?: int|float
+         * }> $products
+         */
         $products = [
             // Original system list — images match product type (Unsplash).
             ['name' => 'Garden Soil', 'category' => 'soil', 'price' => 150, 'image_url' => $u('1653398241881-b26e7cebfcf5')], // pile of soil
             ['name' => 'Gravel', 'category' => 'aggregates', 'price' => 500, 'image_url' => $u('1604178449672-3e7d72d5a09a')], // crushed stone / gravel
             ['name' => 'Plants (Various)', 'category' => 'plants', 'price' => 300, 'image_url' => $u('1598902108854-10e335adac99')], // mixed garden plants
             ['name' => 'Natural Stones (Pebbles, River Rocks, Boulder)', 'category' => 'stones', 'price' => 800, 'image_url' => $u('1567921706527-ac8e2f08b053')], // assorted pebbles
-            ['name' => 'Carabao Grass', 'category' => 'grass', 'price' => 250, 'image_url' => $u('1526392587392-d1627b6c134a')], // lawn grass
+            [
+                'name' => 'Carabao Grass',
+                'category' => 'grass',
+                'price' => 250,
+                'image_url' => $u('1526392587392-d1627b6c134a'),
+                // Safe starter unit for the estimator. Admin can replace this
+                // with the supplier's roll/tray coverage without a code change.
+                'sale_unit' => 'sq m',
+                'coverage_sqm_per_unit' => 1,
+                'coverage_waste_percent' => 10,
+            ], // lawn grass
             ['name' => 'Bermuda Grass', 'category' => 'grass', 'price' => 350, 'image_url' => $u('1571955184611-592f592e5ac6')], // green turf
             ['name' => 'Frog Grass', 'category' => 'grass', 'price' => 400, 'image_url' => $u('1628340981113-fe1949fe5cc0')], // grass field
             ['name' => 'Grass Paver', 'category' => 'stones', 'price' => 1100, 'image_url' => $u('1759745063503-921e354f5f55')], // paver patio / hardscape
@@ -73,12 +97,15 @@ class SystemSeeder extends Seeder
                 ['name' => $p['name']],
                 [
                     'description' => $p['description'] ?? null,
-                    'price' => $p['price'] ?? 0,
-                    'category' => $p['category'] ?? 'plants',
+                    'price' => $p['price'],
+                    'category' => $p['category'],
                     'is_active' => $p['is_active'] ?? true,
-                    'image_url' => $p['image_url'] ?? null,
+                    'image_url' => $p['image_url'],
                     // Above dashboard low-stock threshold (5 or fewer); migration defaults stock_qty to 0.
                     'stock_qty' => $p['stock_qty'] ?? 100,
+                    'sale_unit' => $p['sale_unit'] ?? null,
+                    'coverage_sqm_per_unit' => $p['coverage_sqm_per_unit'] ?? null,
+                    'coverage_waste_percent' => $p['coverage_waste_percent'] ?? null,
                 ]
             );
         }

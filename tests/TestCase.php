@@ -128,4 +128,15 @@ abstract class TestCase extends BaseTestCase
             ],
         ];
     }
+
+    /** @return array<string, string> */
+    protected function validAppointmentAddress(): array
+    {
+        return [
+            'site_province_code' => '0300800000',
+            'site_city_code' => '0300809000',
+            'site_barangay_code' => '0300809010',
+            'site_street' => '123 Mabini Street',
+        ];
+    }
 }

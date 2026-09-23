@@ -58,11 +58,11 @@
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
-            ".\\\\node_modules\\\\.bin\\\\concurrently.cmd -c \"#93c5fd,#c4b5fd,#fdba74\" \"php artisan serve --host=0.0.0.0\" \"php artisan queue:listen --tries=1 --timeout=0\" \"npm run dev\" --names=server,queue,vite --kill-others-on-fail"
+            ".\\\\node_modules\\\\.bin\\\\concurrently.cmd -c \"#93c5fd,#c4b5fd,#fdba74\" \"php artisan serve --host=0.0.0.0\" \"php artisan queue:work --queue=sms,default --sleep=1 --tries=3 --timeout=0\" \"npm run dev\" --names=server,queue,vite --kill-others-on-fail"
         ],
         "dev:logs": [
             "Composer\\Config::disableProcessTimeout",
-            ".\\\\node_modules\\\\.bin\\\\concurrently.cmd -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --tries=1 --timeout=0\" \"php artisan pail --timeout=0\" \"npm run dev\" --names=server,queue,logs,vite --kill-others-on-fail"
+            ".\\\\node_modules\\\\.bin\\\\concurrently.cmd -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan serve\" \"php artisan queue:work --queue=sms,default --sleep=1 --tries=3 --timeout=0\" \"php artisan pail --timeout=0\" \"npm run dev\" --names=server,queue,logs,vite --kill-others-on-fail"
         ],
         "test": [
             "@php artisan config:clear --ansi",

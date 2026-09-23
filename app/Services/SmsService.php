@@ -10,12 +10,28 @@ class SmsService
     public function send(string $to, string $message): bool
     {
         $driver = config('services.sms.driver', 'log');
+        $startedAt = hrtime(true);
 
-        return match ($driver) {
+        $accepted = match ($driver) {
             'twilio' => $this->sendTwilio($to, $message),
             'textbee' => $this->sendTextBee($to, $message),
             default => $this->sendLog($to, $message),
         };
+
+        $context = [
+            'event' => 'sms_delivery_attempt',
+            'driver' => $driver,
+            'accepted' => $accepted,
+            'duration_ms' => (int) round((hrtime(true) - $startedAt) / 1_000_000),
+        ];
+
+        if ($accepted) {
+            Log::info('SMS delivery attempt completed.', $context);
+        } else {
+            Log::warning('SMS delivery attempt failed.', $context);
+        }
+
+        return $accepted;
     }
 
     private function sendLog(string $to, string $message): bool

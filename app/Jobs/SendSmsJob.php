@@ -18,12 +18,18 @@ class SendSmsJob implements ShouldQueue
 
     public int $tries = 3;
 
-    public int $backoff = 30;
-
     public function __construct(
         private string $to,
         private string $message,
-    ) {}
+    ) {
+        $this->onQueue('sms');
+    }
+
+    /** @return list<int> */
+    public function backoff(): array
+    {
+        return [5, 15];
+    }
 
     public function handle(SmsService $sms): void
     {

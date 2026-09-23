@@ -21,6 +21,7 @@ use App\Notifications\WorkCreatedNotice;
 use App\Services\CartService;
 use App\Services\EstimatorQuoteService;
 use App\Services\InventoryService;
+use App\Services\PhilippineAddressService;
 use App\Support\Audit;
 use App\Support\PasswordRules;
 use App\Support\PhoneNumber;
@@ -271,7 +272,7 @@ class PageController extends Controller
         ]);
     }
 
-    public function checkout(Request $request): View
+    public function checkout(Request $request, PhilippineAddressService $addresses): View
     {
         $checkoutToken = $request->session()->get('checkout_token') ?? (string) Str::uuid();
         $request->session()->put('checkout_token', $checkoutToken);
@@ -279,24 +280,58 @@ class PageController extends Controller
         return view('checkout', [
             'gcashSettings' => AppSetting::getGcashSettings(),
             'checkoutToken' => $checkoutToken,
+            'addressArea' => $addresses->serviceArea(),
         ]);
     }
 
-    public function storeCheckout(Request $request, CartService $cart, InventoryService $inventory): RedirectResponse
-    {
+    public function storeCheckout(
+        Request $request,
+        CartService $cart,
+        InventoryService $inventory,
+        PhilippineAddressService $addresses
+    ): RedirectResponse {
         $data = $request->validate([
             'checkout_token' => ['nullable', 'uuid'],
             'cart_data' => ['nullable', 'string'],
             'delivery_method' => ['required', 'string', 'in:delivery,pickup'],
             'delivery_name' => ['required_if:delivery_method,delivery', 'nullable', 'string', 'max:255'],
             'delivery_phone' => ['required_if:delivery_method,delivery', 'nullable', 'string', 'max:50'],
-            'delivery_address' => ['required_if:delivery_method,delivery', 'nullable', 'string', 'max:500'],
-            'delivery_city' => ['required_if:delivery_method,delivery', 'nullable', 'string', 'max:255'],
+            'delivery_address' => ['required_if:delivery_method,delivery', 'nullable', 'string', 'max:450'],
+            'delivery_province_code' => ['required_if:delivery_method,delivery', 'nullable', 'string', 'regex:/^[0-9]{10}$/'],
+            'delivery_city_code' => ['required_if:delivery_method,delivery', 'nullable', 'string', 'regex:/^[0-9]{10}$/'],
+            'delivery_barangay_code' => ['required_if:delivery_method,delivery', 'nullable', 'string', 'regex:/^[0-9]{10}$/'],
             'delivery_notes' => ['nullable', 'string', 'max:1000'],
             'payment_method' => ['required', 'string', 'in:cod,gcash'],
             'payment_reference' => ['required_if:payment_method,gcash', 'nullable', 'string', 'min:8', 'max:100', 'regex:/^[A-Za-z0-9 -]+$/'],
             'payment_proof' => ['required_if:payment_method,gcash', 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ]);
+
+        if ($data['delivery_method'] === 'delivery') {
+            if (! hash_equals(PhilippineAddressService::SERVICE_AREA_CODE, $data['delivery_province_code'])) {
+                throw ValidationException::withMessages([
+                    'delivery_province_code' => 'Ferosa delivery is available within Bataan only.',
+                ]);
+            }
+
+            $area = $addresses->serviceArea();
+
+            $locality = $addresses->locality($area['code'], $data['delivery_city_code']);
+            if ($locality === null) {
+                throw ValidationException::withMessages([
+                    'delivery_city_code' => 'Please select a city or municipality within the chosen province or area.',
+                ]);
+            }
+
+            $barangay = $addresses->barangay($locality['code'], $data['delivery_barangay_code']);
+            if ($barangay === null) {
+                throw ValidationException::withMessages([
+                    'delivery_barangay_code' => 'Please select a barangay within the chosen city or municipality.',
+                ]);
+            }
+
+            $data['delivery_address'] = trim($data['delivery_address']).', '.$barangay['name'];
+            $data['delivery_city'] = $locality['name'].', '.$area['name'];
+        }
 
         $data['checkout_token'] = $data['checkout_token'] ?? (string) Str::uuid();
 
@@ -604,8 +639,11 @@ class PageController extends Controller
         return back()->with('status', $message);
     }
 
-    public function schedule(Request $request, EstimatorQuoteService $estimator): View|RedirectResponse
-    {
+    public function schedule(
+        Request $request,
+        EstimatorQuoteService $estimator,
+        PhilippineAddressService $addresses
+    ): View|RedirectResponse {
         // `?reschedule=<id>` re-uses this whole form to move an existing visit,
         // rather than maintaining a second calendar in a modal. The record is
         // resolved here so the view never has to trust the query string.
@@ -654,6 +692,7 @@ class PageController extends Controller
             'rescheduling' => $rescheduling,
             'bookingService' => $bookingService,
             'estimate' => $estimate,
+            'addressArea' => $addresses->serviceArea(),
         ]);
     }
 
@@ -663,17 +702,18 @@ class PageController extends Controller
         $tiers = array_keys((array) config('estimator.tiers', []));
         $addons = array_keys((array) config('estimator.addons', []));
 
-        /** @var array{project_type:string,size:int,tier:string,addons?:list<string>,products?:list<array{id:int,qty:int}>} $data */
+        /** @var array{project_type:string,size:int,coverage_area?:int,tier:string,addons?:list<string>,products?:list<array{id:int,qty:int}>} $data */
         $data = $request->validate([
             'project_type' => ['required', 'string', Rule::in($projectTypes)],
             'size' => ['required', 'integer', 'min:1', 'max:100000'],
+            'coverage_area' => ['sometimes', 'integer', 'min:1', 'max:100000'],
             'tier' => ['required', 'string', Rule::in($tiers)],
             'addons' => ['sometimes', 'array', 'max:'.count($addons)],
             'addons.*' => ['string', 'distinct', Rule::in($addons)],
             'products' => ['sometimes', 'array', 'max:12'],
             'products.*' => ['array:id,qty'],
             'products.*.id' => ['required', 'integer', 'distinct', 'exists:products,id'],
-            'products.*.qty' => ['required', 'integer', 'min:1', 'max:999'],
+            'products.*.qty' => ['required', 'integer', 'min:1', 'max:100000'],
         ]);
 
         $request->session()->put(EstimatorQuoteService::SESSION_KEY, $estimator->prepare($data));
@@ -730,14 +770,54 @@ class PageController extends Controller
         ]);
     }
 
-    public function storeSchedule(StoreScheduleRequest $request, EstimatorQuoteService $estimator): RedirectResponse
-    {
+    public function storeSchedule(
+        StoreScheduleRequest $request,
+        EstimatorQuoteService $estimator,
+        PhilippineAddressService $addresses
+    ): RedirectResponse {
         $data = $request->validated();
 
         $draft = $estimator->current($request);
         if (! $draft) {
             return redirect()->route('estimator')->with('estimator_guidance', true);
         }
+
+        $site = $request->validate([
+            'site_province_code' => ['required', 'string', 'regex:/^[0-9]{10}$/'],
+            'site_city_code' => ['required', 'string', 'regex:/^[0-9]{10}$/'],
+            'site_barangay_code' => ['required', 'string', 'regex:/^[0-9]{10}$/'],
+            'site_street' => ['required', 'string', 'max:450'],
+        ]);
+
+        if (! hash_equals(PhilippineAddressService::SERVICE_AREA_CODE, $site['site_province_code'])) {
+            throw ValidationException::withMessages([
+                'site_province_code' => 'Ferosa service visits are available within Bataan only.',
+            ]);
+        }
+
+        $area = $addresses->serviceArea();
+
+        $locality = $addresses->locality($area['code'], $site['site_city_code']);
+        if ($locality === null) {
+            throw ValidationException::withMessages([
+                'site_city_code' => 'Please select a city or municipality within the chosen province or area.',
+            ]);
+        }
+
+        $barangay = $addresses->barangay($locality['code'], $site['site_barangay_code']);
+        if ($barangay === null) {
+            throw ValidationException::withMessages([
+                'site_barangay_code' => 'Please select a barangay within the chosen city or municipality.',
+            ]);
+        }
+
+        $siteAddress = implode(', ', [
+            trim($site['site_street']),
+            $barangay['name'],
+            $locality['name'],
+            $area['name'],
+            'Philippines',
+        ]);
 
         if ($this->activeAppointmentForUser(auth()->id())) {
             return back()->withErrors([
@@ -787,6 +867,7 @@ class PageController extends Controller
                 'estimate_snapshot' => $draft['snapshot'],
                 'status' => 'scheduled',
                 'notes' => $data['notes'] ?? null,
+                'site_address' => $siteAddress,
             ]);
         } catch (QueryException) {
             return back()->withErrors([
@@ -1019,7 +1100,16 @@ class PageController extends Controller
                 ->orderBy('category')
                 ->orderBy('name')
                 ->take(12)
-                ->get(['id', 'name', 'category', 'price', 'stock_qty']),
+                ->get([
+                    'id',
+                    'name',
+                    'category',
+                    'price',
+                    'stock_qty',
+                    'sale_unit',
+                    'coverage_sqm_per_unit',
+                    'coverage_waste_percent',
+                ]),
         ]);
     }
 

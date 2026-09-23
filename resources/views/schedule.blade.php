@@ -37,7 +37,7 @@
     title="{{ $rescheduling ? 'Reschedule your visit' : 'Schedule a service' }}"
     sub="{{ $rescheduling
       ? 'Pick a new date and time. The service and starting fee stay the same.'
-      : ($estimate ? 'Your estimate is ready. Pick a date and time for the consultation.' : 'Complete a cost estimate first, then choose a date and time for your consultation.') }}">
+      : ($estimate ? 'Your estimate is ready. Add the visit location, then pick a date and time.' : 'Complete a cost estimate first, then choose the location, date, and time for your consultation.') }}">
     <x-slot:icon>
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18M12 14v4M10 16h4"/>
@@ -81,8 +81,13 @@
        chosen (see updateStepper below); a strip that always highlighted step 1
        told them nothing about where they were. --}}
   <section class="mb-6 overflow-hidden rounded-2xl border border-brand-100 bg-white reveal reveal-1" aria-label="Booking progress">
-    <ol class="grid grid-cols-2 sm:grid-cols-4">
-      @foreach([['1', 'Estimate'], ['2', 'Date'], ['3', 'Time'], ['4', 'Confirm']] as [$number, $label])
+    @php
+      $bookingSteps = $rescheduling
+        ? [['1', 'Service'], ['2', 'Date'], ['3', 'Time'], ['4', 'Confirm']]
+        : [['1', 'Estimate'], ['2', 'Location'], ['3', 'Date'], ['4', 'Time'], ['5', 'Confirm']];
+    @endphp
+    <ol class="grid grid-cols-2 {{ $rescheduling ? 'sm:grid-cols-4' : 'sm:grid-cols-5' }}">
+      @foreach($bookingSteps as [$number, $label])
         <li class="booking-step flex items-center gap-2 border-b border-r border-brand-50 px-3 py-3 last:border-r-0 sm:border-b-0" data-step="{{ $number }}">
           <span class="step-marker flex h-6 w-6 items-center justify-center rounded-full bg-brand-50 text-brand-700 text-[10px] font-bold" aria-hidden="true">{{ $number }}</span>
           <span class="step-label text-xs font-bold text-surface-500">{{ $label }}</span>
@@ -170,7 +175,7 @@
             <p class="mt-2 text-xs leading-5 text-surface-500">
               {{ $rescheduling
                 ? 'Choose only a new date and time. Your service and consultation fee will not change.'
-                : 'We carried your estimator choices into this consultation. Choose only the visit date and time.' }}
+                : 'We carried your estimator choices into this consultation. Add the service address, then choose the visit date and time.' }}
             </p>
           </div>
           <div class="rounded-xl border border-brand-100 bg-brand-50/70 p-4">
@@ -208,10 +213,50 @@
         </div>
       </div>
 
+      @unless($rescheduling)
+        {{-- Visit location --}}
+        <section class="md:col-span-5 customer-card p-5 sm:p-6" aria-labelledby="visit-location-title">
+          <div class="flex items-start gap-3">
+            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[10px] font-bold text-brand-700">2</span>
+            <div>
+              <h3 id="visit-location-title" class="text-sm font-bold text-surface-900">Where should the team visit?</h3>
+              <p id="visit-location-hint" class="mt-1 text-xs leading-5 text-surface-500">Service visits are available within Bataan only. Choose the city or municipality and barangay, then enter the house number and street.</p>
+            </div>
+          </div>
+
+          <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <span class="field-label">Service area</span>
+              <div class="flex min-h-[42px] items-center rounded-xl border border-brand-100 bg-brand-50 px-3.5 text-sm font-semibold text-brand-900" aria-describedby="visit-location-hint">
+                {{ $addressArea['name'] }}
+              </div>
+              <input type="hidden" id="site_province_code" name="site_province_code" value="{{ $addressArea['code'] }}">
+            </div>
+            <div>
+              <label for="site_city_code" class="field-label">City / municipality <span class="text-red-500">*</span></label>
+              <select id="site_city_code" name="site_city_code" class="field" required disabled data-selected="{{ old('site_city_code') }}">
+                <option value="">Select a province or area first</option>
+              </select>
+            </div>
+            <div>
+              <label for="site_barangay_code" class="field-label">Barangay <span class="text-red-500">*</span></label>
+              <select id="site_barangay_code" name="site_barangay_code" class="field" required disabled data-selected="{{ old('site_barangay_code') }}">
+                <option value="">Select a city or municipality first</option>
+              </select>
+            </div>
+            <div>
+              <label for="site_street" class="field-label">House / street details <span class="text-red-500">*</span></label>
+              <input type="text" id="site_street" name="site_street" value="{{ old('site_street') }}" maxlength="450" required
+                placeholder="House/Unit No. and street name" autocomplete="street-address" class="field">
+            </div>
+          </div>
+        </section>
+      @endunless
+
       {{-- Calendar --}}
       <div class="md:col-span-3 customer-card p-5">
         <div class="flex items-center gap-2 mb-4">
-          <span class="w-6 h-6 rounded-full bg-brand-50 text-brand-700 text-[10px] font-bold flex items-center justify-center">2</span>
+          <span class="w-6 h-6 rounded-full bg-brand-50 text-brand-700 text-[10px] font-bold flex items-center justify-center">{{ $rescheduling ? 2 : 3 }}</span>
           <h3 class="text-sm font-bold text-surface-900">Select a date</h3>
         </div>
         <div class="border border-surface-100 rounded-lg overflow-hidden">
@@ -249,7 +294,7 @@
         {{-- Time slots --}}
         <div class="customer-card p-5">
           <div class="flex items-center gap-2 mb-4">
-            <span class="w-6 h-6 rounded-full bg-brand-50 text-brand-700 text-[10px] font-bold flex items-center justify-center">3</span>
+            <span class="w-6 h-6 rounded-full bg-brand-50 text-brand-700 text-[10px] font-bold flex items-center justify-center">{{ $rescheduling ? 3 : 4 }}</span>
             <h3 class="text-sm font-bold text-surface-900">Select a time</h3>
           </div>
           <div class="grid grid-cols-2 gap-2" id="time-slots">
@@ -324,9 +369,95 @@
 @if ($rescheduling || $estimate)
 <script>
   const SCHEDULE_AVAILABILITY_URL = @json(route('schedule.availability'));
+  const IS_RESCHEDULING = @json($rescheduling !== null);
   // Declared here rather than beside IS_RESCHEDULING further down: the first
   // availability fetch runs during init, before that line has been evaluated.
   const RESCHEDULING_ID = @json($rescheduling?->id);
+
+  @unless($rescheduling)
+  // ── Philippine visit location ───────────────────────────────────────────
+  const siteArea = document.getElementById('site_province_code');
+  const siteLocality = document.getElementById('site_city_code');
+  const siteBarangay = document.getElementById('site_barangay_code');
+  const siteStreet = document.getElementById('site_street');
+  const siteLocalitiesUrl = @json(url('/api/philippine-addresses/areas'));
+  const siteBarangaysUrl = @json(url('/api/philippine-addresses/localities'));
+  let siteLocalityRequest = 0;
+  let siteBarangayRequest = 0;
+
+  function setSiteOptions(select, placeholder, options = [], selected = '') {
+    const optionElements = [new Option(placeholder, '')];
+    options.forEach(option => optionElements.push(new Option(option.name, option.code)));
+    select.replaceChildren(...optionElements);
+    select.disabled = options.length === 0;
+    if (selected && options.some(option => option.code === selected)) {
+      select.value = selected;
+    }
+    updateStepper();
+  }
+
+  async function fetchSiteOptions(url) {
+    const response = await fetch(url, {
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+    });
+    if (!response.ok) throw new Error('Visit locations could not be loaded.');
+    const payload = await response.json();
+    return Array.isArray(payload.data) ? payload.data : [];
+  }
+
+  async function loadSiteLocalities(selected = '') {
+    const request = ++siteLocalityRequest;
+    siteBarangayRequest++;
+    setSiteOptions(siteLocality, 'Select a province or area first');
+    setSiteOptions(siteBarangay, 'Select a city or municipality first');
+    if (!siteArea.value) return;
+
+    const areaCode = siteArea.value;
+    siteLocality.setAttribute('aria-busy', 'true');
+    setSiteOptions(siteLocality, 'Loading cities and municipalities...');
+    try {
+      const options = await fetchSiteOptions(`${siteLocalitiesUrl}/${encodeURIComponent(areaCode)}/localities`);
+      if (request !== siteLocalityRequest) return;
+      setSiteOptions(siteLocality, 'Select city or municipality', options, selected);
+    } catch {
+      if (request !== siteLocalityRequest) return;
+      setSiteOptions(siteLocality, 'Could not load locations');
+    } finally {
+      if (request === siteLocalityRequest) siteLocality.removeAttribute('aria-busy');
+    }
+  }
+
+  async function loadSiteBarangays(selected = '') {
+    const request = ++siteBarangayRequest;
+    setSiteOptions(siteBarangay, 'Select a city or municipality first');
+    if (!siteLocality.value) return;
+
+    const localityCode = siteLocality.value;
+    siteBarangay.setAttribute('aria-busy', 'true');
+    setSiteOptions(siteBarangay, 'Loading barangays...');
+    try {
+      const options = await fetchSiteOptions(`${siteBarangaysUrl}/${encodeURIComponent(localityCode)}/barangays`);
+      if (request !== siteBarangayRequest) return;
+      setSiteOptions(siteBarangay, 'Select barangay', options, selected);
+    } catch {
+      if (request !== siteBarangayRequest) return;
+      setSiteOptions(siteBarangay, 'Could not load barangays');
+    } finally {
+      if (request === siteBarangayRequest) siteBarangay.removeAttribute('aria-busy');
+    }
+  }
+
+  siteArea.addEventListener('change', () => loadSiteLocalities());
+  siteLocality.addEventListener('change', () => loadSiteBarangays());
+  siteBarangay.addEventListener('change', updateStepper);
+  siteStreet.addEventListener('input', updateStepper);
+
+  async function restoreSiteAddressSelection() {
+    await loadSiteLocalities(siteLocality.dataset.selected || '');
+    await loadSiteBarangays(siteBarangay.dataset.selected || '');
+  }
+  @endunless
 
   // ── Calendar state ────────────────────────────────────────────────────────
   const MONTHS = ['January','February','March','April','May','June',
@@ -562,24 +693,25 @@
   // page opened, so the strip starts with the date as the active step.
   function updateStepper() {
     const hasDate = Boolean(selectedDate);
-    const done = [
-      Boolean(document.getElementById('availability-service-type')?.value),
-      hasDate,
-      // A time slot is preselected on load as a convenience, before any date
-      // exists to book it on. Counting that as a finished step put a tick on
-      // "Time" while "Date" was still the open step, so the strip claimed the
-      // customer had done something they had not, in the wrong order.
-      hasDate && Boolean(selectedTime),
-      false,
-    ];
-    // "Confirm" is reached only once the three choices above are made.
-    done[3] = done[0] && done[1] && done[2];
+    const hasTime = hasDate && Boolean(selectedTime);
+    const hasLocation = IS_RESCHEDULING || Boolean(
+      document.getElementById('site_province_code')?.value
+      && document.getElementById('site_city_code')?.value
+      && document.getElementById('site_barangay_code')?.value
+      && document.getElementById('site_street')?.value.trim()
+    );
+    const done = IS_RESCHEDULING
+      ? [Boolean(document.getElementById('availability-service-type')?.value), hasDate, hasTime, false]
+      : [Boolean(document.getElementById('availability-service-type')?.value), hasLocation, hasDate, hasTime, false];
+
+    const confirmIndex = done.length - 1;
+    done[confirmIndex] = done.slice(0, confirmIndex).every(Boolean);
 
     const firstOpen = done.findIndex(isDone => !isDone);
 
     document.querySelectorAll('.booking-step').forEach((step, index) => {
-      const isDone = done[index] && index !== 3;
-      const isActive = index === firstOpen || (index === 3 && done[3]);
+      const isDone = done[index] && index !== confirmIndex;
+      const isActive = index === firstOpen || (index === confirmIndex && done[confirmIndex]);
 
       step.classList.toggle('is-done', isDone);
       step.classList.toggle('is-active', isActive && !isDone);
@@ -611,8 +743,6 @@
   }
 
   // ── Submit ────────────────────────────────────────────────────────────────
-  const IS_RESCHEDULING = @json($rescheduling !== null);
-
   function submitBooking() {
     if (!IS_RESCHEDULING && @json((bool) ($activeAppointment ?? null))) {
       alert('You already have an active booking. Please cancel or complete it before booking another service.');
@@ -624,6 +754,9 @@
 
     const serviceTypeId = document.getElementById('availability-service-type').value;
     if (!serviceTypeId) { alert('Your consultation service is unavailable. Please prepare a new estimate.'); return; }
+
+    const form = document.getElementById('booking-form');
+    if (!form.reportValidity()) return;
 
     // Build appointment_at as "YYYY-MM-DD HH:MM:00"
     const yyyy = selectedDate.getFullYear();
@@ -645,13 +778,16 @@
     btn.dataset.loading = 'true';
     const busyLabel = IS_RESCHEDULING ? 'Moving...' : 'Booking...';
     btn.innerHTML = '<span class="inline-block w-3.5 h-3.5 border-2 border-current border-r-transparent rounded-full animate-spin"></span><span>' + busyLabel + '</span>';
-    document.getElementById('booking-form').submit();
+    form.submit();
   }
 
   // ── Init ──────────────────────────────────────────────────────────────────
   document.addEventListener('DOMContentLoaded', () => {
     renderCalendar();
     updateStepper();
+    @unless($rescheduling)
+    restoreSiteAddressSelection();
+    @endunless
   });
 </script>
 @endif

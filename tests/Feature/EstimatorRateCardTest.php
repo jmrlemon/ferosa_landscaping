@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -62,6 +63,82 @@ class EstimatorRateCardTest extends TestCase
             ->getJson('/api/mobile/estimator-rates')
             ->assertOk()
             ->assertExactJson(array_merge(config('estimator'), ['estimate_products' => []]));
+    }
+
+    public function test_area_coverage_metadata_is_additive_in_the_mobile_rate_card(): void
+    {
+        $customer = User::factory()->create(['role' => 'user']);
+        $grass = Product::query()->create([
+            'name' => 'Carabao Grass',
+            'price' => 250,
+            'stock_qty' => 100,
+            'category' => 'grass',
+            'is_active' => true,
+            'sale_unit' => 'sq m',
+            'coverage_sqm_per_unit' => 1,
+            'coverage_waste_percent' => 10,
+        ]);
+
+        $this->actingAs($customer)
+            ->getJson('/api/mobile/estimator-rates')
+            ->assertOk()
+            ->assertJsonPath('estimate_products.0.id', $grass->id)
+            ->assertJsonPath('estimate_products.0.sale_unit', 'sq m')
+            ->assertJsonPath('estimate_products.0.coverage_sqm_per_unit', 1)
+            ->assertJsonPath('estimate_products.0.coverage_waste_percent', 10);
+    }
+
+    public function test_the_web_estimator_renders_an_area_based_material_recommendation(): void
+    {
+        $customer = User::factory()->create(['role' => 'user']);
+        Product::query()->create([
+            'name' => 'Carabao Grass',
+            'price' => 250,
+            'stock_qty' => 150,
+            'category' => 'grass',
+            'is_active' => true,
+            'sale_unit' => 'sq m',
+            'coverage_sqm_per_unit' => 1,
+            'coverage_waste_percent' => 10,
+        ]);
+
+        $html = $this->actingAs($customer)->get('/estimator')->assertOk()->getContent();
+
+        $this->assertStringContainsString('id="coverage-area-input"', $html);
+        $this->assertStringContainsString('id="coverage-area-error"', $html);
+        $this->assertStringContainsString('id="material-recommendation"', $html);
+        $this->assertStringContainsString('data-sale-unit="sq m"', $html);
+        $this->assertStringContainsString('data-coverage-sqm="1"', $html);
+        $this->assertStringContainsString('data-waste-percent="10"', $html);
+        $this->assertStringContainsString('Recommended order', $html);
+        $this->assertStringContainsString('function applyAreaRecommendation', $html);
+        $this->assertStringContainsString('function updateCoverageAreaUI', $html);
+    }
+
+    public function test_non_grass_and_non_stone_products_never_expose_area_coverage(): void
+    {
+        $customer = User::factory()->create(['role' => 'user']);
+        Product::query()->create([
+            'name' => 'Monstera Deliciosa',
+            'price' => 1200,
+            'stock_qty' => 100,
+            'category' => 'Plants',
+            'is_active' => true,
+            // Simulates legacy or directly imported data that bypassed admin validation.
+            'sale_unit' => 'plant',
+            'coverage_sqm_per_unit' => 1,
+            'coverage_waste_percent' => 10,
+        ]);
+
+        $html = $this->actingAs($customer)->get('/estimator')->assertOk()->getContent();
+        $this->assertStringNotContainsString('id="coverage-area-input"', $html);
+        $this->assertStringNotContainsString('data-coverage-sqm="1"', $html);
+
+        $this->getJson('/api/mobile/estimator-rates')
+            ->assertOk()
+            ->assertJsonPath('estimate_products.0.sale_unit', null)
+            ->assertJsonPath('estimate_products.0.coverage_sqm_per_unit', null)
+            ->assertJsonPath('estimate_products.0.coverage_waste_percent', null);
     }
 
     public function test_the_web_estimator_renders_rates_from_the_config(): void

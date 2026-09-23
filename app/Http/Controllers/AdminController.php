@@ -664,6 +664,10 @@ class AdminController extends Controller
             'order' => $order,
             'isAdmin' => $isAdmin,
             'history' => $history,
+            'staffMembers' => User::query()
+                ->where('role', 'staff')
+                ->orderBy('name')
+                ->get(['id', 'name']),
         ]);
     }
 
@@ -833,9 +837,10 @@ class AdminController extends Controller
             'image' => ['nullable', 'image', 'max:2048'],
             'price' => ['required', 'numeric', 'min:0'],
             'stock_qty' => ['nullable', 'integer', 'min:0'],
+            ...$this->coverageValidationRules($request),
             'category' => ['required', 'string', 'max:100'],
             'is_active' => ['nullable', 'boolean'],
-        ]);
+        ], $this->coverageValidationMessages());
 
         [$imagePath, $imageUrl] = $this->storeProductImage($request);
 
@@ -853,6 +858,7 @@ class AdminController extends Controller
                     // Created at zero so the opening stock is booked through the ledger
                     // rather than appearing from nowhere.
                     'stock_qty' => 0,
+                    ...$this->coverageFields($data),
                     'category' => strtolower(trim($data['category'])),
                     'is_active' => (bool) ($data['is_active'] ?? false),
                     'archived_at' => null,
@@ -880,7 +886,7 @@ class AdminController extends Controller
             'product.create',
             $product,
             null,
-            Audit::snapshot($product, ['name', 'description', 'image_url', 'price', 'stock_qty', 'category', 'is_active', 'archived_at'])
+            Audit::snapshot($product, ['name', 'description', 'image_url', 'price', 'stock_qty', 'sale_unit', 'coverage_sqm_per_unit', 'coverage_waste_percent', 'category', 'is_active', 'archived_at'])
         );
 
         Cache::forget('shop_products_active');
@@ -910,7 +916,7 @@ class AdminController extends Controller
     {
         abort_unless($product->archived_at === null, 404);
 
-        $before = Audit::snapshot($product, ['name', 'description', 'image_url', 'price', 'stock_qty', 'category', 'is_active', 'archived_at']);
+        $before = Audit::snapshot($product, ['name', 'description', 'image_url', 'price', 'stock_qty', 'sale_unit', 'coverage_sqm_per_unit', 'coverage_waste_percent', 'category', 'is_active', 'archived_at']);
 
         $data = $request->validate([
             'name' => [
@@ -927,9 +933,10 @@ class AdminController extends Controller
             // stock_qty is deliberately absent: stock only moves through the
             // ledger, where every change carries a reason. A posted value is
             // ignored rather than silently applied.
+            ...$this->coverageValidationRules($request),
             'category' => ['required', 'string', 'max:100'],
             'is_active' => ['nullable', 'boolean'],
-        ]);
+        ], $this->coverageValidationMessages());
 
         $previousImageUrl = $product->image_url;
         [$newImagePath, $newImageUrl] = $this->storeProductImage($request);
@@ -941,6 +948,7 @@ class AdminController extends Controller
                 'description' => $data['description'] ?? '',
                 'image_url' => $imageUrl,
                 'price' => $data['price'],
+                ...$this->coverageFields($data),
                 'category' => strtolower(trim($data['category'])),
                 'is_active' => (bool) ($data['is_active'] ?? false),
             ]);
@@ -964,7 +972,7 @@ class AdminController extends Controller
             'product.update',
             $product,
             $before,
-            Audit::snapshot($product, ['name', 'description', 'image_url', 'price', 'stock_qty', 'category', 'is_active', 'archived_at'])
+            Audit::snapshot($product, ['name', 'description', 'image_url', 'price', 'stock_qty', 'sale_unit', 'coverage_sqm_per_unit', 'coverage_waste_percent', 'category', 'is_active', 'archived_at'])
         );
 
         if ($request->input('redirect_to') === 'edit') {
@@ -974,6 +982,79 @@ class AdminController extends Controller
 
         return redirect()->route('admin.dashboard', ['tab' => 'products'])
             ->with('status', 'Product updated successfully.');
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array{sale_unit:?string,coverage_sqm_per_unit:?float,coverage_waste_percent:?float}
+     */
+    private function coverageFields(array $data): array
+    {
+        if (! Product::categorySupportsAreaCoverage((string) ($data['category'] ?? ''))) {
+            return [
+                'sale_unit' => null,
+                'coverage_sqm_per_unit' => null,
+                'coverage_waste_percent' => null,
+            ];
+        }
+
+        $coverage = isset($data['coverage_sqm_per_unit'])
+            ? round((float) $data['coverage_sqm_per_unit'], 4)
+            : null;
+
+        if ($coverage === null) {
+            return [
+                'sale_unit' => null,
+                'coverage_sqm_per_unit' => null,
+                'coverage_waste_percent' => null,
+            ];
+        }
+
+        return [
+            'sale_unit' => trim((string) $data['sale_unit']),
+            'coverage_sqm_per_unit' => $coverage,
+            'coverage_waste_percent' => round((float) ($data['coverage_waste_percent'] ?? 10), 2),
+        ];
+    }
+
+    /** @return array<string, list<mixed>> */
+    private function coverageValidationRules(Request $request): array
+    {
+        $prohibited = ! Product::categorySupportsAreaCoverage($request->string('category')->toString());
+
+        return [
+            'sale_unit' => [
+                'nullable',
+                Rule::prohibitedIf($prohibited),
+                'string',
+                'max:40',
+                'required_with:coverage_sqm_per_unit',
+            ],
+            'coverage_sqm_per_unit' => [
+                'nullable',
+                Rule::prohibitedIf($prohibited),
+                'numeric',
+                'min:0.0001',
+                'max:100000',
+                'required_with:sale_unit',
+            ],
+            'coverage_waste_percent' => [
+                'nullable',
+                Rule::prohibitedIf($prohibited),
+                'numeric',
+                'between:0,100',
+            ],
+        ];
+    }
+
+    /** @return array<string, string> */
+    private function coverageValidationMessages(): array
+    {
+        return [
+            'sale_unit.prohibited' => 'Estimator coverage is available only for Grass and Stones products.',
+            'coverage_sqm_per_unit.prohibited' => 'Estimator coverage is available only for Grass and Stones products.',
+            'coverage_waste_percent.prohibited' => 'Estimator coverage is available only for Grass and Stones products.',
+        ];
     }
 
     /** @return array{0: ?string, 1: ?string} */
@@ -1087,18 +1168,18 @@ class AdminController extends Controller
                 )]
                 : ['prohibited'],
             'delivery_proof' => ['nullable', 'image', 'max:5120'],
-            'driver_name' => ['nullable', 'string', 'max:255'],
+            'driver_staff_id' => $isDeliveryOrder
+                ? ['nullable', 'integer', Rule::exists('users', 'id')->where('role', 'staff')]
+                : ['prohibited'],
+            'driver_name' => ['prohibited'],
             'driver_phone' => ['nullable', 'string', 'regex:/^\d{11}$/'],
             'dispatch_notes' => ['nullable', 'string', 'max:1000'],
             'delivery_recipient_name' => ['nullable', 'string', 'max:255'],
-            'estimated_delivery_date' => $isDeliveryOrder
+            'estimated_delivery_date' => $isDeliveryOrder && $request->input('status') === 'out_for_delivery'
                 ? [
                     'nullable',
                     'date',
-                    Rule::when(
-                        ! in_array($request->input('status'), ['delivered', 'completed', 'cancelled'], true),
-                        ['after_or_equal:today']
-                    ),
+                    'after_or_equal:today',
                 ]
                 : ['prohibited'],
         ], [
@@ -1109,6 +1190,9 @@ class AdminController extends Controller
         // Payment state is always the current server-side value for staff.
         // Only the admin branch below is allowed to verify or settle money.
         $paymentStatus = $isAdmin ? $data['payment_status'] : ($order->payment_status ?? 'unpaid');
+        $assignedDriver = isset($data['driver_staff_id'])
+            ? User::query()->where('role', 'staff')->find($data['driver_staff_id'])
+            : null;
 
         if (! $order->canTransitionTo($data['status'])) {
             $message = 'Order cannot move from '.str_replace('_', ' ', $order->status).' to '.str_replace('_', ' ', $data['status']).'.';
@@ -1139,8 +1223,9 @@ class AdminController extends Controller
 
         if ($isDeliveryOrder
             && in_array($data['status'], ['out_for_delivery', 'delivered'], true)
-            && blank($data['driver_name'] ?? $order->driver_name)) {
-            return $this->orderStatusError($request, 'driver_name', 'Please provide the assigned driver or rider name.');
+            && $assignedDriver === null
+            && blank($order->driver_name)) {
+            return $this->orderStatusError($request, 'driver_staff_id', 'Please select the assigned staff driver or rider.');
         }
 
         if ($isDeliveryOrder
@@ -1195,7 +1280,11 @@ class AdminController extends Controller
                 $updates['estimated_delivery_date'] = $data['estimated_delivery_date'];
             }
 
-            foreach (['driver_name', 'driver_phone', 'dispatch_notes', 'delivery_recipient_name'] as $field) {
+            if ($assignedDriver !== null) {
+                $updates['driver_name'] = $assignedDriver->name;
+            }
+
+            foreach (['driver_phone', 'dispatch_notes', 'delivery_recipient_name'] as $field) {
                 if (array_key_exists($field, $data)) {
                     $updates[$field] = $data[$field];
                 }

@@ -34,6 +34,7 @@ class EstimatorBookingFlowTest extends TestCase
 
         $this->actingAs($customer)
             ->post(route('schedule.store'), [
+                ...$this->validAppointmentAddress(),
                 'appointment_at' => now()->addDays(3)->setTime(9, 0)->format('Y-m-d H:i:s'),
             ])
             ->assertRedirect(route('estimator'))
@@ -83,6 +84,47 @@ class EstimatorBookingFlowTest extends TestCase
             ->assertDontSeeText('Choose a service');
     }
 
+    public function test_area_covering_products_store_an_authoritative_material_recommendation(): void
+    {
+        $customer = User::factory()->create(['role' => 'user']);
+        $this->mappedService('Garden Design Consultation', 1500);
+        $grass = Product::query()->create([
+            'name' => 'Carabao Grass',
+            'price' => 75,
+            'stock_qty' => 180,
+            'category' => 'grass',
+            'is_active' => true,
+            'sale_unit' => 'roll',
+            'coverage_sqm_per_unit' => 0.5,
+            'coverage_waste_percent' => 10,
+        ]);
+
+        $response = $this->actingAs($customer)
+            ->post(route('estimator.prepare'), [
+                'project_type' => 'design',
+                'size' => 150,
+                'coverage_area' => 100,
+                'tier' => 'standard',
+                'products' => [
+                    ['id' => $grass->id, 'qty' => 190],
+                ],
+            ])
+            ->assertRedirect(route('schedule'))
+            ->assertSessionHasNoErrors();
+
+        $response->assertSessionHas('estimator_booking', function (array $draft): bool {
+            $product = $draft['snapshot']['products'][0] ?? [];
+            $coverage = $product['coverage'] ?? [];
+
+            return ($draft['snapshot']['coverage_area'] ?? null) === 100
+                && ($product['sale_unit'] ?? null) === 'roll'
+                && ($coverage['recommended_quantity'] ?? null) === 220
+                && ($coverage['selected_quantity'] ?? null) === 190
+                && ($coverage['coverage_shortfall_sqm'] ?? null) === 5.0
+                && ($coverage['stock_shortage'] ?? null) === 40;
+        });
+    }
+
     public function test_booking_uses_the_estimate_service_and_keeps_the_consultation_fee(): void
     {
         Mail::fake();
@@ -104,6 +146,7 @@ class EstimatorBookingFlowTest extends TestCase
         $appointmentAt = now()->addDays(3)->setTime(9, 0)->format('Y-m-d H:i:s');
         $this->actingAs($customer)
             ->post(route('schedule.store'), [
+                ...$this->validAppointmentAddress(),
                 'service_type_id' => $forgedService->id,
                 'appointment_at' => $appointmentAt,
                 'notes' => 'Please inspect the back garden.',

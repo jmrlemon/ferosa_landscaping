@@ -126,15 +126,36 @@
                   placeholder="e.g. 09XX XXX XXXX" class="field">
               </div>
             </div>
-            <div>
-              <label for="delivery_address" class="field-label">Street address <span class="text-red-500">*</span></label>
-              <input type="text" id="delivery_address" name="delivery_address" value="{{ old('delivery_address') }}"
-                placeholder="House/Unit No., Street, Barangay" class="field">
+            <p id="address-order-hint" class="text-xs leading-5 text-surface-500">
+              Delivery is available within Bataan only. Choose your city or municipality and barangay, then enter your house or street details.
+            </p>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <span class="field-label">Delivery area</span>
+                <div class="flex min-h-[42px] items-center rounded-xl border border-brand-100 bg-brand-50 px-3.5 text-sm font-semibold text-brand-900" aria-describedby="address-order-hint">
+                  {{ $addressArea['name'] }}
+                </div>
+                <input type="hidden" id="delivery_province_code" name="delivery_province_code" value="{{ $addressArea['code'] }}" data-delivery-required>
+              </div>
+              <div>
+                <label for="delivery_city_code" class="field-label">City / municipality <span class="text-red-500">*</span></label>
+                <select id="delivery_city_code" name="delivery_city_code" class="field" disabled
+                  data-selected="{{ old('delivery_city_code') }}" data-delivery-required>
+                  <option value="">Select a province or area first</option>
+                </select>
+              </div>
             </div>
             <div>
-              <label for="delivery_city" class="field-label">City / municipality <span class="text-red-500">*</span></label>
-              <input type="text" id="delivery_city" name="delivery_city" value="{{ old('delivery_city') }}"
-                placeholder="e.g. Quezon City" class="field">
+              <label for="delivery_barangay_code" class="field-label">Barangay <span class="text-red-500">*</span></label>
+              <select id="delivery_barangay_code" name="delivery_barangay_code" class="field" disabled
+                data-selected="{{ old('delivery_barangay_code') }}" data-delivery-required>
+                <option value="">Select a city or municipality first</option>
+              </select>
+            </div>
+            <div>
+              <label for="delivery_address" class="field-label">House / street details <span class="text-red-500">*</span></label>
+              <input type="text" id="delivery_address" name="delivery_address" value="{{ old('delivery_address') }}"
+                placeholder="House/Unit No. and street name" autocomplete="street-address" class="field" data-delivery-required>
             </div>
             <div>
               <label for="delivery_notes" class="field-label">Delivery notes <span class="font-normal normal-case tracking-normal text-surface-400">(optional)</span></label>
@@ -340,11 +361,92 @@
 
     deliveryFields.classList.toggle('hidden', method !== 'delivery');
     pickupInfo.classList.toggle('hidden', method === 'delivery');
+    deliveryFields.querySelectorAll('[data-delivery-required]').forEach(field => {
+      field.required = method === 'delivery';
+    });
 
     on.classList.remove(...IDLE);
     on.classList.add(...ACTIVE);
     off.classList.remove(...ACTIVE);
     off.classList.add(...IDLE);
+  }
+
+  // ── Philippine address selectors ────────────────────────────────────────
+  const addressArea = document.getElementById('delivery_province_code');
+  const addressLocality = document.getElementById('delivery_city_code');
+  const addressBarangay = document.getElementById('delivery_barangay_code');
+  const addressLocalitiesUrl = @json(url('/api/philippine-addresses/areas'));
+  const addressBarangaysUrl = @json(url('/api/philippine-addresses/localities'));
+  let localityRequest = 0;
+  let barangayRequest = 0;
+
+  function setAddressOptions(select, placeholder, options = [], selected = '') {
+    const optionElements = [new Option(placeholder, '')];
+    options.forEach(option => optionElements.push(new Option(option.name, option.code)));
+    select.replaceChildren(...optionElements);
+    select.disabled = options.length === 0;
+    if (selected && options.some(option => option.code === selected)) {
+      select.value = selected;
+    }
+  }
+
+  async function fetchAddressOptions(url) {
+    const response = await fetch(url, {
+      headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+    });
+    if (!response.ok) throw new Error('Address options could not be loaded.');
+    const payload = await response.json();
+    return Array.isArray(payload.data) ? payload.data : [];
+  }
+
+  async function loadLocalities(selected = '') {
+    const request = ++localityRequest;
+    barangayRequest++;
+    setAddressOptions(addressLocality, 'Select a province or area first');
+    setAddressOptions(addressBarangay, 'Select a city or municipality first');
+    if (!addressArea.value) return;
+
+    const areaCode = addressArea.value;
+    addressLocality.setAttribute('aria-busy', 'true');
+    setAddressOptions(addressLocality, 'Loading cities and municipalities...');
+    try {
+      const options = await fetchAddressOptions(`${addressLocalitiesUrl}/${encodeURIComponent(areaCode)}/localities`);
+      if (request !== localityRequest) return;
+      setAddressOptions(addressLocality, 'Select city or municipality', options, selected);
+    } catch {
+      if (request !== localityRequest) return;
+      setAddressOptions(addressLocality, 'Could not load locations');
+    } finally {
+      if (request === localityRequest) addressLocality.removeAttribute('aria-busy');
+    }
+  }
+
+  async function loadBarangays(selected = '') {
+    const request = ++barangayRequest;
+    setAddressOptions(addressBarangay, 'Select a city or municipality first');
+    if (!addressLocality.value) return;
+
+    const localityCode = addressLocality.value;
+    addressBarangay.setAttribute('aria-busy', 'true');
+    setAddressOptions(addressBarangay, 'Loading barangays...');
+    try {
+      const options = await fetchAddressOptions(`${addressBarangaysUrl}/${encodeURIComponent(localityCode)}/barangays`);
+      if (request !== barangayRequest) return;
+      setAddressOptions(addressBarangay, 'Select barangay', options, selected);
+    } catch {
+      if (request !== barangayRequest) return;
+      setAddressOptions(addressBarangay, 'Could not load barangays');
+    } finally {
+      if (request === barangayRequest) addressBarangay.removeAttribute('aria-busy');
+    }
+  }
+
+  addressArea.addEventListener('change', () => loadLocalities());
+  addressLocality.addEventListener('change', () => loadBarangays());
+
+  async function restoreAddressSelection() {
+    await loadLocalities(addressLocality.dataset.selected || '');
+    await loadBarangays(addressBarangay.dataset.selected || '');
   }
 
   // ── Payment method toggle ────────────────────────────────────────────────
@@ -527,6 +629,8 @@
     }
   }
 
+  setDeliveryMethod(@json(old('delivery_method') === 'pickup' ? 'pickup' : 'delivery'));
+  restoreAddressSelection();
   setPaymentMethod(@json($selectedPaymentMethod === 'gcash' && $gcashAvailable ? 'gcash' : 'cod'));
   loadServerCart();
 </script>

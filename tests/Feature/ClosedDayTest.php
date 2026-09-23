@@ -57,6 +57,7 @@ class ClosedDayTest extends TestCase
         $this->actingAs($customer)
             ->withSession($this->estimatorBookingSession($service))
             ->post(route('schedule.store'), [
+                ...$this->validAppointmentAddress(),
                 'service_type_id' => $service->id,
                 'appointment_at' => $sunday->format('Y-m-d H:i:s'),
             ])
@@ -78,6 +79,7 @@ class ClosedDayTest extends TestCase
         $this->actingAs($customer)
             ->withSession($this->estimatorBookingSession($service))
             ->post(route('schedule.store'), [
+                ...$this->validAppointmentAddress(),
                 'service_type_id' => $service->id,
                 'appointment_at' => $tuesday->format('Y-m-d H:i:s'),
             ])

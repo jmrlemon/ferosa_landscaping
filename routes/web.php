@@ -12,6 +12,7 @@ use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\PasswordResetOtpController;
+use App\Http\Controllers\PhilippineAddressController;
 use App\Http\Controllers\ProductImageController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\RegistrationVerificationController;
@@ -75,6 +76,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/home', [PageController::class, 'home'])->name('home');
     Route::get('/checkout', [PageController::class, 'checkout'])->name('checkout');
     Route::post('/checkout', [PageController::class, 'storeCheckout'])->name('checkout.store');
+    Route::get('/api/philippine-addresses/areas/{areaCode}/localities', [PhilippineAddressController::class, 'localities'])
+        ->where('areaCode', '[0-9]{10}')
+        ->name('philippine-addresses.localities');
+    Route::get('/api/philippine-addresses/localities/{localityCode}/barangays', [PhilippineAddressController::class, 'barangays'])
+        ->where('localityCode', '[0-9]{10}')
+        ->name('philippine-addresses.barangays');
     Route::get('/orders/confirmation/{order}', [PageController::class, 'orderConfirmation'])->name('orders.confirmation');
     Route::get('/orders/{order}/receipt', [PageController::class, 'orderReceipt'])->name('orders.receipt');
     Route::get('/orders/{order}/invoice', [BillingController::class, 'orderInvoice'])->name('orders.invoice');

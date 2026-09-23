@@ -442,12 +442,32 @@
           </div>
           <div class="p-5">
             @if (($estimateProducts ?? collect())->isNotEmpty())
+              @if ($estimateProducts->contains(fn ($product) => $product->supportsAreaCoverage()))
+                <div class="mb-4 rounded-xl border border-brand-100 bg-brand-50 p-4">
+                  <label for="coverage-area-input" class="text-sm font-semibold text-brand-950">Area to cover with materials</label>
+                  <div class="relative mt-2 max-w-xs">
+                    <input type="number" id="coverage-area-input" min="1" max="100000" step="1"
+                           value="{{ $rateCard['defaults']['size'] }}"
+                           aria-describedby="coverage-area-help coverage-area-error"
+                           oninput="setCoverageAreaCustom(); calculate()"
+                           class="h-11 w-full rounded-lg border border-brand-200 bg-white px-3 pr-16 text-base font-semibold text-surface-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100">
+                    <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-surface-500">sq m</span>
+                  </div>
+                  <p id="coverage-area-help" class="mt-2 text-xs leading-5 text-brand-800/80">This starts with the property size. Reduce it if buildings, paths, or planting beds will not receive the selected material.</p>
+                  <p id="coverage-area-error" class="mt-1 hidden text-xs font-semibold text-red-700">Enter an area from 1 to 100,000 sq m.</p>
+                </div>
+              @endif
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 @foreach ($estimateProducts as $product)
+                  @php($supportsAreaCoverage = $product->supportsAreaCoverage())
                   <div class="estimate-product border border-surface-200 rounded-xl p-3.5 hover:border-brand-200 transition-colors"
                        data-id="{{ $product->id }}"
                        data-name="{{ $product->name }}"
-                       data-price="{{ (float) $product->price }}">
+                       data-price="{{ (float) $product->price }}"
+                       data-stock="{{ (int) $product->stock_qty }}"
+                       data-sale-unit="{{ $supportsAreaCoverage ? $product->sale_unit : '' }}"
+                       data-coverage-sqm="{{ $supportsAreaCoverage ? (float) $product->coverage_sqm_per_unit : '' }}"
+                       data-waste-percent="{{ $supportsAreaCoverage ? (float) ($product->coverage_waste_percent ?? 10) : '' }}">
                     <div class="flex items-start gap-3">
                       <input type="checkbox"
                              aria-label="Include {{ $product->name }} in the estimate"
@@ -459,19 +479,30 @@
                             <p class="text-sm font-medium text-surface-800 truncate">{{ $product->name }}</p>
                             <p class="text-[10px] text-surface-400 capitalize">{{ $product->category }} &middot; {{ $product->stock_qty }} in stock</p>
                           </div>
-                          <p class="text-xs font-semibold text-brand-600 whitespace-nowrap">&#8369;{{ number_format((float) $product->price, 2) }}</p>
+                          <p class="text-xs font-semibold text-brand-600 whitespace-nowrap">&#8369;{{ number_format((float) $product->price, 2) }}@if($supportsAreaCoverage) / {{ $product->sale_unit }}@endif</p>
                         </div>
                         <div class="estimate-product-qty mt-3 hidden items-center justify-between gap-3">
                           <span class="text-[10px] text-surface-400">Quantity</span>
-                          <input type="number" min="1" max="{{ $product->stock_qty }}" step="1" value="1"
+                          <input type="number" min="1" max="{{ $supportsAreaCoverage ? 100000 : $product->stock_qty }}" step="1" value="1"
                                  aria-label="Quantity of {{ $product->name }}"
                                  class="w-20 border border-surface-200 rounded-lg px-2 py-1.5 text-xs text-surface-700 outline-none focus:border-brand-500"
-                                 oninput="calculate()">
+                                 oninput="markQuantityOverride(this); calculate()">
                         </div>
                       </div>
                     </div>
                   </div>
                 @endforeach
+              </div>
+              <div id="material-recommendation" class="mt-4 hidden" aria-live="polite">
+                <div class="mb-2 flex items-center justify-between gap-3">
+                  <div>
+                    <p class="text-[10px] font-semibold uppercase tracking-wider text-brand-600">Material plan</p>
+                    <h4 class="mt-0.5 text-sm font-semibold text-surface-900">Recommended order</h4>
+                  </div>
+                  <span class="rounded-full bg-brand-50 px-2 py-1 text-[10px] font-semibold text-brand-700">Updates instantly</span>
+                </div>
+                <div id="material-recommendation-list" class="space-y-3"></div>
+                <p id="material-cart-status" role="status" class="mt-2 min-h-5 text-xs font-medium text-brand-700"></p>
               </div>
             @else
               <div class="rounded-xl border border-dashed border-surface-200 p-5 text-center">
@@ -699,11 +730,68 @@
     errorEl.classList.toggle('hidden', !invalid);
     input.classList.toggle('border-red-400', invalid);
     input.classList.toggle('border-surface-200', !invalid);
+    const coverageInput = document.getElementById('coverage-area-input');
+    if (coverageInput && !coverageAreaIsCustom) {
+      coverageInput.value = v > 0 ? v : '';
+    }
     // highlight matching quick-pick
     document.querySelectorAll('.size-btn').forEach(btn => {
       const btnVal = parseInt(btn.textContent.replace(/[^0-9]/g, ''));
       btn.classList.toggle('is-active', btnVal === v);
     });
+  }
+
+  let coverageAreaIsCustom = false;
+
+  function setCoverageAreaCustom() {
+    coverageAreaIsCustom = true;
+  }
+
+  function updateCoverageAreaUI() {
+    const input = document.getElementById('coverage-area-input');
+    if (!input) return true;
+
+    const value = Number(input.value);
+    const invalid = coverageAreaIsCustom && (!Number.isInteger(value) || value < 1 || value > 100000);
+    const error = document.getElementById('coverage-area-error');
+    error?.classList.toggle('hidden', !invalid);
+    input.setAttribute('aria-invalid', invalid ? 'true' : 'false');
+    input.classList.toggle('border-red-400', invalid);
+    input.classList.toggle('border-brand-200', !invalid);
+
+    return !invalid;
+  }
+
+  function materialCoverageArea(fallback) {
+    const input = document.getElementById('coverage-area-input');
+    if (!input) return fallback;
+
+    const value = parseInt(document.getElementById('coverage-area-input')?.value, 10);
+    return Number.isInteger(value) && value >= 1 && value <= 100000 ? value : 0;
+  }
+
+  function applyAreaRecommendation(card, force = false) {
+    const coverage = parseFloat(card.dataset.coverageSqm);
+    if (!(coverage > 0)) return;
+
+    const propertySize = parseInt(document.getElementById('size-input').value, 10) || 0;
+    const area = materialCoverageArea(propertySize);
+    if (area < 1) return;
+    const waste = parseFloat(card.dataset.wastePercent) || 0;
+    const recommended = Math.max(1, Math.ceil((area * (1 + (waste / 100))) / coverage));
+    const quantityInput = card.querySelector('.estimate-product-qty input');
+    if (!quantityInput) return;
+
+    if (force || card.dataset.autoRecommended !== 'false') {
+      quantityInput.value = recommended;
+      card.dataset.autoRecommended = 'true';
+    }
+    card.dataset.recommendedQuantity = recommended;
+  }
+
+  function markQuantityOverride(input) {
+    const card = input.closest('.estimate-product');
+    if (card?.dataset.coverageSqm) card.dataset.autoRecommended = 'false';
   }
 
   function setSize(val) {
@@ -720,6 +808,8 @@
 
     const type  = typeEl.value;
     const size  = parseInt(document.getElementById('size-input').value) || 0;
+    const coverageArea = materialCoverageArea(size);
+    const coverageAreaValid = updateCoverageAreaUI();
     const rate  = BASE_RATES[type] || 50;
     const mult  = TIER_MULT[tierEl.value] || 1;
     const base  = rate * size * mult;
@@ -743,13 +833,29 @@
       const cb = card.querySelector('.estimate-product-check');
       if (!cb?.checked) return;
 
+      applyAreaRecommendation(card);
+
       const qtyInput = card.querySelector('.estimate-product-qty input');
       const qty = Math.max(1, parseInt(qtyInput?.value) || 1);
       const price = parseFloat(card.dataset.price) || 0;
       const amount = price * qty;
       const label = card.dataset.name || 'Product';
       productsTotal += amount;
-      productRows.push({ label, qty, price, amount });
+      const coveragePerUnit = parseFloat(card.dataset.coverageSqm) || 0;
+      const wastePercent = parseFloat(card.dataset.wastePercent) || 0;
+      const recommendedQuantity = parseInt(card.dataset.recommendedQuantity, 10) || qty;
+      productRows.push({
+        id: parseInt(card.dataset.id, 10),
+        label,
+        qty,
+        price,
+        amount,
+        stock: parseInt(card.dataset.stock, 10) || 0,
+        saleUnit: card.dataset.saleUnit || 'unit',
+        coveragePerUnit,
+        wastePercent,
+        recommendedQuantity,
+      });
     });
 
     const total = base + extrasTotal + productsTotal;
@@ -797,6 +903,7 @@
     // ── Range ──
     document.querySelectorAll('[data-range-low]').forEach(el => { el.textContent = fmt(total * RATE_CARD.range.low); });
     document.querySelectorAll('[data-range-high]').forEach(el => { el.textContent = fmt(total * RATE_CARD.range.high); });
+    updateMaterialRecommendations(productRows, coverageAreaValid ? coverageArea : 0);
 
     updateGeneratedPackage({
       type,
@@ -807,6 +914,97 @@
       addonRows,
       productRows,
     });
+  }
+
+  function formatArea(value) {
+    return Number(Number(value).toFixed(2)).toLocaleString('en-PH');
+  }
+
+  function updateMaterialRecommendations(productRows, coverageArea) {
+    const panel = document.getElementById('material-recommendation');
+    const list = document.getElementById('material-recommendation-list');
+    if (!panel || !list) return;
+
+    const areaProducts = productRows.filter(row => row.coveragePerUnit > 0);
+    if (coverageArea < 1) {
+      panel.classList.add('hidden');
+      list.replaceChildren();
+      return;
+    }
+    panel.classList.toggle('hidden', areaProducts.length === 0);
+    if (areaProducts.length === 0) {
+      list.replaceChildren();
+      return;
+    }
+
+    list.innerHTML = areaProducts.map(row => {
+      const purchaseArea = coverageArea * (1 + (row.wastePercent / 100));
+      const selectedCoverage = row.qty * row.coveragePerUnit;
+      const coverageShortfall = Math.max(0, coverageArea - selectedCoverage);
+      const stockShortage = Math.max(0, row.recommendedQuantity - row.stock);
+      const quantityNote = row.qty === row.recommendedQuantity
+        ? `${row.recommendedQuantity.toLocaleString()} ${escapeHtml(row.saleUnit)}`
+        : `${row.qty.toLocaleString()} selected · ${row.recommendedQuantity.toLocaleString()} recommended`;
+      const coverageNote = coverageShortfall > 0
+        ? `<p class="mt-2 text-xs font-semibold text-red-700">Selected quantity is short by ${formatArea(coverageShortfall)} sq m.</p>`
+        : row.qty < row.recommendedQuantity
+          ? `<p class="mt-2 text-xs font-semibold text-amber-800">Covers the base area, but not the full ${formatArea(row.wastePercent)}% allowance.</p>`
+          : `<p class="mt-2 text-xs text-brand-700">Covers ${formatArea(selectedCoverage)} sq m, including the allowance.</p>`;
+      const stockNote = stockShortage > 0
+        ? `<p class="mt-2 text-xs font-semibold text-amber-800">Needs ${row.recommendedQuantity.toLocaleString()}, but only ${row.stock.toLocaleString()} currently in stock.</p>`
+        : row.recommendedQuantity > 999
+          ? `<p class="mt-2 text-xs font-semibold text-amber-800">This is a large order. Book a consultation so Ferosa can confirm availability and delivery.</p>`
+          : `<button type="button" data-product-id="${row.id}" data-quantity="${row.recommendedQuantity}" data-label="${escapeHtml(row.label)}" onclick="addRecommendedToCart(this)" class="mt-3 inline-flex min-h-10 items-center justify-center rounded-lg bg-brand-700 px-4 text-xs font-semibold text-white hover:bg-brand-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">Add recommended quantity to cart</button>`;
+
+      return `
+        <section class="rounded-xl border border-brand-100 bg-brand-50/60 p-4" aria-label="${escapeHtml(row.label)} material recommendation">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <p class="text-sm font-semibold text-surface-900">${escapeHtml(row.label)}</p>
+              <p class="mt-1 text-xs text-surface-600">${formatArea(coverageArea)} sq m + ${formatArea(row.wastePercent)}% allowance = ${formatArea(purchaseArea)} sq m to order</p>
+            </div>
+            <div class="text-right">
+              <p class="text-base font-bold text-brand-800">${quantityNote}</p>
+              <p class="mt-0.5 text-xs text-surface-500">${fmt(row.amount)}</p>
+            </div>
+          </div>
+          ${coverageNote}
+          ${stockNote}
+        </section>
+      `;
+    }).join('');
+  }
+
+  async function addRecommendedToCart(button) {
+    const status = document.getElementById('material-cart-status');
+    button.disabled = true;
+    status.textContent = 'Adding the recommended quantity...';
+
+    try {
+      const response = await fetch('{{ url('/api/cart/items') }}', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+          product_id: parseInt(button.dataset.productId, 10),
+          quantity: parseInt(button.dataset.quantity, 10),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || Object.values(data.errors || {})[0]?.[0] || 'The material could not be added.');
+      }
+      status.textContent = `${button.dataset.label} was added to your cart.`;
+      window.dispatchEvent(new CustomEvent('cartUpdated', { detail: data }));
+    } catch (error) {
+      status.textContent = error.message || 'The material could not be added.';
+    } finally {
+      button.disabled = false;
+    }
   }
 
   // ─── AR Visualizer ───────────────────────────────────────────────────────
@@ -898,6 +1096,9 @@
     card.classList.toggle('bg-brand-50', checkbox.checked);
     qty.classList.toggle('hidden', !checkbox.checked);
     qty.classList.toggle('flex', checkbox.checked);
+    if (checkbox.checked && card.dataset.coverageSqm) {
+      applyAreaRecommendation(card, true);
+    }
     updateProductCount();
   }
 
@@ -924,6 +1125,17 @@
       return false;
     }
 
+    const selectedAreaProduct = Array.from(document.querySelectorAll('.estimate-product')).some(card => {
+      const checkbox = card.querySelector('.estimate-product-check');
+      return checkbox?.checked && parseFloat(card.dataset.coverageSqm) > 0;
+    });
+    const coverageAreaValid = updateCoverageAreaUI();
+    if (selectedAreaProduct && !coverageAreaValid) {
+      event.preventDefault();
+      document.getElementById('coverage-area-input')?.focus();
+      return false;
+    }
+
     const fields = document.getElementById('estimate-booking-fields');
     fields.replaceChildren();
 
@@ -937,6 +1149,7 @@
 
     appendField('project_type', document.querySelector('input[name="project_type"]:checked').value);
     appendField('size', size);
+    appendField('coverage_area', coverageAreaValid ? materialCoverageArea(size) : size);
     appendField('tier', document.querySelector('input[name="quality_tier"]:checked').value);
 
     document.querySelectorAll('.addon-item input[type="checkbox"]:checked').forEach((checkbox, index) => {

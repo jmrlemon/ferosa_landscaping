@@ -78,9 +78,6 @@
           <span class="mt-1 block text-xs text-surface-500">1–5 JPG, PNG, or WebP photos. Maximum 5 MB each.</span>
         </label>
         <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5" data-evidence-preview aria-live="polite"></div>
-        <label class="mt-4 block text-sm font-medium">Overall summary
-          <textarea name="customer_summary" rows="4" maxlength="1000" class="field mt-1.5" placeholder="Example: The delivery box was crushed and two plants had broken stems.">{{ old('customer_summary') }}</textarea>
-        </label>
         <label class="mt-4 block text-sm font-medium">Contact or pickup notes <span class="font-normal text-surface-400">(optional)</span>
           <textarea name="customer_contact_notes" rows="2" maxlength="500" class="field mt-1.5">{{ old('customer_contact_notes') }}</textarea>
         </label>

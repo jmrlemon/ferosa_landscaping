@@ -19,7 +19,12 @@
       </div>
       <div class="flex items-center gap-2">
         <a href="{{ route('admin.dashboard') }}" class="px-3 py-1.5 text-xs font-medium rounded-lg border border-surface-200 text-surface-600 hover:bg-surface-50 transition-colors">Back to Dashboard</a>
-        <form method="POST" action="{{ route('logout') }}">
+        <form method="POST"
+              action="{{ route('logout') }}"
+              data-confirm-title="Log out?"
+              data-confirm="Are you sure you want to log out of your Ferosa account?"
+              data-confirm-action="Log out"
+              data-confirm-tone="default">
           @csrf
           <button class="px-3 py-1.5 text-xs font-medium rounded-lg bg-surface-900 text-white hover:bg-surface-800 transition-colors">Sign Out</button>
         </form>
@@ -120,5 +125,6 @@
       </div>
     </section>
   </main>
+  @include('partials.confirm-dialog')
 </body>
 </html>

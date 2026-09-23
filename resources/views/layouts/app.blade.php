@@ -40,7 +40,12 @@
 
         <!-- Bottom Layout -->
         <div class="p-4">
-            <form method="POST" action="{{ route('logout') }}">
+            <form method="POST"
+                  action="{{ route('logout') }}"
+                  data-confirm-title="Log out?"
+                  data-confirm="Are you sure you want to log out of your Ferosa account?"
+                  data-confirm-action="Log out"
+                  data-confirm-tone="default">
                 @csrf
                 <button class="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-200 transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -63,5 +68,6 @@
             @yield('content')
         </main>
     </div>
+    @include('partials.confirm-dialog')
 </body>
 </html>

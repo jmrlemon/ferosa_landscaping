@@ -43,7 +43,6 @@ class StoreReturnRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'customer_summary' => ['required', 'string', 'min:10', 'max:1000'],
             'customer_contact_notes' => ['nullable', 'string', 'max:500'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.order_item_id' => ['required', 'integer', 'distinct'],

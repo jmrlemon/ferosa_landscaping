@@ -131,7 +131,15 @@
       </aside>
     </form>
 
-    <form id="admin-account-logout" method="POST" action="{{ route('logout') }}" class="hidden">@csrf</form>
+    <form id="admin-account-logout"
+          method="POST"
+          action="{{ route('logout') }}"
+          class="hidden"
+          data-confirm-title="Log out?"
+          data-confirm="Are you sure you want to log out of your Ferosa account?"
+          data-confirm-action="Log out"
+          data-confirm-tone="default">@csrf</form>
   </main>
+  @include('partials.confirm-dialog')
 </body>
 </html>

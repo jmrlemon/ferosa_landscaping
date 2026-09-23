@@ -67,12 +67,21 @@ class ReturnRequestService
                     }
                 }
 
+                $customerSummary = $requestedItems
+                    ->map(function (array $requested) use ($orderItems): string {
+                        /** @var OrderItem $orderItem */
+                        $orderItem = $orderItems->get((int) $requested['order_item_id']);
+
+                        return $orderItem->name.': '.trim((string) $requested['issue_description']);
+                    })
+                    ->implode("\n");
+
                 $claim = ReturnRequest::query()->create([
                     'claim_number' => 'RET-PENDING-'.Str::upper(Str::random(12)),
                     'order_id' => $lockedOrder->id,
                     'user_id' => $customer->id,
                     'status' => 'submitted',
-                    'customer_summary' => $data['customer_summary'],
+                    'customer_summary' => Str::limit($customerSummary, 1000, ''),
                     'customer_contact_notes' => $data['customer_contact_notes'] ?? null,
                     'submitted_at' => now(),
                 ]);

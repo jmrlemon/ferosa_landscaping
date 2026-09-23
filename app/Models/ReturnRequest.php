@@ -14,6 +14,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $reviewed_at
  * @property Carbon|null $decided_at
  * @property Carbon|null $resolved_at
+ * @property Carbon|null $replacement_estimated_delivery_date
  * @property Carbon|null $replacement_dispatched_at
  * @property Carbon|null $replacement_delivered_at
  */
@@ -88,6 +89,7 @@ class ReturnRequest extends Model
         'replacement_driver_name',
         'replacement_driver_phone',
         'replacement_dispatch_notes',
+        'replacement_estimated_delivery_date',
         'replacement_dispatch_proof_path',
         'replacement_dispatched_at',
         'replacement_delivered_at',
@@ -101,6 +103,7 @@ class ReturnRequest extends Model
             'reviewed_at' => 'datetime',
             'decided_at' => 'datetime',
             'resolved_at' => 'datetime',
+            'replacement_estimated_delivery_date' => 'date',
             'replacement_dispatched_at' => 'datetime',
             'replacement_delivered_at' => 'datetime',
         ];

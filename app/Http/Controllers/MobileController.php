@@ -42,14 +42,34 @@ class MobileController extends Controller
             ->orderBy('category')
             ->orderBy('name')
             ->take(12)
-            ->get(['id', 'name', 'category', 'price', 'stock_qty'])
-            ->map(fn (Product $product): array => [
-                'id' => (int) $product->id,
-                'name' => $product->name,
-                'category' => $product->category,
-                'price' => (float) $product->price,
-                'stock_qty' => (int) $product->stock_qty,
+            ->get([
+                'id',
+                'name',
+                'category',
+                'price',
+                'stock_qty',
+                'sale_unit',
+                'coverage_sqm_per_unit',
+                'coverage_waste_percent',
             ])
+            ->map(function (Product $product): array {
+                $supportsAreaCoverage = $product->supportsAreaCoverage();
+
+                return [
+                    'id' => (int) $product->id,
+                    'name' => $product->name,
+                    'category' => $product->category,
+                    'price' => (float) $product->price,
+                    'stock_qty' => (int) $product->stock_qty,
+                    'sale_unit' => $supportsAreaCoverage ? $product->sale_unit : null,
+                    'coverage_sqm_per_unit' => $supportsAreaCoverage
+                        ? (float) $product->coverage_sqm_per_unit
+                        : null,
+                    'coverage_waste_percent' => $supportsAreaCoverage
+                        ? (float) ($product->coverage_waste_percent ?? 10)
+                        : null,
+                ];
+            })
             ->all();
 
         return response()->json($rateCard);

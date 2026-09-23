@@ -492,6 +492,7 @@ const ADMIN = JSON.parse(
       document.getElementById('ad-customer-name').textContent  = appt.customer_name || 'N/A';
       document.getElementById('ad-customer-email').textContent = appt.customer_email || '—';
       document.getElementById('ad-date').textContent = appt.appointment_at || '—';
+      document.getElementById('ad-location').textContent = appt.site_address || 'No location recorded.';
 
       document.getElementById('ad-amount').textContent = 'PHP ' + (appt.appointment_amount || '0.00');
 

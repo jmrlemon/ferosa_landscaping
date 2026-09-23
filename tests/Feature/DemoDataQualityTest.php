@@ -32,6 +32,12 @@ class DemoDataQualityTest extends TestCase
         $completed = Appointment::query()->where('status', 'completed')->firstOrFail();
         $this->assertSame('paid', $completed->payment_status);
         $this->assertGreaterThan(0, (float) $completed->appointment_amount);
+
+        $carabaoGrass = Product::query()->where('name', 'Carabao Grass')->firstOrFail();
+        $this->assertTrue($carabaoGrass->supportsAreaCoverage());
+        $this->assertSame('sq m', $carabaoGrass->sale_unit);
+        $this->assertSame(1.0, (float) $carabaoGrass->coverage_sqm_per_unit);
+        $this->assertSame(10.0, (float) $carabaoGrass->coverage_waste_percent);
     }
 
     public function test_demo_tidy_command_previews_then_removes_only_known_demo_clutter(): void

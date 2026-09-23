@@ -78,6 +78,7 @@ class Appointment extends Model
         'payment_status',
         'appointment_amount',
         'notes',
+        'site_address',
         'scope_notes',
         'estimate_snapshot',
         'cancel_reason',

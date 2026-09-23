@@ -694,7 +694,12 @@
           <span class="block truncate text-[13px] font-bold text-surface-800">{{ auth()->user()->name }}</span>
           <span class="block text-[10px] font-medium text-surface-400">View account</span>
         </a>
-        <form method="POST" action="{{ route('logout') }}">
+        <form method="POST"
+              action="{{ route('logout') }}"
+              data-confirm-title="Log out?"
+              data-confirm="Are you sure you want to log out of your Ferosa account?"
+              data-confirm-action="Log out"
+              data-confirm-tone="default">
           @csrf
           <button type="submit" data-loading-label="" aria-label="Sign out" title="Sign out" class="w-9 h-9 flex items-center justify-center text-surface-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
             <svg class="w-[17px] h-[17px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
@@ -810,6 +815,8 @@
     <span class="page-navigation-spinner" aria-hidden="true"></span>
     <span class="sr-only">Loading page</span>
   </div>
+
+  @include('partials.confirm-dialog')
 
   <script>
     let lastSidebarTrigger = null;
@@ -1140,6 +1147,7 @@
     document.addEventListener('submit', function(e) {
       const form = e.target;
       if (!(form instanceof HTMLFormElement)) return;
+      if (e.defaultPrevented) return;
       if ((form.method || '').toLowerCase() === 'get' && !form.dataset.loadingLabel) return;
       setSubmitLoading(form);
     }, true);

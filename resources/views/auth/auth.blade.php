@@ -1160,7 +1160,7 @@ html, body {
     <div class="form-card">
       <div class="form-header">
         <h1 class="form-title">Verify Mobile Number</h1>
-        <p class="form-subtitle">Enter the 6-digit code sent through TextBee. The code expires in 10 minutes.</p>
+        <p class="form-subtitle">Enter the 6-digit code sent to your mobile device to complete registration.</p>
       </div>
       <form id="registration-verification-form" method="POST" action="{{ route('register.verify') }}">
         @csrf
@@ -1600,8 +1600,8 @@ async function verifyRegistrationOtp() {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.message || 'Verification failed.');
-    showToast('Mobile number verified!', 'success');
-    window.location.href = data.redirectUrl || '{{ route('home') }}';
+    showToast(data.message || 'Mobile number verified. Please sign in to continue.', 'success');
+    window.location.href = data.redirectUrl || '{{ route('login') }}';
   } catch (err) {
     showToast(err.message || 'Verification failed. Please try again.', 'error');
   } finally {

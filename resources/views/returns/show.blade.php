@@ -101,6 +101,7 @@
         <div class="rounded-xl border border-indigo-100 bg-indigo-50 p-4">
           <h2 class="text-sm font-bold text-indigo-950">Replacement delivery</h2>
           <p class="mt-2 text-sm text-indigo-900">Dispatched {{ $claim->replacement_dispatched_at->format('M d, Y g:i A') }} with {{ $claim->replacement_driver_name }}@if($claim->replacement_driver_phone) · {{ $claim->replacement_driver_phone }}@endif.</p>
+          @if($claim->replacement_estimated_delivery_date)<p class="mt-1 text-sm font-semibold text-indigo-950">Estimated delivery: {{ $claim->replacement_estimated_delivery_date->format('M d, Y') }}</p>@endif
           @if($claim->replacement_dispatch_notes)<p class="mt-1 text-xs text-indigo-800">{{ $claim->replacement_dispatch_notes }}</p>@endif
         </div>
       @endif

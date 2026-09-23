@@ -145,6 +145,164 @@ class CatalogueAdminTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'product.create']);
     }
 
+    public function test_an_admin_can_configure_an_area_covering_product(): void
+    {
+        $this->actingAs($this->admin())
+            ->post(route('admin.products.store'), [
+                'name' => 'Carabao Grass',
+                'price' => '75',
+                'stock_qty' => '250',
+                'category' => 'Grass',
+                'is_active' => '1',
+                'sale_unit' => 'roll',
+                'coverage_sqm_per_unit' => '0.5',
+                'coverage_waste_percent' => '10',
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $product = Product::query()->where('name', 'Carabao Grass')->firstOrFail();
+
+        $this->assertSame('roll', $product->sale_unit);
+        $this->assertSame(0.5, (float) $product->coverage_sqm_per_unit);
+        $this->assertSame(10.0, (float) $product->coverage_waste_percent);
+        $this->assertTrue($product->supportsAreaCoverage());
+    }
+
+    public function test_area_coverage_requires_a_sale_unit_and_valid_values(): void
+    {
+        $this->actingAs($this->admin())
+            ->from(route('admin.products.create'))
+            ->post(route('admin.products.store'), [
+                'name' => 'Incomplete Grass',
+                'price' => '75',
+                'stock_qty' => '10',
+                'category' => 'Grass',
+                'coverage_sqm_per_unit' => '0.5',
+                'coverage_waste_percent' => '101',
+            ])
+            ->assertRedirect(route('admin.products.create'))
+            ->assertSessionHasErrors(['sale_unit', 'coverage_waste_percent']);
+
+        $this->assertDatabaseMissing('products', ['name' => 'Incomplete Grass']);
+
+        $this->actingAs($this->admin())
+            ->post(route('admin.products.store'), [
+                'name' => 'Too Precise Grass',
+                'price' => '75',
+                'stock_qty' => '10',
+                'category' => 'Grass',
+                'sale_unit' => 'roll',
+                'coverage_sqm_per_unit' => '0.00001',
+            ])
+            ->assertSessionHasErrors(['coverage_sqm_per_unit']);
+    }
+
+    public function test_only_grass_and_stones_support_area_coverage(): void
+    {
+        $grass = Product::query()->create([
+            'name' => 'Carabao Grass',
+            'price' => 250,
+            'stock_qty' => 100,
+            'category' => 'Grass',
+            'is_active' => true,
+            'sale_unit' => 'sq m',
+            'coverage_sqm_per_unit' => 1,
+            'coverage_waste_percent' => 10,
+        ]);
+        $stone = Product::query()->create([
+            'name' => 'Stone Paver',
+            'price' => 100,
+            'stock_qty' => 100,
+            'category' => 'Stones',
+            'is_active' => true,
+            'sale_unit' => 'piece',
+            'coverage_sqm_per_unit' => 0.25,
+            'coverage_waste_percent' => 10,
+        ]);
+        $plant = Product::query()->create([
+            'name' => 'Monstera Deliciosa',
+            'price' => 1200,
+            'stock_qty' => 100,
+            'category' => 'Plants',
+            'is_active' => true,
+            'sale_unit' => 'plant',
+            'coverage_sqm_per_unit' => 1,
+            'coverage_waste_percent' => 10,
+        ]);
+
+        $this->assertTrue($grass->supportsAreaCoverage());
+        $this->assertTrue($stone->supportsAreaCoverage());
+        $this->assertFalse($plant->supportsAreaCoverage());
+    }
+
+    public function test_admin_cannot_assign_area_coverage_to_other_categories(): void
+    {
+        $this->actingAs($this->admin())
+            ->post(route('admin.products.store'), [
+                'name' => 'Monstera Deliciosa',
+                'price' => '1200',
+                'stock_qty' => '10',
+                'category' => 'Plants',
+                'is_active' => '1',
+                'sale_unit' => 'plant',
+                'coverage_sqm_per_unit' => '1',
+                'coverage_waste_percent' => '10',
+            ])
+            ->assertSessionHasErrors([
+                'sale_unit',
+                'coverage_sqm_per_unit',
+                'coverage_waste_percent',
+            ]);
+
+        $this->assertDatabaseMissing('products', ['name' => 'Monstera Deliciosa']);
+    }
+
+    public function test_admin_form_explains_and_enforces_the_coverage_categories(): void
+    {
+        $html = $this->actingAs($this->admin())
+            ->get(route('admin.products.create'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('Estimator coverage is available only for Grass and Stones.', $html);
+        $this->assertStringContainsString('id="estimator-coverage-fields"', $html);
+        $this->assertStringContainsString('function updateEstimatorCoverageAvailability', $html);
+    }
+
+    public function test_changing_to_an_unsupported_category_clears_coverage(): void
+    {
+        $product = Product::query()->create([
+            'name' => 'Carabao Grass',
+            'description' => '',
+            'price' => 250,
+            'stock_qty' => 100,
+            'category' => 'Grass',
+            'is_active' => true,
+            'sale_unit' => 'sq m',
+            'coverage_sqm_per_unit' => 1,
+            'coverage_waste_percent' => 10,
+        ]);
+
+        $this->actingAs($this->admin())
+            ->put(route('admin.products.update', $product), [
+                'name' => 'Carabao Grass',
+                'description' => '',
+                'price' => '250',
+                'category' => 'Plants',
+                'is_active' => '1',
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $product->refresh();
+        $this->assertSame('plants', $product->category);
+        $this->assertNull($product->sale_unit);
+        $this->assertNull($product->coverage_sqm_per_unit);
+        $this->assertNull($product->coverage_waste_percent);
+        $this->assertFalse($product->supportsAreaCoverage());
+    }
+
     public function test_a_product_name_is_unique_only_among_the_live_ones(): void
     {
         $admin = $this->admin();

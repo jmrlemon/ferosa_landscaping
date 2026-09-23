@@ -952,6 +952,7 @@
                           'appointment_amount' => number_format((float) ($appt->appointment_amount ?? $appt->serviceType->default_fee ?? 0), 2),
                           'service'        => $appt->serviceType->name ?? 'N/A',
                           'appointment_at' => $appt->appointment_at ? \Carbon\Carbon::parse($appt->appointment_at)->format('D, M j, Y \a\t g:i A') : 'N/A',
+                          'site_address'    => $appt->site_address ?? '',
                           'notes'          => $appt->notes ?? '',
                           'customer_name'  => $appt->user->name ?? 'N/A',
                           'customer_email' => $appt->user->email ?? '',
@@ -2179,6 +2180,10 @@
             <div class="flex justify-between text-xs">
               <span class="text-surface-400">Date & Time</span>
               <span id="ad-date" class="font-medium text-surface-700 text-right max-w-[140px]"></span>
+            </div>
+            <div class="flex justify-between gap-3 text-xs">
+              <span class="shrink-0 text-surface-400">Visit Location</span>
+              <span id="ad-location" class="max-w-[190px] text-right font-medium leading-5 text-surface-700"></span>
             </div>
             <div class="flex justify-between text-xs">
               <span class="text-surface-400">Payment</span>

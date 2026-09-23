@@ -9,12 +9,18 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Product extends Model
 {
+    /** @var list<string> */
+    public const AREA_COVERAGE_CATEGORIES = ['grass', 'stones'];
+
     protected $fillable = [
         'name',
         'description',
         'image_url',
         'price',
         'stock_qty',
+        'sale_unit',
+        'coverage_sqm_per_unit',
+        'coverage_waste_percent',
         'category',
         'is_active',
         'archived_at',
@@ -27,6 +33,8 @@ class Product extends Model
         return [
             'price' => 'decimal:2',
             'stock_qty' => 'integer',
+            'coverage_sqm_per_unit' => 'decimal:4',
+            'coverage_waste_percent' => 'decimal:2',
             'is_active' => 'boolean',
             'archived_at' => 'datetime',
         ];
@@ -35,6 +43,24 @@ class Product extends Model
     public function inStock(): bool
     {
         return $this->stock_qty > 0;
+    }
+
+    public function supportsAreaCoverage(): bool
+    {
+        return self::categorySupportsAreaCoverage($this->category)
+            && $this->sale_unit !== null
+            && $this->sale_unit !== ''
+            && $this->coverage_sqm_per_unit !== null
+            && (float) $this->coverage_sqm_per_unit > 0;
+    }
+
+    public static function categorySupportsAreaCoverage(?string $category): bool
+    {
+        return in_array(
+            strtolower(trim((string) $category)),
+            self::AREA_COVERAGE_CATEGORIES,
+            true,
+        );
     }
 
     /** @return HasMany<OrderItem, $this> */

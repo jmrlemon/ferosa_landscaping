@@ -156,13 +156,13 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        // Only this one intent is honoured; anything else falls back to plain login
+        // Only this one intent is honoured; anything else falls back to the public landing page
         // so the field can never be used as an open redirect.
         if ($request->input('view') === 'forgot') {
             return redirect()->route('login', ['view' => 'forgot']);
         }
 
-        return redirect()->route('login');
+        return redirect()->route('landing');
     }
 
     /**
@@ -188,7 +188,7 @@ class AuthController extends Controller
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
-            return redirect()->route('login')
+            return redirect()->route('landing')
                 ->with('status', 'You have been signed out.');
         }
 
@@ -197,6 +197,6 @@ class AuthController extends Controller
             return redirect()->route('home');
         }
 
-        return redirect()->route('login');
+        return redirect()->route('landing');
     }
 }

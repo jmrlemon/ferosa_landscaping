@@ -107,6 +107,62 @@ class StaffRoleAccessTest extends TestCase
         $this->assertDatabaseCount('payments', 0);
     }
 
+    public function test_order_dispatch_form_lists_only_staff_as_driver_choices(): void
+    {
+        $dispatcher = User::factory()->create(['name' => 'Dispatch Operator', 'role' => 'staff']);
+        $rider = User::factory()->create(['name' => 'Harvey Rider', 'role' => 'staff']);
+        $admin = User::factory()->create(['name' => 'Admin Manager', 'role' => 'admin']);
+        $customer = User::factory()->create(['name' => 'Customer Account', 'role' => 'user']);
+        $order = $this->orderFor($customer, 'confirmed');
+
+        $response = $this->actingAs($dispatcher)
+            ->get(route('admin.orders.show', $order))
+            ->assertOk()
+            ->assertSee('name="driver_staff_id"', false)
+            ->assertSeeText($rider->name);
+
+        preg_match('/<select[^>]+name="driver_staff_id"[^>]*>(.*?)<\/select>/s', $response->getContent(), $matches);
+        $driverOptions = $matches[1] ?? '';
+
+        $this->assertStringContainsString('value="'.$dispatcher->id.'"', $driverOptions);
+        $this->assertStringContainsString('value="'.$rider->id.'"', $driverOptions);
+        $this->assertStringNotContainsString('value="'.$admin->id.'"', $driverOptions);
+        $this->assertStringNotContainsString('value="'.$customer->id.'"', $driverOptions);
+    }
+
+    public function test_dispatch_uses_selected_staff_name_and_rejects_non_staff_accounts(): void
+    {
+        Notification::fake();
+        $dispatcher = User::factory()->create(['role' => 'staff']);
+        $rider = User::factory()->create(['name' => 'Harvey Rider', 'role' => 'staff']);
+        $customer = $this->customer();
+        $order = $this->orderFor($customer, 'confirmed');
+
+        $this->actingAs($dispatcher)
+            ->put(route('admin.orders.status', $order), [
+                'status' => 'out_for_delivery',
+                'driver_staff_id' => $rider->id,
+                'driver_phone' => '09171234567',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('out_for_delivery', $order->refresh()->status);
+        $this->assertSame($rider->name, $order->driver_name);
+
+        $forgedOrder = $this->orderFor($customer, 'confirmed');
+
+        $this->actingAs($dispatcher)
+            ->put(route('admin.orders.status', $forgedOrder), [
+                'status' => 'out_for_delivery',
+                'driver_staff_id' => $customer->id,
+                'driver_phone' => '09171234567',
+            ])
+            ->assertSessionHasErrors('driver_staff_id');
+
+        $this->assertSame('confirmed', $forgedOrder->refresh()->status);
+        $this->assertNull($forgedOrder->driver_name);
+    }
+
     public function test_staff_can_run_delivery_workflow_and_upload_proof(): void
     {
         Storage::fake('public');
@@ -123,7 +179,7 @@ class StaffRoleAccessTest extends TestCase
         $this->actingAs($staff)
             ->put(route('admin.orders.status', $order), [
                 'status' => 'out_for_delivery',
-                'driver_name' => 'Juan Rider',
+                'driver_staff_id' => $staff->id,
                 'driver_phone' => '09171234567',
                 'dispatch_notes' => 'Call on arrival.',
             ])
@@ -134,7 +190,6 @@ class StaffRoleAccessTest extends TestCase
         $this->actingAs($staff)
             ->put(route('admin.orders.status', $order), [
                 'status' => 'delivered',
-                'driver_name' => 'Juan Rider',
                 'driver_phone' => '09171234567',
                 'delivery_recipient_name' => 'Maria Santos',
                 'delivery_proof' => UploadedFile::fake()->create('delivery-proof.png', 10, 'image/png'),
@@ -165,7 +220,6 @@ class StaffRoleAccessTest extends TestCase
 
             $payload = [
                 'status' => 'delivered',
-                'driver_name' => 'Juan Rider',
                 'driver_phone' => '09171234567',
                 'delivery_recipient_name' => 'Maria Santos',
                 'delivery_proof' => UploadedFile::fake()->create("{$role}-delivery-proof.png", 10, 'image/png'),
@@ -203,7 +257,6 @@ class StaffRoleAccessTest extends TestCase
             ->put(route('admin.orders.status', $order), [
                 'status' => 'delivered',
                 'payment_status' => 'paid',
-                'driver_name' => 'Juan Rider',
                 'driver_phone' => '09171234567',
                 'delivery_recipient_name' => 'Maria Santos',
                 'delivery_proof' => UploadedFile::fake()->create('paid-delivery-proof.png', 10, 'image/png'),

@@ -71,11 +71,34 @@ class ForgotFromAccountTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_plain_logout_redirects_to_the_public_landing_page(): void
+    {
+        $this->actingAs(User::factory()->create())
+            ->post(route('logout'))
+            ->assertRedirect(route('landing'));
+
+        $this->assertGuest();
+    }
+
+    public function test_legacy_get_logout_redirects_to_the_public_landing_page(): void
+    {
+        $this->actingAs(User::factory()->create())
+            ->withHeaders([
+                'Sec-Fetch-Site' => 'same-origin',
+                'Sec-Fetch-Dest' => 'document',
+            ])
+            ->get(route('logout.fallback'))
+            ->assertRedirect(route('landing'))
+            ->assertSessionHas('status', 'You have been signed out.');
+
+        $this->assertGuest();
+    }
+
     public function test_logout_ignores_unknown_view_values(): void
     {
         $this->actingAs(User::factory()->create())
             ->post('/logout', ['view' => 'https://evil.test'])
-            ->assertRedirect(route('login'));
+            ->assertRedirect(route('landing'));
     }
 
     public function test_forgot_view_renders_reset_panel_as_active(): void

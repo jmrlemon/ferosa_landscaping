@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Refund;
 use App\Models\ReturnRequest;
 use App\Models\ReturnRequestItem;
 use App\Models\User;
@@ -70,6 +69,10 @@ class AdminReturnRequestController extends Controller
             'approvedRefundRemaining' => $approvedRefundRemaining,
             'maximumRefundAmount' => $maximumRefundAmount,
             'isAdmin' => auth()->user()?->isAdmin() ?? false,
+            'staffMembers' => User::query()
+                ->where('role', 'staff')
+                ->orderBy('name')
+                ->get(['id', 'name']),
         ]);
     }
 
@@ -110,7 +113,6 @@ class AdminReturnRequestController extends Controller
         $this->assertAccessible($returnRequest);
         $data = $request->validate([
             'decision_reason' => ['required', 'string', 'min:5', 'max:1000'],
-            'admin_notes' => ['nullable', 'string', 'max:2000'],
             'return_required' => ['nullable', 'boolean'],
             'return_instructions' => [
                 Rule::requiredIf($request->boolean('return_required')),
@@ -135,7 +137,7 @@ class AdminReturnRequestController extends Controller
                 $data['decision_reason'],
                 $request->boolean('return_required'),
                 $data['return_instructions'] ?? null,
-                $data['admin_notes'] ?? null,
+                null,
             );
         } catch (RuntimeException $e) {
             throw ValidationException::withMessages(['items' => $e->getMessage()]);
@@ -157,14 +159,31 @@ class AdminReturnRequestController extends Controller
     ): RedirectResponse {
         $this->assertAccessible($returnRequest);
         $data = $request->validate([
-            'replacement_driver_name' => ['required', 'string', 'max:120'],
+            'replacement_driver_staff_id' => [
+                'required',
+                'integer',
+                Rule::exists('users', 'id')->where('role', 'staff'),
+            ],
             'replacement_driver_phone' => ['nullable', 'string', 'max:30'],
+            'replacement_estimated_delivery_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
             'replacement_dispatch_notes' => ['nullable', 'string', 'max:1000'],
+        ], [
+            'replacement_driver_staff_id.required' => 'Select a staff member as the driver or rider.',
+            'replacement_driver_staff_id.exists' => 'The selected driver or rider must have a Staff account.',
+            'replacement_estimated_delivery_date.required' => 'Choose an estimated delivery date.',
+            'replacement_estimated_delivery_date.after_or_equal' => 'The estimated delivery date cannot be in the past.',
         ]);
-        $before = Audit::snapshot($returnRequest, ['status', 'replacement_dispatched_at']);
+        $driver = User::query()
+            ->where('role', 'staff')
+            ->findOrFail($data['replacement_driver_staff_id']);
+        $data['replacement_driver_name'] = $driver->name;
+        unset($data['replacement_driver_staff_id']);
+        $before = Audit::snapshot($returnRequest, [
+            'status', 'replacement_estimated_delivery_date', 'replacement_dispatched_at',
+        ]);
         $claim = $returns->dispatch($returnRequest, $data);
         Audit::log($request, 'return_request.dispatch', $claim, $before, Audit::snapshot($claim, [
-            'status', 'replacement_driver_name', 'replacement_dispatched_at',
+            'status', 'replacement_driver_name', 'replacement_estimated_delivery_date', 'replacement_dispatched_at',
         ]));
         $notifier->notify($claim, 'replacement_dispatched');
 
@@ -197,8 +216,7 @@ class AdminReturnRequestController extends Controller
     ): RedirectResponse {
         $data = $request->validate([
             'amount' => ['required', 'numeric', 'min:0.01'],
-            'method' => ['required', Rule::in(Refund::METHODS)],
-            'reference' => ['nullable', 'string', 'max:120'],
+            'method' => ['required', Rule::in(['cash'])],
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
         $data['processed_by'] = $request->user()->id;

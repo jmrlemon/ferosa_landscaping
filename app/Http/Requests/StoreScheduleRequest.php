@@ -29,6 +29,10 @@ class StoreScheduleRequest extends FormRequest
                 new DispatchSlot,
             ],
             'notes' => ['nullable', 'string', 'max:1000'],
+            'site_province_code' => ['nullable', 'string', 'regex:/^[0-9]{10}$/'],
+            'site_city_code' => ['nullable', 'string', 'regex:/^[0-9]{10}$/'],
+            'site_barangay_code' => ['nullable', 'string', 'regex:/^[0-9]{10}$/'],
+            'site_street' => ['nullable', 'string', 'max:450'],
         ];
     }
 

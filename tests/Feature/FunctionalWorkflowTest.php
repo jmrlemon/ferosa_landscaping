@@ -637,6 +637,7 @@ class FunctionalWorkflowTest extends TestCase
         $this->actingAs($firstCustomer)
             ->withSession($this->estimatorBookingSession($service))
             ->post(route('schedule.store'), [
+                ...$this->validAppointmentAddress(),
                 'service_type_id' => $service->id,
                 'appointment_at' => $at->format('Y-m-d H:i:s'),
             ])->assertSessionHasNoErrors();
@@ -650,6 +651,7 @@ class FunctionalWorkflowTest extends TestCase
         $this->actingAs($secondCustomer)
             ->withSession($this->estimatorBookingSession($service))
             ->post(route('schedule.store'), [
+                ...$this->validAppointmentAddress(),
                 'service_type_id' => $service->id,
                 'appointment_at' => $at->format('Y-m-d H:i:s'),
             ])->assertSessionHasNoErrors();
@@ -673,6 +675,7 @@ class FunctionalWorkflowTest extends TestCase
         $this->actingAs($customer)
             ->withSession($this->estimatorBookingSession($service))
             ->post(route('schedule.store'), [
+                ...$this->validAppointmentAddress(),
                 'service_type_id' => $service->id,
                 'appointment_at' => Carbon::now()->addDays(5)->setTime(3, 17)->format('Y-m-d H:i:s'),
             ])->assertSessionHasErrors('appointment_at');
@@ -692,6 +695,7 @@ class FunctionalWorkflowTest extends TestCase
             $this->actingAs($customer)
                 ->withSession($this->estimatorBookingSession($service))
                 ->post(route('schedule.store'), [
+                    ...$this->validAppointmentAddress(),
                     'service_type_id' => $service->id,
                     'appointment_at' => $at->format('Y-m-d H:i:s'),
                 ])->assertSessionHasNoErrors();
@@ -722,6 +726,7 @@ class FunctionalWorkflowTest extends TestCase
         Storage::fake('public');
         Notification::fake();
         $admin = User::factory()->create(['role' => 'admin']);
+        $driver = User::factory()->create(['name' => 'Juan Rider', 'role' => 'staff']);
         $customer = User::factory()->create(['role' => 'user']);
         $otherCustomer = User::factory()->create(['role' => 'user']);
         $order = Order::query()->create([
@@ -735,7 +740,7 @@ class FunctionalWorkflowTest extends TestCase
         $this->actingAs($admin)->put(route('admin.orders.status', $order), [
             'status' => 'out_for_delivery',
             'payment_status' => 'paid',
-        ])->assertSessionHasErrors('driver_name');
+        ])->assertSessionHasErrors('driver_staff_id');
 
         $this->actingAs($admin)
             ->get(route('admin.orders.show', $order))
@@ -745,7 +750,7 @@ class FunctionalWorkflowTest extends TestCase
         $this->actingAs($admin)->put(route('admin.orders.status', $order), [
             'status' => 'out_for_delivery',
             'payment_status' => 'paid',
-            'driver_name' => 'Juan Rider',
+            'driver_staff_id' => $driver->id,
             'driver_phone' => '09768574',
         ])->assertSessionHasErrors([
             'driver_phone' => 'Driver contact must contain exactly 11 digits.',
@@ -756,7 +761,7 @@ class FunctionalWorkflowTest extends TestCase
         $this->actingAs($admin)->put(route('admin.orders.status', $order), [
             'status' => 'out_for_delivery',
             'payment_status' => 'paid',
-            'driver_name' => 'Juan Rider',
+            'driver_staff_id' => $driver->id,
             'driver_phone' => '09171234567',
         ])->assertRedirect();
 
@@ -1246,6 +1251,7 @@ class FunctionalWorkflowTest extends TestCase
         $this->actingAs($customer)
             ->withSession($this->estimatorBookingSession($service))
             ->post(route('schedule.store'), [
+                ...$this->validAppointmentAddress(),
                 'service_type_id' => $service->id,
                 'appointment_at' => $bookedAt->format('Y-m-d H:i:s'),
             ])->assertSessionHasNoErrors();
@@ -1293,6 +1299,7 @@ class FunctionalWorkflowTest extends TestCase
         $this->actingAs($customer)
             ->withSession($this->estimatorBookingSession($service))
             ->post(route('schedule.store'), [
+                ...$this->validAppointmentAddress(),
                 'service_type_id' => $service->id,
                 'appointment_at' => $bookedAt->format('Y-m-d H:i:s'),
             ])->assertSessionHasNoErrors();
@@ -1351,12 +1358,14 @@ class FunctionalWorkflowTest extends TestCase
         $this->actingAs($customer)
             ->withSession($this->estimatorBookingSession($service))
             ->post(route('schedule.store'), [
+                ...$this->validAppointmentAddress(),
                 'service_type_id' => $service->id,
                 'appointment_at' => $bookedAt->format('Y-m-d H:i:s'),
             ])->assertSessionHasNoErrors();
         $this->actingAs($other)
             ->withSession($this->estimatorBookingSession($service))
             ->post(route('schedule.store'), [
+                ...$this->validAppointmentAddress(),
                 'service_type_id' => $service->id,
                 'appointment_at' => $takenAt->format('Y-m-d H:i:s'),
             ])->assertSessionHasNoErrors();
@@ -1383,6 +1392,7 @@ class FunctionalWorkflowTest extends TestCase
         $this->actingAs($third)
             ->withSession($this->estimatorBookingSession($service))
             ->post(route('schedule.store'), [
+                ...$this->validAppointmentAddress(),
                 'service_type_id' => $service->id,
                 'appointment_at' => $bookedAt->format('Y-m-d H:i:s'),
             ])->assertSessionHasNoErrors();
@@ -1406,6 +1416,7 @@ class FunctionalWorkflowTest extends TestCase
         $this->actingAs($customer)
             ->withSession($this->estimatorBookingSession($service))
             ->post(route('schedule.store'), [
+                ...$this->validAppointmentAddress(),
                 'service_type_id' => $service->id,
                 'appointment_at' => $bookedAt->format('Y-m-d H:i:s'),
             ])->assertSessionHasNoErrors();
@@ -1457,6 +1468,7 @@ class FunctionalWorkflowTest extends TestCase
         $this->actingAs($customer)
             ->withSession($this->estimatorBookingSession($service))
             ->post(route('schedule.store'), [
+                ...$this->validAppointmentAddress(),
                 'service_type_id' => $service->id,
                 'appointment_at' => Carbon::now()->addDays(4)->setTime(9, 0)->format('Y-m-d H:i:s'),
             ])->assertSessionHasNoErrors();
