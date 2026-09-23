@@ -86,6 +86,9 @@
   input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea {
     padding: .65rem .8rem;
   }
+  .admin-search-input {
+    padding-left: 2.5rem !important;
+  }
   textarea {
     min-height: 5.5rem;
     resize: vertical;

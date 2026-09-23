@@ -846,9 +846,9 @@
             <div class="relative flex-1 max-w-[240px]">
               <label class="block text-[10px] font-medium text-surface-400 mb-1">Search</label>
               <div class="relative">
-                <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-surface-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                <svg aria-hidden="true" class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-surface-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
                 <input type="search" name="appt_q" aria-label="Search appointments" value="{{ $apptQ ?? '' }}" placeholder="Name, email, service..."
-                       class="h-11 w-full rounded-lg border border-surface-200 pl-8 pr-3 text-xs outline-none transition-colors focus:border-brand-500">
+                       class="admin-search-input h-11 w-full rounded-lg border border-surface-200 pl-8 pr-3 text-xs outline-none transition-colors focus:border-brand-500">
               </div>
             </div>
             <button type="submit" class="inline-flex h-11 items-center justify-center rounded-lg bg-surface-900 px-4 text-xs font-medium text-white transition-colors hover:bg-surface-800">Filter</button>
@@ -1081,9 +1081,9 @@
               <div class="relative flex-1 max-w-[240px]">
                 <label class="block text-[10px] font-medium text-surface-400 mb-1">Search</label>
                 <div class="relative">
-                  <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-surface-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                  <svg aria-hidden="true" class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-surface-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
                   <input type="search" name="order_q" aria-label="Search orders" value="{{ request('order_q') }}" placeholder="Order #, name, email"
-                         class="h-11 w-full rounded-lg border border-surface-200 pl-8 pr-3 text-xs outline-none transition-colors focus:border-brand-500">
+                         class="admin-search-input h-11 w-full rounded-lg border border-surface-200 pl-8 pr-3 text-xs outline-none transition-colors focus:border-brand-500">
                 </div>
               </div>
               <button type="submit" class="inline-flex h-11 items-center justify-center rounded-lg bg-surface-900 px-4 text-xs font-medium text-white transition-colors hover:bg-surface-800">Filter</button>
@@ -1381,8 +1381,8 @@
           <input type="hidden" name="tab" value="services">
           <div class="grid grid-cols-1 gap-2 md:grid-cols-12">
             <div class="relative md:col-span-9">
-              <svg class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z"/></svg>
-              <input type="search" name="service_q" aria-label="Search services" value="{{ $serviceQ ?? request('service_q') }}" placeholder="Search services..." class="h-10 w-full rounded-lg border border-surface-200 px-3 pl-9 text-sm outline-none transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
+              <svg aria-hidden="true" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z"/></svg>
+              <input type="search" name="service_q" aria-label="Search services" value="{{ $serviceQ ?? request('service_q') }}" placeholder="Search services..." class="admin-search-input h-10 w-full rounded-lg border border-surface-200 px-3 pl-9 text-sm outline-none transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
             </div>
             <div class="flex gap-2 md:col-span-3">
               <button type="submit" class="h-10 flex-1 rounded-lg bg-brand-700 px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-800">Search</button>
@@ -1479,8 +1479,8 @@
           <input type="hidden" name="tab" value="products">
           <div class="grid grid-cols-1 gap-2 md:grid-cols-12">
             <div class="relative md:col-span-5">
-              <svg class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z"/></svg>
-              <input type="search" name="product_q" aria-label="Search products" value="{{ $productQ ?? request('product_q') }}" placeholder="Search by product or category..." class="h-10 w-full rounded-lg border border-surface-200 px-3 pl-9 text-sm outline-none transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
+              <svg aria-hidden="true" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z"/></svg>
+              <input type="search" name="product_q" aria-label="Search products" value="{{ $productQ ?? request('product_q') }}" placeholder="Search by product or category..." class="admin-search-input h-10 w-full rounded-lg border border-surface-200 px-3 pl-9 text-sm outline-none transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
             </div>
             <select name="product_category" aria-label="Filter products by category" class="h-10 rounded-lg border border-surface-200 bg-white px-3 text-sm outline-none transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500 md:col-span-4">
               <option value="">All Categories</option>
@@ -1782,9 +1782,9 @@
           <form method="GET" action="{{ route('admin.dashboard') }}" class="flex items-end gap-2">
             <input type="hidden" name="tab" value="audit">
             <div class="relative">
-              <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-surface-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <svg aria-hidden="true" class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-surface-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
               <input type="search" name="audit_q" aria-label="Search audit log" value="{{ $auditQ ?? request('audit_q') }}" placeholder="Activity, user, target, or ID"
-                     class="h-11 w-52 rounded-lg border border-surface-200 pl-8 pr-3 text-xs outline-none transition-colors focus:border-brand-500">
+                     class="admin-search-input h-11 w-52 rounded-lg border border-surface-200 pl-8 pr-3 text-xs outline-none transition-colors focus:border-brand-500">
             </div>
             <button type="submit" class="inline-flex h-11 items-center justify-center rounded-lg bg-surface-900 px-4 text-xs font-medium text-white transition-colors hover:bg-surface-800">Search</button>
             <a href="{{ route('admin.dashboard', ['tab' => 'audit']) }}" class="inline-flex h-11 items-center justify-center rounded-lg border border-surface-200 bg-white px-3 text-xs font-medium text-surface-500 transition-colors hover:border-surface-300 hover:text-surface-800">Reset</a>

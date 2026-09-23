@@ -190,6 +190,23 @@ class AdminWorkspaceRenderTest extends TestCase
         }
     }
 
+    public function test_icon_search_fields_keep_their_text_clear_of_the_search_icon(): void
+    {
+        $this->seedWorkload();
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $html = (string) $this->get('/admin?tab=orders')->assertOk()->getContent();
+        $document = new \DOMDocument;
+        $document->loadHTML($html, LIBXML_NOERROR | LIBXML_NOWARNING);
+        $xpath = new \DOMXPath($document);
+        $inputs = $xpath->query('//input[@type="search" and contains(concat(" ", normalize-space(@class), " "), " admin-search-input ")]');
+
+        $this->assertNotFalse($inputs);
+        $this->assertSame(5, $inputs->length);
+        $this->assertStringContainsString('.admin-search-input {', $html);
+        $this->assertStringContainsString('padding-left: 2.5rem !important;', $html);
+    }
+
     public function test_admin_can_render_every_workspace_page(): void
     {
         $data = $this->seedWorkload();
