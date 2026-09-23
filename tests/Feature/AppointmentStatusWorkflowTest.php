@@ -40,12 +40,55 @@ class AppointmentStatusWorkflowTest extends TestCase
             ->get(route('admin.appointments.show', $appointment))
             ->assertOk()
             ->assertSeeText('Payment must be marked Paid before this appointment can be completed')
-            ->assertSee('data-appointment-payment-status-select', false);
+            ->assertSee('data-appointment-payment-status-select', false)
+            ->assertDontSee('data-confirm-title="Cancel this booking?"', false);
+
+        $this->assertSame(
+            ['confirmed', 'completed'],
+            $this->statusOptions($response)
+        );
 
         $completed = $this->statusOption($response, 'completed');
 
         $this->assertTrue($completed->hasAttribute('disabled'));
         $this->assertTrue($completed->hasAttribute('data-requires-paid'));
+    }
+
+    public function test_confirmed_appointment_rejects_admin_and_customer_cancellation_requests(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $appointment = $this->appointment('confirmed', 'paid');
+        $customer = User::query()->findOrFail($appointment->user_id);
+
+        $this->actingAs($admin)
+            ->put(route('admin.appointments.status', $appointment), [
+                'status' => 'cancelled',
+                'payment_status' => 'paid',
+            ])
+            ->assertSessionHasErrors('status');
+
+        $this->assertSame('confirmed', $appointment->refresh()->status);
+
+        $this->actingAs($admin)
+            ->put(route('admin.appointments.cancel', $appointment), [
+                'cancel_reason' => 'Attempted direct cancellation',
+            ])
+            ->assertStatus(422);
+
+        $this->assertSame('confirmed', $appointment->refresh()->status);
+
+        $this->actingAs($customer)
+            ->from(route('appointments'))
+            ->delete(route('appointments.cancel', $appointment), [
+                'cancel_reason' => 'Something came up',
+            ])
+            ->assertRedirect(route('appointments'))
+            ->assertSessionHas(
+                'error',
+                'This appointment has already been confirmed and can no longer be cancelled.'
+            );
+
+        $this->assertSame('confirmed', $appointment->refresh()->status);
     }
 
     public function test_paid_confirmed_appointment_enables_completed(): void

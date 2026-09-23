@@ -146,10 +146,10 @@
               </span>
             @endif
 
-            {{-- Rescheduling closes when the team confirms the booking. --}}
+            {{-- Customer changes close when the team confirms the booking. --}}
             @if ($isUpcoming && $st === 'confirmed')
               <span class="text-xs text-surface-400">
-                Confirmed bookings can only be rescheduled by the team.
+                Confirmed bookings can no longer be cancelled or rescheduled online. Message the team if you need help.
               </span>
             @elseif ($isUpcoming && ! $canCancel)
               <span class="text-xs text-surface-400">

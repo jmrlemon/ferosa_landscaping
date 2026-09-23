@@ -1310,7 +1310,7 @@ class FunctionalWorkflowTest extends TestCase
         $this->actingAs($customer)
             ->get(route('appointments'))
             ->assertOk()
-            ->assertSeeText('Confirmed bookings can only be rescheduled by the team.')
+            ->assertSeeText('Confirmed bookings can no longer be cancelled or rescheduled online.')
             ->assertDontSee(route('schedule', ['reschedule' => $appointment->id]));
 
         $this->actingAs($customer)

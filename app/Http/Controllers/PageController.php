@@ -1341,8 +1341,15 @@ class PageController extends Controller
             (int) $appointment->user_id === (int) $request->user()->id,
             403
         );
+        if ($appointment->status === 'confirmed') {
+            return back()->with(
+                'error',
+                'This appointment has already been confirmed and can no longer be cancelled.'
+            );
+        }
+
         abort_unless(
-            in_array($appointment->status, ['scheduled', 'confirmed']) && $appointment->appointment_at->isFuture(),
+            $appointment->canTransitionTo('cancelled') && $appointment->appointment_at->isFuture(),
             422
         );
 

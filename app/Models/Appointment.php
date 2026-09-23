@@ -25,7 +25,7 @@ class Appointment extends Model
     /** @var array<string, list<string>> */
     public const STATUS_TRANSITIONS = [
         'scheduled' => ['confirmed', 'cancelled'],
-        'confirmed' => ['completed', 'cancelled'],
+        'confirmed' => ['completed'],
         'completed' => [],
         'cancelled' => [],
     ];
@@ -129,14 +129,10 @@ class Appointment extends Model
      */
     public const CHANGE_NOTICE_HOURS = 24;
 
-    /**
-     * Whether the customer may still cancel this visit themselves. Confirmed
-     * visits remain cancellable outside the notice window, but rescheduling is
-     * locked separately as soon as the team confirms the booking.
-     */
+    /** Whether the customer may still change this visit before confirmation. */
     public function isCustomerChangeable(): bool
     {
-        return in_array($this->status, ['scheduled', 'confirmed'], true)
+        return $this->status === 'scheduled'
             && $this->appointment_at->greaterThanOrEqualTo(
                 Carbon::now()->addHours(self::CHANGE_NOTICE_HOURS)
             );
