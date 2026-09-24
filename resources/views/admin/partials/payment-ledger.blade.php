@@ -8,6 +8,29 @@
   $billed = $payable->totalBilled();
   $paid = $payable->totalPaid();
   $balance = $payable->balanceDue();
+  $isOrderPayable = $payable instanceof \App\Models\Order;
+  $canApplyDiscount = $isOrderPayable
+      ? $payable->status === 'pending' && $payable->payment_status === 'unpaid' && $paid <= 0
+      : in_array($payable->status, ['scheduled', 'confirmed'], true) && $payable->payment_status === 'unpaid' && $paid <= 0;
+  $activeDiscount = $payable->activeDiscount()->with('verifiedBy')->first();
+  $discountRequest = $payable->discountRequest()->with(['requestedBy', 'reviewedBy'])->first();
+  $discountRules = app(\App\Services\PhilippineDiscountRules::class);
+  $discountsEnabled = (bool) config('discounts.enabled', false) && $discountRules->businessTaxProfileReady();
+  $lineSchemes = $isOrderPayable
+      ? ($payable->orderItems->isNotEmpty()
+          ? $payable->orderItems->pluck('discount_scheme')
+          : collect($payable->items ?? [])->pluck('discount_scheme'))
+      : collect([$payable->discount_scheme ?? 'none']);
+  $eligibleDiscountSchemes = $canApplyDiscount
+      ? $lineSchemes
+          ->unique()
+          ->filter(fn ($scheme) => $discountRules->schemeEnabled((string) $scheme)
+              && ((string) $scheme !== \App\Services\PhilippineDiscountCalculator::SCHEME_BNPC_5 || $isOrderPayable))
+          ->values()
+          ->all()
+      : [];
+  $hasEnabledDiscountScheme = $discountRules->schemeEnabled(\App\Services\PhilippineDiscountCalculator::SCHEME_STATUTORY_20)
+      || ($isOrderPayable && $discountRules->schemeEnabled(\App\Services\PhilippineDiscountCalculator::SCHEME_BNPC_5));
   $ledgerEntries = $payable->paymentHistory()->with(['recordedBy', 'voidedBy'])->get();
   $balanceTone = match (true) {
       $payable->payment_status === 'refunded' => 'border-surface-200 bg-surface-50 text-surface-700',
@@ -42,7 +65,80 @@
       <p class="text-[10px] font-bold uppercase tracking-wider opacity-70">Balance due</p>
       <p class="text-lg font-bold">PHP {{ number_format($balance, 2) }}</p>
     </div>
-  </div>
+</div>
+
+  @include('admin.partials.discount-request-review', [
+    'discountRequest' => $discountRequest,
+    'discountsEnabled' => $discountsEnabled,
+    'canApplyDiscount' => $canApplyDiscount,
+    'eligibleDiscountSchemes' => $eligibleDiscountSchemes,
+    'isAdmin' => $isAdmin,
+  ])
+
+  @if($activeDiscount)
+    <div class="mt-4 rounded-lg border border-brand-200 bg-brand-50 p-4">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p class="text-xs font-bold uppercase tracking-wider text-brand-800">Discount and VAT adjustment</p>
+          <p class="mt-1 text-sm font-semibold text-brand-950">{{ $activeDiscount->beneficiaryLabel() }} · {{ $activeDiscount->schemeLabel() }}</p>
+          @if($activeDiscount->verifiedBy)
+            <p class="mt-1 text-[11px] text-brand-700">Verified by {{ $activeDiscount->verifiedBy->name }} on {{ optional($activeDiscount->verified_at)->format('M d, Y h:i A') }}</p>
+          @endif
+        </div>
+        <span class="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-brand-800">-PHP {{ number_format((float) $activeDiscount->discount_amount, 2) }}</span>
+      </div>
+      <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:grid-cols-4">
+        <div><dt class="text-surface-500">Gross</dt><dd class="font-semibold">PHP {{ number_format((float) $activeDiscount->gross_total, 2) }}</dd></div>
+        @if($activeDiscount->scheme === \App\Services\PhilippineDiscountCalculator::SCHEME_STATUTORY_20)
+          <div><dt class="text-surface-500">VAT removed from eligible items</dt><dd class="font-semibold">PHP {{ number_format((float) $activeDiscount->vat_removed, 2) }}</dd></div>
+          <div><dt class="text-surface-500">20% eligible discount base</dt><dd class="font-semibold">PHP {{ number_format((float) $activeDiscount->discount_base, 2) }}</dd></div>
+        @else
+          <div><dt class="text-surface-500">BNPC eligible base</dt><dd class="font-semibold">PHP {{ number_format((float) $activeDiscount->discount_base, 2) }}</dd></div>
+        @endif
+        <div><dt class="text-surface-500">New total</dt><dd class="font-semibold">PHP {{ number_format((float) $activeDiscount->net_total, 2) }}</dd></div>
+      </dl>
+    </div>
+  @elseif($isAdmin && $isOrderPayable && ! $discountRequest)
+    @if(! $discountsEnabled || ! $hasEnabledDiscountScheme)
+      <p class="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
+        <strong>Discount tools are disabled pending compliance approval.</strong>
+        Confirm VAT registration and eligible products, then enable the Philippine discount settings.
+      </p>
+    @elseif(count($eligibleDiscountSchemes) === 0)
+      <p class="mt-4 rounded-lg border border-surface-200 bg-surface-50 px-3 py-2.5 text-sm text-surface-700">
+        No order lines are currently marked eligible for an enabled discount scheme.
+      </p>
+    @elseif($payable->status === 'pending' && $payable->payment_status === 'unpaid' && $paid <= 0)
+      <form method="POST" action="{{ route('admin.orders.discounts.store', $payable) }}" class="mt-4 rounded-lg border border-amber-200 bg-amber-50/60 p-4">
+        @csrf
+        <p class="text-xs font-bold uppercase tracking-wider text-amber-800">Apply Senior/PWD discount</p>
+        <p class="mt-1 text-xs leading-5 text-amber-700">Use only for verified customers and product lines explicitly marked eligible. VAT is removed before the 20% discount for a qualifying statutory sale.</p>
+        <div class="mt-3 grid gap-3 sm:grid-cols-2">
+          <label class="block text-xs font-semibold text-surface-700">Benefit *
+            <select name="scheme" required class="mt-1.5 w-full rounded-lg border border-surface-200 px-3 py-2 text-sm font-normal outline-none focus:border-brand-500">
+              @if(in_array(\App\Services\PhilippineDiscountCalculator::SCHEME_STATUTORY_20, $eligibleDiscountSchemes, true))
+                <option value="statutory_20_vat_exempt">20% + VAT exemption</option>
+              @endif
+              @if(in_array(\App\Services\PhilippineDiscountCalculator::SCHEME_BNPC_5, $eligibleDiscountSchemes, true))
+                <option value="bnpc_5">5% BNPC discount</option>
+              @endif
+            </select>
+          </label>
+          <label class="block text-xs font-semibold text-surface-700">Beneficiary *
+            <select name="beneficiary_type" required class="mt-1.5 w-full rounded-lg border border-surface-200 px-3 py-2 text-sm font-normal outline-none focus:border-brand-500">
+              <option value="senior">Senior Citizen</option>
+              <option value="pwd">PWD</option>
+            </select>
+          </label>
+        </div>
+        <label class="mt-3 flex items-start gap-2 text-xs leading-5 text-surface-700">
+          <input type="checkbox" name="eligibility_confirmed" value="1" required class="mt-0.5 h-4 w-4 rounded border-surface-300 text-brand-600 focus:ring-brand-500">
+          I checked the customer's valid ID and confirmed that the selected product lines are legally eligible. Senior and PWD benefits are not stacked.
+        </label>
+        <button type="submit" class="mt-3 rounded-lg bg-amber-700 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-800">Verify and apply discount</button>
+      </form>
+    @endif
+  @endif
 
   @if($ledgerEntries->isEmpty())
     <p class="mt-4 rounded-lg border border-dashed border-surface-200 px-3 py-4 text-center text-sm text-surface-400">
@@ -92,25 +188,26 @@
   @endif
 
   @if($isAdmin && $balance > 0)
-    <form method="POST" action="{{ $storeRoute }}" class="mt-4 rounded-lg border border-surface-200 bg-surface-50/60 p-4">
+    @php($selectedPaymentMethod = old('method', 'cash'))
+    <form method="POST" action="{{ $storeRoute }}" data-payment-record-form class="mt-4 rounded-lg border border-surface-200 bg-surface-50/60 p-4">
       @csrf
       <p class="text-xs font-bold uppercase tracking-wider text-surface-500">Record a payment</p>
-      <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div data-payment-fields class="mt-3 grid gap-3 sm:grid-cols-2 {{ $selectedPaymentMethod === 'cash' ? 'lg:grid-cols-3' : 'lg:grid-cols-4' }}">
         <label class="block text-xs font-semibold text-surface-700">Amount *
           <input type="number" name="amount" step="0.01" min="0.01" max="{{ $balance }}" value="{{ old('amount', $balance) }}" required
                  class="mt-1.5 w-full rounded-lg border border-surface-200 px-3 py-2 text-sm font-normal outline-none focus:border-brand-500">
           <span class="mt-1 block text-[11px] font-normal text-surface-400">Up to PHP {{ number_format($balance, 2) }}</span>
         </label>
         <label class="block text-xs font-semibold text-surface-700">Method *
-          <select name="method" required class="mt-1.5 w-full rounded-lg border border-surface-200 px-3 py-2 text-sm font-normal outline-none focus:border-brand-500">
-            <option value="cash">Cash</option>
-            <option value="gcash">GCash</option>
-            <option value="bank_transfer">Bank transfer</option>
-            <option value="other">Other</option>
+          <select name="method" data-payment-method required class="mt-1.5 w-full rounded-lg border border-surface-200 px-3 py-2 text-sm font-normal outline-none focus:border-brand-500">
+            <option value="cash" @selected($selectedPaymentMethod === 'cash')>Cash</option>
+            <option value="gcash" @selected($selectedPaymentMethod === 'gcash')>GCash</option>
+            <option value="bank_transfer" @selected($selectedPaymentMethod === 'bank_transfer')>Bank transfer</option>
+            <option value="other" @selected($selectedPaymentMethod === 'other')>Other</option>
           </select>
         </label>
-        <label class="block text-xs font-semibold text-surface-700">Reference
-          <input type="text" name="reference" maxlength="255" value="{{ old('reference') }}"
+        <label data-payment-reference{{ $selectedPaymentMethod === 'cash' ? ' hidden' : '' }} class="{{ $selectedPaymentMethod === 'cash' ? 'hidden' : 'block' }} text-xs font-semibold text-surface-700">Reference
+          <input type="text" name="reference" maxlength="255" value="{{ old('reference') }}"{{ $selectedPaymentMethod === 'cash' ? ' disabled' : '' }}
                  class="mt-1.5 w-full rounded-lg border border-surface-200 px-3 py-2 text-sm font-normal outline-none focus:border-brand-500">
         </label>
         <label class="block text-xs font-semibold text-surface-700">Received on
@@ -126,6 +223,28 @@
         Record payment
       </button>
     </form>
+    <script>
+      document.querySelectorAll('[data-payment-record-form]').forEach(form => {
+        const method = form.querySelector('[data-payment-method]');
+        const fields = form.querySelector('[data-payment-fields]');
+        const referenceField = form.querySelector('[data-payment-reference]');
+        const referenceInput = referenceField?.querySelector('input[name="reference"]');
+        if (!method || !fields || !referenceField || !referenceInput) return;
+
+        function syncPaymentReference() {
+          const isCash = method.value === 'cash';
+          referenceField.hidden = isCash;
+          referenceField.classList.toggle('hidden', isCash);
+          referenceField.classList.toggle('block', !isCash);
+          referenceInput.disabled = isCash;
+          fields.classList.toggle('lg:grid-cols-3', isCash);
+          fields.classList.toggle('lg:grid-cols-4', !isCash);
+        }
+
+        method.addEventListener('change', syncPaymentReference);
+        syncPaymentReference();
+      });
+    </script>
   @elseif($isAdmin && $billed > 0)
     <p class="mt-4 rounded-lg border border-brand-100 bg-brand-50 px-3 py-2.5 text-sm font-semibold text-brand-800">
       This record is fully settled.

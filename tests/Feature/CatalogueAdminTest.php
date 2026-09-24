@@ -44,6 +44,7 @@ class CatalogueAdminTest extends TestCase
 
         $service = ServiceType::query()->where('name', 'Tree Surgery')->firstOrFail();
         $this->assertSame(2500.0, (float) $service->default_fee);
+        $this->assertSame('none', $service->discount_scheme);
         $this->assertTrue((bool) $service->is_active);
         $this->assertDatabaseHas('audit_logs', ['action' => 'service.create']);
     }
@@ -258,16 +259,64 @@ class CatalogueAdminTest extends TestCase
         $this->assertDatabaseMissing('products', ['name' => 'Monstera Deliciosa']);
     }
 
-    public function test_admin_form_explains_and_enforces_the_coverage_categories(): void
+    public function test_product_forms_no_longer_show_estimator_coverage_controls(): void
     {
-        $html = $this->actingAs($this->admin())
+        $admin = $this->admin();
+        $product = Product::query()->create([
+            'name' => 'Carabao Grass',
+            'price' => 250,
+            'stock_qty' => 10,
+            'category' => 'Grass',
+            'is_active' => true,
+        ]);
+
+        $createHtml = $this->actingAs($admin)
             ->get(route('admin.products.create'))
             ->assertOk()
             ->getContent();
+        $editHtml = $this->actingAs($admin)
+            ->get(route('admin.products.edit', $product))
+            ->assertOk()
+            ->getContent();
 
-        $this->assertStringContainsString('Estimator coverage is available only for Grass and Stones.', $html);
-        $this->assertStringContainsString('id="estimator-coverage-fields"', $html);
-        $this->assertStringContainsString('function updateEstimatorCoverageAvailability', $html);
+        foreach ([$createHtml, $editHtml] as $html) {
+            $this->assertStringNotContainsString('Estimator Coverage', $html);
+            $this->assertStringNotContainsString('name="sale_unit"', $html);
+            $this->assertStringNotContainsString('name="coverage_sqm_per_unit"', $html);
+            $this->assertStringNotContainsString('name="coverage_waste_percent"', $html);
+            $this->assertStringNotContainsString('function updateEstimatorCoverageAvailability', $html);
+        }
+    }
+
+    public function test_editing_a_product_without_coverage_inputs_preserves_existing_coverage(): void
+    {
+        $product = Product::query()->create([
+            'name' => 'Carabao Grass',
+            'description' => '',
+            'price' => 250,
+            'stock_qty' => 10,
+            'category' => 'Grass',
+            'is_active' => true,
+            'sale_unit' => 'sq m',
+            'coverage_sqm_per_unit' => 1,
+            'coverage_waste_percent' => 10,
+        ]);
+
+        $this->actingAs($this->admin())
+            ->put(route('admin.products.update', $product), [
+                'name' => 'Carabao Grass',
+                'description' => '',
+                'price' => '275',
+                'category' => 'Grass',
+                'is_active' => '1',
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $product->refresh();
+        $this->assertSame('sq m', $product->sale_unit);
+        $this->assertSame(1.0, (float) $product->coverage_sqm_per_unit);
+        $this->assertSame(10.0, (float) $product->coverage_waste_percent);
     }
 
     public function test_changing_to_an_unsupported_category_clears_coverage(): void

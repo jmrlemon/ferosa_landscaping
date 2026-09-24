@@ -10,6 +10,7 @@ use App\Services\BillingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class BillingLedgerTest extends TestCase
@@ -55,6 +56,65 @@ class BillingLedgerTest extends TestCase
                 'amount' => 500.01,
                 'method' => 'cash',
             ])->assertSessionHasErrors('amount');
+
+        $this->assertSame(0, $order->payments()->count());
+        $this->assertSame('unpaid', $order->refresh()->payment_status);
+    }
+
+    public function test_cash_payment_form_hides_reference_for_orders_and_appointments(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $order = $this->order(500.00);
+        $appointment = $this->appointment(1500.00);
+
+        $this->actingAs($admin)
+            ->get(route('admin.orders.show', $order))
+            ->assertOk()
+            ->assertSee('data-payment-reference hidden', false);
+
+        $this->actingAs($admin)
+            ->get(route('admin.appointments.show', $appointment))
+            ->assertOk()
+            ->assertSee('data-payment-reference hidden', false);
+
+        $this->actingAs($admin)
+            ->withSession(['_old_input' => ['method' => 'gcash', 'reference' => 'GCASH-123']])
+            ->get(route('admin.orders.show', $order))
+            ->assertOk()
+            ->assertSee('data-payment-reference class="block', false)
+            ->assertSee('value="GCASH-123"', false);
+    }
+
+    public function test_cash_payment_does_not_save_a_submitted_reference(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $order = $this->order(500.00);
+
+        $this->actingAs($admin)
+            ->post(route('admin.orders.payments.store', $order), [
+                'amount' => 500,
+                'method' => 'cash',
+                'reference' => 'OLD-FORM-REFERENCE',
+            ])->assertRedirect(route('admin.orders.show', $order));
+
+        $this->assertNull($order->payments()->firstOrFail()->reference);
+    }
+
+    public function test_recording_a_payment_rechecks_the_balance_on_the_locked_record(): void
+    {
+        $order = $this->order(500.00);
+        $staleOrder = clone $order;
+        $order->forceFill(['total_amount' => '300.00'])->save();
+
+        try {
+            app(BillingService::class)->record($staleOrder, [
+                'amount' => 500,
+                'method' => 'cash',
+            ]);
+            $this->fail('A stale amount larger than the current balance should be rejected.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('amount', $exception->errors());
+        }
 
         $this->assertSame(0, $order->payments()->count());
         $this->assertSame('unpaid', $order->refresh()->payment_status);

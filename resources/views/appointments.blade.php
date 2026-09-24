@@ -195,6 +195,21 @@
                 <span class="text-surface-400 w-20 shrink-0">Amount</span>
                 <span class="text-surface-700 font-medium">{{ $amountLabel }}</span>
               </div>
+              @if($appt->discountRequest)
+                <div class="flex gap-2">
+                  <span class="text-surface-400 w-20 shrink-0">Discount</span>
+                  <span class="text-surface-700 font-medium">
+                    {{ $appt->discountRequest->beneficiaryLabel() }} · {{ ucfirst($appt->discountRequest->status) }}
+                    @if($appt->status === 'cancelled')
+                      · request cannot be applied to a cancelled appointment
+                    @elseif($appt->activeDiscount)
+                      · PHP {{ number_format((float) $appt->activeDiscount->discount_amount, 2) }} applied
+                    @elseif($appt->discountRequest->status === \App\Models\DiscountRequest::STATUS_REJECTED && $appt->discountRequest->rejection_reason)
+                      · {{ $appt->discountRequest->rejection_reason }}
+                    @endif
+                  </span>
+                </div>
+              @endif
               @if ((float) ($appt->appointment_amount ?? 0) > 0 && $appt->balanceDue() > 0 && $appt->totalPaid() > 0)
                 <div class="flex gap-2">
                   <span class="text-surface-400 w-20 shrink-0">Balance</span>

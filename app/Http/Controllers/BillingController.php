@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
+use App\Models\DiscountApplication;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Services\BillingService;
@@ -26,7 +27,14 @@ class BillingController extends Controller
     {
         $this->authorizeInvoiceView($request, (int) $order->user_id);
 
-        $order->load(['user', 'orderItems', 'paymentHistory.recordedBy', 'paymentHistory.voidedBy', 'activeRefunds.processedBy']);
+        $order->load([
+            'user',
+            'orderItems',
+            'activeDiscount.verifiedBy',
+            'paymentHistory.recordedBy',
+            'paymentHistory.voidedBy',
+            'activeRefunds.processedBy',
+        ]);
 
         return view('invoice', $this->invoiceData($order, 'order'));
     }
@@ -35,7 +43,13 @@ class BillingController extends Controller
     {
         $this->authorizeInvoiceView($request, (int) $appointment->user_id);
 
-        $appointment->load(['user', 'serviceType', 'paymentHistory.recordedBy', 'paymentHistory.voidedBy']);
+        $appointment->load([
+            'user',
+            'serviceType',
+            'activeDiscount.verifiedBy',
+            'paymentHistory.recordedBy',
+            'paymentHistory.voidedBy',
+        ]);
 
         return view('invoice', $this->invoiceData($appointment, 'appointment'));
     }
@@ -55,6 +69,12 @@ class BillingController extends Controller
      */
     private function storePayment(Request $request, $payable, string $redirectTo): RedirectResponse
     {
+        if ($payable->discountRequest()->where('status', 'pending')->exists()) {
+            return back()->withErrors([
+                'discount_request' => 'Resolve the customer discount request before recording payment.',
+            ]);
+        }
+
         $balance = $this->billing->balanceDue($payable);
 
         $data = $request->validate([
@@ -75,7 +95,7 @@ class BillingController extends Controller
         $payment = $this->billing->record($payable, [
             'amount' => $data['amount'],
             'method' => $data['method'],
-            'reference' => $data['reference'] ?? null,
+            'reference' => $data['method'] === 'cash' ? null : ($data['reference'] ?? null),
             'notes' => $data['notes'] ?? null,
             'paid_at' => $data['paid_at'] ?? now(),
             'recorded_by' => $request->user()->id,
@@ -123,6 +143,7 @@ class BillingController extends Controller
             'totalBilled' => $this->billing->totalBilled($payable),
             'totalPaid' => $this->billing->totalPaid($payable),
             'balanceDue' => $this->billing->balanceDue($payable),
+            'discount' => $payable->activeDiscount,
             'totalRefunded' => $isOrder ? $this->billing->totalRefunded($payable) : 0.0,
             'netPaid' => $isOrder ? $this->billing->netPaid($payable) : $this->billing->totalPaid($payable),
         ];
@@ -138,7 +159,12 @@ class BillingController extends Controller
     private function invoiceLines($payable, string $kind): array
     {
         if ($kind === 'appointment') {
-            $amount = (float) $payable->appointment_amount;
+            // appointment_amount is reduced after approval; the application
+            // retains the original gross value for a transparent invoice.
+            $activeDiscount = $payable->getRelation('activeDiscount');
+            $amount = (float) ($activeDiscount instanceof DiscountApplication
+                ? $activeDiscount->gross_total
+                : $payable->appointment_amount);
 
             return [[
                 'description' => $payable->serviceType->name ?? 'Landscaping service',

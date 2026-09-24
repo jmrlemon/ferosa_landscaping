@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Support\Carbon;
 
 /**
@@ -22,6 +24,8 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $payment_verified_at
  * @property Carbon|null $archived_at
  * @property Carbon|null $estimated_delivery_date
+ * @property-read DiscountApplication|null $activeDiscount
+ * @property-read DiscountRequest|null $discountRequest
  * @property 'pending'|'confirmed'|'out_for_delivery'|'delivered'|'completed'|'cancelled' $status
  */
 class Order extends Model
@@ -106,6 +110,26 @@ class Order extends Model
     public function orderItems(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    /** @return MorphMany<DiscountApplication, $this> */
+    public function discountApplications(): MorphMany
+    {
+        return $this->morphMany(DiscountApplication::class, 'discountable');
+    }
+
+    /** @return MorphOne<DiscountApplication, $this> */
+    public function activeDiscount(): MorphOne
+    {
+        return $this->morphOne(DiscountApplication::class, 'discountable')
+            ->where('status', DiscountApplication::STATUS_APPROVED)
+            ->latestOfMany();
+    }
+
+    /** @return MorphOne<DiscountRequest, $this> */
+    public function discountRequest(): MorphOne
+    {
+        return $this->morphOne(DiscountRequest::class, 'requestable');
     }
 
     /** @return HasMany<ReturnRequest, $this> */

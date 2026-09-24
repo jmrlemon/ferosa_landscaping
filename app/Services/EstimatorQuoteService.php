@@ -61,7 +61,12 @@ class EstimatorQuoteService
         $requestedProducts = collect($data['products'] ?? [])->keyBy('id');
         $products = [];
         $productsAmount = 0.0;
-        $coverageArea = (int) ($data['coverage_area'] ?? $data['size']);
+        // The web estimator now quotes the quantity the customer selects.
+        // Keep an explicit coverage_area payload compatible for the native
+        // client until that client is migrated away from recommendations.
+        $coverageArea = array_key_exists('coverage_area', $data)
+            ? (int) $data['coverage_area']
+            : null;
 
         if ($requestedProducts->isNotEmpty()) {
             $availableProducts = Product::query()
@@ -82,14 +87,16 @@ class EstimatorQuoteService
                 $product = $availableProducts->get((int) $productId);
                 $quantity = (int) $requested['qty'];
 
-                if (! $product || (! $product->supportsAreaCoverage() && $quantity > $product->stock_qty)) {
+                if (! $product
+                    || (($coverageArea === null || ! $product->supportsAreaCoverage())
+                        && $quantity > $product->stock_qty)) {
                     throw ValidationException::withMessages([
                         'products' => 'A selected product does not have enough stock. Please lower its quantity and try again.',
                     ]);
                 }
 
                 $price = round((float) $product->price, 2);
-                $coverage = $product->supportsAreaCoverage()
+                $coverage = $coverageArea !== null && $product->supportsAreaCoverage()
                     ? MaterialCoverageCalculator::calculate(
                         areaSqm: $coverageArea,
                         coverageSqmPerUnit: (float) $product->coverage_sqm_per_unit,
@@ -115,27 +122,31 @@ class EstimatorQuoteService
 
         $total = round($baseAmount + $addonsAmount + $productsAmount, 2);
         $range = (array) config('estimator.range', []);
+        $snapshot = [
+            'project_type' => $data['project_type'],
+            'project_type_label' => (string) ($project['label'] ?? $data['project_type']),
+            'size' => $data['size'],
+            'tier' => $data['tier'],
+            'tier_label' => (string) ($tier['label'] ?? $data['tier']),
+            'addons' => $addons,
+            'products' => $products,
+            'base_amount' => $baseAmount,
+            'addons_amount' => round($addonsAmount, 2),
+            'products_amount' => round($productsAmount, 2),
+            'total' => $total,
+            'range_low' => round($total * (float) ($range['low'] ?? 0.8), 2),
+            'range_high' => round($total * (float) ($range['high'] ?? 1.25), 2),
+        ];
+
+        if ($coverageArea !== null) {
+            $snapshot['coverage_area'] = $coverageArea;
+        }
 
         return [
             'version' => self::VERSION,
             'prepared_at' => now()->toIso8601String(),
             'service_type_id' => $service->id,
-            'snapshot' => [
-                'project_type' => $data['project_type'],
-                'project_type_label' => (string) ($project['label'] ?? $data['project_type']),
-                'size' => $data['size'],
-                'coverage_area' => $coverageArea,
-                'tier' => $data['tier'],
-                'tier_label' => (string) ($tier['label'] ?? $data['tier']),
-                'addons' => $addons,
-                'products' => $products,
-                'base_amount' => $baseAmount,
-                'addons_amount' => round($addonsAmount, 2),
-                'products_amount' => round($productsAmount, 2),
-                'total' => $total,
-                'range_low' => round($total * (float) ($range['low'] ?? 0.8), 2),
-                'range_high' => round($total * (float) ($range['high'] ?? 1.25), 2),
-            ],
+            'snapshot' => $snapshot,
         ];
     }
 

@@ -43,6 +43,7 @@
   $receiptNumber = 'APT-'.str_pad((string) $appointment->id, 6, '0', STR_PAD_LEFT);
   $service = $appointment->serviceType;
   $amount = (float) ($appointment->appointment_amount ?? $service->default_fee ?? 0);
+  $vatBreakdown = \App\Support\VatBreakdown::forServiceAmount($amount);
   $status = $appointment->status ?? 'scheduled';
   $statusClass = match($status) {
     'confirmed' => 'badge-confirmed',
@@ -101,6 +102,16 @@
         <td>{{ $service->name ?? 'Service appointment' }}</td>
         <td>PHP {{ number_format($amount, 2) }}</td>
       </tr>
+      @if($vatBreakdown['show'] && ! $appointment->activeDiscount)
+      <tr>
+        <td>Subtotal before VAT</td>
+        <td>PHP {{ number_format($vatBreakdown['before_vat'], 2) }}</td>
+      </tr>
+      <tr>
+        <td>VAT included ({{ $vatBreakdown['rate_percent'] }}%)</td>
+        <td>PHP {{ number_format($vatBreakdown['vat_amount'], 2) }}</td>
+      </tr>
+      @endif
       <tr class="total-row">
         <td>Total</td>
         <td>PHP {{ number_format($amount, 2) }}</td>

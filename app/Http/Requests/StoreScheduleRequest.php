@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Rules\DispatchSlot;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\Rule;
 
 class StoreScheduleRequest extends FormRequest
 {
@@ -33,6 +34,14 @@ class StoreScheduleRequest extends FormRequest
             'site_city_code' => ['nullable', 'string', 'regex:/^[0-9]{10}$/'],
             'site_barangay_code' => ['nullable', 'string', 'regex:/^[0-9]{10}$/'],
             'site_street' => ['nullable', 'string', 'max:450'],
+            'discount_beneficiary' => ['nullable', Rule::in(['none', 'senior', 'pwd'])],
+            'discount_id_evidence' => [
+                Rule::requiredIf(fn () => in_array($this->input('discount_beneficiary'), ['senior', 'pwd'], true)),
+                'nullable',
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120',
+            ],
         ];
     }
 

@@ -30,6 +30,7 @@ class CartService
                     'qty' => $item->qty,
                     'stock_qty' => (int) $product->stock_qty,
                     'image_url' => $product->image_url,
+                    'discount_scheme' => $product->discount_scheme,
                 ];
             })
             ->values();

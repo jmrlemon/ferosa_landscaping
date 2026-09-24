@@ -24,6 +24,7 @@ use App\Notifications\OrderStatusChanged;
 use App\Services\BillingService;
 use App\Services\GlbValidator;
 use App\Services\InventoryService;
+use App\Services\PhilippineDiscountCalculator;
 use App\Support\ArAssetBudgets;
 use App\Support\Audit;
 use App\Support\MessageAttachment;
@@ -836,6 +837,7 @@ class AdminController extends Controller
             'image' => ['nullable', 'image', 'max:2048'],
             'price' => ['required', 'numeric', 'min:0'],
             'stock_qty' => ['nullable', 'integer', 'min:0'],
+            'discount_scheme' => ['nullable', Rule::in(Product::DISCOUNT_SCHEMES)],
             ...$this->coverageValidationRules($request),
             'category' => ['required', 'string', 'max:100'],
             'is_active' => ['nullable', 'boolean'],
@@ -854,6 +856,7 @@ class AdminController extends Controller
                     'description' => $data['description'] ?? '',
                     'image_url' => $imageUrl,
                     'price' => $data['price'],
+                    'discount_scheme' => $data['discount_scheme'] ?? PhilippineDiscountCalculator::SCHEME_NONE,
                     // Created at zero so the opening stock is booked through the ledger
                     // rather than appearing from nowhere.
                     'stock_qty' => 0,
@@ -885,7 +888,7 @@ class AdminController extends Controller
             'product.create',
             $product,
             null,
-            Audit::snapshot($product, ['name', 'description', 'image_url', 'price', 'stock_qty', 'sale_unit', 'coverage_sqm_per_unit', 'coverage_waste_percent', 'category', 'is_active', 'archived_at'])
+            Audit::snapshot($product, ['name', 'description', 'image_url', 'price', 'discount_scheme', 'stock_qty', 'sale_unit', 'coverage_sqm_per_unit', 'coverage_waste_percent', 'category', 'is_active', 'archived_at'])
         );
 
         Cache::forget('shop_products_active');
@@ -915,7 +918,7 @@ class AdminController extends Controller
     {
         abort_unless($product->archived_at === null, 404);
 
-        $before = Audit::snapshot($product, ['name', 'description', 'image_url', 'price', 'stock_qty', 'sale_unit', 'coverage_sqm_per_unit', 'coverage_waste_percent', 'category', 'is_active', 'archived_at']);
+        $before = Audit::snapshot($product, ['name', 'description', 'image_url', 'price', 'discount_scheme', 'stock_qty', 'sale_unit', 'coverage_sqm_per_unit', 'coverage_waste_percent', 'category', 'is_active', 'archived_at']);
 
         $data = $request->validate([
             'name' => [
@@ -929,6 +932,7 @@ class AdminController extends Controller
             'description' => ['nullable', 'string', 'max:2000'],
             'image' => ['nullable', 'image', 'max:2048'],
             'price' => ['required', 'numeric', 'min:0'],
+            'discount_scheme' => ['nullable', Rule::in(Product::DISCOUNT_SCHEMES)],
             // stock_qty is deliberately absent: stock only moves through the
             // ledger, where every change carries a reason. A posted value is
             // ignored rather than silently applied.
@@ -947,7 +951,11 @@ class AdminController extends Controller
                 'description' => $data['description'] ?? '',
                 'image_url' => $imageUrl,
                 'price' => $data['price'],
-                ...$this->coverageFields($data),
+                'discount_scheme' => $data['discount_scheme'] ?? $product->discount_scheme,
+                ...($request->hasAny(['sale_unit', 'coverage_sqm_per_unit', 'coverage_waste_percent'])
+                    || ! Product::categorySupportsAreaCoverage((string) $data['category'])
+                        ? $this->coverageFields($data)
+                        : []),
                 'category' => strtolower(trim($data['category'])),
                 'is_active' => (bool) ($data['is_active'] ?? false),
             ]);
@@ -971,7 +979,7 @@ class AdminController extends Controller
             'product.update',
             $product,
             $before,
-            Audit::snapshot($product, ['name', 'description', 'image_url', 'price', 'stock_qty', 'sale_unit', 'coverage_sqm_per_unit', 'coverage_waste_percent', 'category', 'is_active', 'archived_at'])
+            Audit::snapshot($product, ['name', 'description', 'image_url', 'price', 'discount_scheme', 'stock_qty', 'sale_unit', 'coverage_sqm_per_unit', 'coverage_waste_percent', 'category', 'is_active', 'archived_at'])
         );
 
         if ($request->input('redirect_to') === 'edit') {
@@ -1189,6 +1197,16 @@ class AdminController extends Controller
         // Payment state is always the current server-side value for staff.
         // Only the admin branch below is allowed to verify or settle money.
         $paymentStatus = $isAdmin ? $data['payment_status'] : ($order->payment_status ?? 'unpaid');
+
+        if ($order->discountRequest()->where('status', 'pending')->exists()
+            && ($paymentStatus !== 'unpaid' || ! in_array($data['status'], ['pending', 'cancelled'], true))) {
+            return $this->orderStatusError(
+                $request,
+                'status',
+                'Review the customer discount request before confirming, dispatching, delivering, or recording payment.'
+            );
+        }
+
         $assignedDriver = isset($data['driver_staff_id'])
             ? User::query()->where('role', 'staff')->find($data['driver_staff_id'])
             : null;
@@ -1473,6 +1491,11 @@ class AdminController extends Controller
                     return;
                 }
 
+                if ($data['status'] !== 'cancelled'
+                    && $lockedOrder->discountRequest()->where('status', 'pending')->exists()) {
+                    return;
+                }
+
                 if ($data['status'] === 'cancelled' && $lockedOrder->status !== 'cancelled') {
                     foreach ($lockedOrder->orderItems()->with('product')->get() as $item) {
                         if ($item->product) {
@@ -1709,12 +1732,14 @@ class AdminController extends Controller
                 Rule::unique('service_types', 'name')->whereNull('archived_at'),
             ],
             'default_fee' => ['required', 'numeric', 'min:0'],
+            'discount_scheme' => ['nullable', Rule::in(ServiceType::DISCOUNT_SCHEMES)],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
         $serviceType = ServiceType::query()->create([
             'name' => $data['name'],
             'default_fee' => $data['default_fee'],
+            'discount_scheme' => $data['discount_scheme'] ?? PhilippineDiscountCalculator::SCHEME_NONE,
             'is_active' => (bool) ($data['is_active'] ?? false),
             'archived_at' => null,
         ]);
@@ -1724,7 +1749,7 @@ class AdminController extends Controller
             'service.create',
             $serviceType,
             null,
-            Audit::snapshot($serviceType, ['name', 'default_fee', 'is_active', 'archived_at'])
+            Audit::snapshot($serviceType, ['name', 'default_fee', 'discount_scheme', 'is_active', 'archived_at'])
         );
 
         return redirect()->route('admin.dashboard', ['tab' => 'services'])
@@ -1745,7 +1770,7 @@ class AdminController extends Controller
     {
         abort_unless($serviceType->archived_at === null, 404);
 
-        $before = Audit::snapshot($serviceType, ['name', 'default_fee', 'is_active', 'archived_at']);
+        $before = Audit::snapshot($serviceType, ['name', 'default_fee', 'discount_scheme', 'is_active', 'archived_at']);
 
         $data = $request->validate([
             'name' => [
@@ -1757,12 +1782,14 @@ class AdminController extends Controller
                     ->whereNull('archived_at'),
             ],
             'default_fee' => ['required', 'numeric', 'min:0'],
+            'discount_scheme' => ['nullable', Rule::in(ServiceType::DISCOUNT_SCHEMES)],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
         $serviceType->update([
             'name' => $data['name'],
             'default_fee' => $data['default_fee'],
+            'discount_scheme' => $data['discount_scheme'] ?? $serviceType->discount_scheme,
             'is_active' => (bool) ($data['is_active'] ?? false),
         ]);
 
@@ -1772,7 +1799,7 @@ class AdminController extends Controller
             'service.update',
             $serviceType,
             $before,
-            Audit::snapshot($serviceType, ['name', 'default_fee', 'is_active', 'archived_at'])
+            Audit::snapshot($serviceType, ['name', 'default_fee', 'discount_scheme', 'is_active', 'archived_at'])
         );
 
         if ($request->input('redirect_to') === 'edit') {
@@ -1917,6 +1944,15 @@ class AdminController extends Controller
         ]);
 
         $paymentStatus = $isAdmin ? $data['payment_status'] : ($appointment->payment_status ?? 'unpaid');
+
+        if ($appointment->discountRequest()->where('status', 'pending')->exists()
+            && ($paymentStatus !== 'unpaid' || ! in_array($data['status'], ['scheduled', 'cancelled'], true))) {
+            $message = 'Review the customer discount request before confirming the appointment or recording payment.';
+
+            return $request->expectsJson()
+                ? response()->json(['message' => $message, 'errors' => ['status' => [$message]]], 422)
+                : back()->withErrors(['status' => $message]);
+        }
 
         if (! $appointment->canTransitionTo($data['status'])) {
             $message = 'Appointment cannot move from '.$appointment->status.' to '.$data['status'].'.';

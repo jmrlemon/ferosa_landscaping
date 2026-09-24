@@ -85,7 +85,7 @@ class ReturnRequestWorkflowTest extends TestCase
                 ],
             ],
             'evidence' => [
-                UploadedFile::fake()->image('damage-one.jpg', 900, 700),
+                UploadedFile::fake()->image('damage-one.png', 900, 700),
                 UploadedFile::fake()->image('damage-two.png', 900, 700),
             ],
         ]);
@@ -281,7 +281,7 @@ class ReturnRequestWorkflowTest extends TestCase
         $this->assertDatabaseCount('return_requests', 0);
 
         $payload['evidence'] = collect(range(1, 6))
-            ->map(fn (int $number) => UploadedFile::fake()->image("damage-{$number}.jpg"))
+            ->map(fn (int $number) => UploadedFile::fake()->image("damage-{$number}.png"))
             ->all();
         $this->actingAs($customer)->post(route('returns.store', $order), $payload)
             ->assertSessionHasErrors('evidence');
@@ -300,7 +300,7 @@ class ReturnRequestWorkflowTest extends TestCase
                 'issue_description' => 'Stem arrived broken.',
                 'preferred_resolution' => 'replacement',
             ]],
-            'evidence' => [UploadedFile::fake()->image('damage.jpg', 900, 700)],
+            'evidence' => [UploadedFile::fake()->image('damage.png', 900, 700)],
         ];
     }
 

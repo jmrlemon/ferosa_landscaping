@@ -2,14 +2,21 @@
 
 namespace App\Models;
 
+use App\Services\PhilippineDiscountCalculator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ServiceType extends Model
 {
+    public const DISCOUNT_SCHEMES = [
+        PhilippineDiscountCalculator::SCHEME_NONE,
+        PhilippineDiscountCalculator::SCHEME_STATUTORY_20,
+    ];
+
     protected $fillable = [
         'name',
         'default_fee',
+        'discount_scheme',
         'is_active',
         'archived_at',
     ];

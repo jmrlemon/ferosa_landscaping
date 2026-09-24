@@ -29,6 +29,66 @@ class CheckoutPhilippineAddressTest extends TestCase
             ->assertDontSeeText('Metro Manila');
     }
 
+    public function test_checkout_explains_that_vat_inclusive_prices_are_not_charged_twice(): void
+    {
+        config([
+            'discounts.vat_registered' => true,
+            'discounts.prices_include_vat' => true,
+        ]);
+
+        $customer = User::factory()->create(['role' => 'user']);
+
+        $this->actingAs($customer)
+            ->get(route('checkout'))
+            ->assertOk()
+            ->assertSeeText('Item prices already include VAT. Subtotal before VAT plus VAT equals your total.');
+    }
+
+    public function test_checkout_explains_final_prices_when_business_is_not_vat_registered(): void
+    {
+        config(['discounts.vat_registered' => false]);
+
+        $customer = User::factory()->create(['role' => 'user']);
+
+        $this->actingAs($customer)
+            ->get(route('checkout'))
+            ->assertOk()
+            ->assertSeeText('Displayed prices are final. No additional VAT is added at checkout.');
+    }
+
+    public function test_checkout_does_not_add_a_separate_vat_line_when_registration_is_unconfirmed(): void
+    {
+        config(['discounts.vat_registered' => null]);
+
+        $customer = User::factory()->create(['role' => 'user']);
+
+        $this->actingAs($customer)
+            ->get(route('checkout'))
+            ->assertOk()
+            ->assertSeeText('No separate VAT is added at checkout. Ferosa’s VAT registration status is still being confirmed.');
+    }
+
+    public function test_online_checkout_is_blocked_for_unsupported_vat_exclusive_pricing(): void
+    {
+        config([
+            'discounts.vat_registered' => true,
+            'discounts.prices_include_vat' => false,
+        ]);
+
+        [$customer] = $this->customerWithCart();
+
+        $this->actingAs($customer)
+            ->get(route('checkout'))
+            ->assertOk()
+            ->assertSeeText('Online checkout is paused because VAT-exclusive price calculation is not configured.');
+
+        $this->actingAs($customer)
+            ->post(route('checkout.store'), [])
+            ->assertSessionHasErrors('payment_method');
+
+        $this->assertDatabaseCount('orders', 0);
+    }
+
     public function test_address_options_are_authenticated_and_scoped_to_their_parent(): void
     {
         $this->getJson(route('philippine-addresses.localities', '0300800000'))

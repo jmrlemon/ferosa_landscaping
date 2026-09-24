@@ -45,6 +45,12 @@
     </x-slot:icon>
   </x-page-head>
 
+  @if($taxExclusivePricingUnsupported && ! $rescheduling)
+    <x-alert type="error" class="mb-6">
+      Online booking is paused because VAT-exclusive price calculation is not configured.
+    </x-alert>
+  @endif
+
   @if (! $rescheduling && ! $estimate)
     <section class="customer-card reveal reveal-1 overflow-hidden" role="region" aria-labelledby="schedule-estimator-gate-title">
       <div class="grid gap-6 p-6 sm:p-8 md:grid-cols-[auto_1fr] md:items-center">
@@ -149,7 +155,7 @@
        only the new time travels with the request. --}}
   <form method="POST"
         action="{{ $rescheduling ? route('appointments.reschedule', $rescheduling) : route('schedule.store') }}"
-        id="booking-form">
+        id="booking-form" enctype="multipart/form-data">
     @csrf
     @if ($rescheduling)
       @method('PUT')
@@ -161,6 +167,52 @@
     <input type="hidden" name="notes"           id="hidden-notes">
 
     <div id="booking-container" class="grid grid-cols-1 md:grid-cols-5 gap-6">
+
+        <fieldset class="md:col-span-5 customer-card p-5 sm:p-6">
+          <legend class="px-1 text-sm font-bold text-surface-900">Senior Citizen or PWD discount request</legend>
+          <p id="appointment-discount-help" class="text-xs leading-5 text-surface-500">
+            @if($canRequestDiscount)
+              Request Senior Citizen or PWD review. The fee stays unchanged unless an admin verifies your ID and the service eligibility, then approves the request. Configured business rules still apply.
+            @elseif($rescheduling)
+              Discount requests are available when booking a new eligible service, not while rescheduling an existing appointment.
+            @elseif($bookingService && (float) $bookingService->default_fee > 0)
+              Senior/PWD requests are unavailable until the business tax profile and this service are configured.
+            @else
+              Discount requests are available for paid appointment services only.
+            @endif
+          </p>
+          <div class="mt-3 grid gap-2 text-sm text-surface-700 sm:grid-cols-3" aria-describedby="appointment-discount-help">
+            <label class="flex items-center gap-2">
+              <input type="radio" name="discount_beneficiary" value="none" @checked(! $canRequestDiscount || old('discount_beneficiary', 'none') === 'none') required class="h-4 w-4 text-brand-700 focus:ring-brand-500">
+              No discount
+            </label>
+            <label class="flex items-center gap-2 {{ $canRequestDiscount ? 'cursor-pointer' : 'cursor-not-allowed text-surface-400' }}">
+              <input type="radio" name="discount_beneficiary" value="senior" @checked($canRequestDiscount && old('discount_beneficiary') === 'senior') @disabled(! $canRequestDiscount) class="h-4 w-4 text-brand-700 focus:ring-brand-500 disabled:cursor-not-allowed">
+              Senior Citizen
+            </label>
+            <label class="flex items-center gap-2 {{ $canRequestDiscount ? 'cursor-pointer' : 'cursor-not-allowed text-surface-400' }}">
+              <input type="radio" name="discount_beneficiary" value="pwd" @checked($canRequestDiscount && old('discount_beneficiary') === 'pwd') @disabled(! $canRequestDiscount) class="h-4 w-4 text-brand-700 focus:ring-brand-500 disabled:cursor-not-allowed">
+              PWD
+            </label>
+          </div>
+          @if($canRequestDiscount)
+            <div id="appointment-discount-evidence-wrap" class="mt-3 max-w-xl {{ in_array(old('discount_beneficiary'), ['senior', 'pwd'], true) ? '' : 'hidden' }}">
+              <label for="appointment-discount-evidence" class="block text-xs font-semibold text-surface-700">Upload ID image <span class="text-red-600">*</span></label>
+              <input id="appointment-discount-evidence" type="file" name="discount_id_evidence" accept="image/jpeg,image/png,image/webp"
+                     {{ in_array(old('discount_beneficiary'), ['senior', 'pwd'], true) ? 'required' : '' }}
+                     class="mt-1.5 block w-full text-xs text-surface-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-brand-800">
+              <p class="mt-1.5 text-[11px] leading-4 text-surface-500">JPG, PNG, or WebP up to 5 MB. Only an admin can view it. Please show your original ID when the team performs the service.</p>
+            </div>
+          @else
+            <p class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900" role="status">
+              @if($bookingService && (float) $bookingService->default_fee > 0)
+                No discount ID is requested. You can book without a discount while Ferosa configures this service and confirms its VAT status.
+              @else
+                No discount ID is requested because this service has no fee.
+              @endif
+            </p>
+          @endif
+        </fieldset>
 
       {{-- Estimate/service context. The service is set by the server-side
            estimator mapping and is intentionally not an editable form field. --}}
@@ -330,7 +382,7 @@
         </div>
 
         <button type="button" onclick="submitBooking()" id="booking-submit-btn"
-          @disabled($activeAppointment ?? null)
+          @disabled(($activeAppointment ?? null) || ($taxExclusivePricingUnsupported && ! $rescheduling))
           class="customer-action w-full min-h-[48px] bg-brand-700 hover:bg-brand-800 text-white font-bold py-3 text-sm shadow-soft disabled:opacity-60 disabled:cursor-not-allowed">
           @if ($rescheduling)
             Confirm New Time
@@ -375,6 +427,22 @@
   const RESCHEDULING_ID = @json($rescheduling?->id);
 
   @unless($rescheduling)
+  const discountEvidenceWrap = document.getElementById('appointment-discount-evidence-wrap');
+  const discountEvidenceInput = document.getElementById('appointment-discount-evidence');
+  function syncAppointmentDiscountEvidence() {
+    const beneficiary = document.querySelector('input[name="discount_beneficiary"]:checked')?.value || 'none';
+    const requested = beneficiary !== 'none';
+    if (discountEvidenceWrap) discountEvidenceWrap.classList.toggle('hidden', !requested);
+    if (discountEvidenceInput) {
+      discountEvidenceInput.required = requested;
+      if (!requested) discountEvidenceInput.value = '';
+    }
+  }
+  document.querySelectorAll('input[name="discount_beneficiary"]').forEach((input) => {
+    input.addEventListener('change', syncAppointmentDiscountEvidence);
+  });
+  syncAppointmentDiscountEvidence();
+
   // ── Philippine visit location ───────────────────────────────────────────
   const siteArea = document.getElementById('site_province_code');
   const siteLocality = document.getElementById('site_city_code');

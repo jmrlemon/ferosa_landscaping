@@ -19,6 +19,27 @@
         <dt class="text-surface-400 mb-0.5">Total</dt>
         <dd class="font-semibold text-surface-900">&#8369;{{ number_format((float) $order->total_amount, 2) }}</dd>
       </div>
+      @if($order->discountRequest)
+        <div class="sm:col-span-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
+          <dt class="text-[10px] font-bold uppercase tracking-wider text-amber-800">{{ $order->discountRequest->beneficiaryLabel() }} discount request · {{ ucfirst($order->discountRequest->status) }}</dt>
+          <dd class="mt-1 text-xs leading-5 text-amber-900">
+            @if($order->status === 'cancelled')
+              This order was cancelled, so the requested discount cannot be applied.
+            @elseif($order->discountRequest->status === \App\Models\DiscountRequest::STATUS_PENDING)
+              Your order total stays unchanged while Ferosa verifies your request. If approved, the updated total will appear here and in your invoice.
+            @elseif($order->discountRequest->status === \App\Models\DiscountRequest::STATUS_REJECTED)
+              The request was not approved. The original order total remains due. {{ $order->discountRequest->rejection_reason }}
+            @else
+              Verified discount: &#8369;{{ number_format((float) ($order->activeDiscount?->discount_amount ?? 0), 2) }}. Present your original ID when the order is delivered or picked up.
+            @endif
+          </dd>
+        </div>
+      @elseif($order->activeDiscount)
+        <div class="sm:col-span-2 rounded-lg border border-brand-200 bg-brand-50 p-3">
+          <dt class="text-[10px] font-bold uppercase tracking-wider text-brand-800">Discount applied</dt>
+          <dd class="mt-1 text-xs text-brand-900">{{ $order->activeDiscount->beneficiaryLabel() }} · &#8369;{{ number_format((float) $order->activeDiscount->discount_amount, 2) }}</dd>
+        </div>
+      @endif
       <div class="sm:col-span-2">
         <dt class="text-surface-400 mb-0.5">Payment status</dt>
         <dd class="font-semibold text-surface-900">{{ ucfirst(str_replace('_', ' ', $order->payment_status ?? 'unpaid')) }}</dd>

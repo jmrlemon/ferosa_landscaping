@@ -3,6 +3,11 @@
   $reference = $isOrder ? $payable->order_number : ($payable->serviceType->name ?? 'Service visit');
   $issuedAt = $isOrder ? $payable->created_at : $payable->created_at;
   $customer = $payable->user;
+  $discountMetadata = $discount?->metadata ?? [];
+  $discountVatRegistered = ($discountMetadata['vat_registered'] ?? null) === true;
+  $vatBreakdown = $isOrder
+      ? \App\Support\VatBreakdown::forAmount($totalBilled)
+      : \App\Support\VatBreakdown::forServiceAmount($totalBilled);
   $statusClass = match ($payable->payment_status) {
       'paid' => 'paid',
       'partial' => 'partial',
@@ -115,6 +120,57 @@
     </tbody>
   </table>
 
+  @if($discount)
+    <div class="section-title">Discount and VAT breakdown</div>
+    <div class="totals">
+      <div class="row">
+        <span class="label">Gross amount</span>
+        <span class="value">&#8369;{{ number_format((float) $discount->gross_total, 2) }}</span>
+      </div>
+      @if($discount->scheme === \App\Services\PhilippineDiscountCalculator::SCHEME_STATUTORY_20)
+        @if($discountVatRegistered)
+          <div class="row">
+            <span class="label">Less: VAT exemption on eligible items</span>
+            <span class="value">-&#8369;{{ number_format((float) $discount->vat_removed, 2) }}</span>
+          </div>
+        @else
+          <div class="row">
+            <span class="label">VAT exemption</span>
+            <span class="value">Not applicable — supplier is not VAT-registered</span>
+          </div>
+        @endif
+        <div class="row">
+          <span class="label">{{ $discountVatRegistered ? 'VAT-exclusive eligible discount base' : 'Eligible discount base' }}</span>
+          <span class="value">&#8369;{{ number_format((float) $discount->discount_base, 2) }}</span>
+        </div>
+        <div class="row">
+          <span class="label">Less: {{ $discount->beneficiaryLabel() }} 20% discount</span>
+          <span class="value">-&#8369;{{ number_format((float) $discount->discount_amount, 2) }}</span>
+        </div>
+        @if($discountVatRegistered)
+          <p class="muted">VAT exemption applies only to eligible items. Other items remain at their listed price and retain their applicable VAT treatment.</p>
+        @endif
+      @else
+        <div class="row">
+          <span class="label">Eligible BNPC purchase amount</span>
+          <span class="value">&#8369;{{ number_format((float) $discount->discount_base, 2) }}</span>
+        </div>
+        <div class="row">
+          <span class="label">Less: {{ $discount->beneficiaryLabel() }} 5% BNPC discount</span>
+          <span class="value">-&#8369;{{ number_format((float) $discount->discount_amount, 2) }}</span>
+        </div>
+      @endif
+      <div class="row">
+        <span class="label">ID number</span>
+        <span class="value">________________{{ $discount->id_reference_last4 ? ' (ending '.$discount->id_reference_last4.')' : '' }}</span>
+      </div>
+      <div class="row">
+        <span class="label">Beneficiary signature</span>
+        <span class="value">________________</span>
+      </div>
+    </div>
+  @endif
+
   @if($isOrder && $payable->activeRefunds->isNotEmpty())
     <div class="section-title">Refunds issued</div>
     <table>
@@ -138,6 +194,16 @@
   @endif
 
   <div class="totals">
+    @if($vatBreakdown['show'] && ! $discount)
+      <div class="row">
+        <span class="label">Subtotal before VAT</span>
+        <span class="value">&#8369;{{ number_format($vatBreakdown['before_vat'], 2) }}</span>
+      </div>
+      <div class="row">
+        <span class="label">VAT included ({{ $vatBreakdown['rate_percent'] }}%)</span>
+        <span class="value">&#8369;{{ number_format($vatBreakdown['vat_amount'], 2) }}</span>
+      </div>
+    @endif
     <div class="row">
       <span class="label">Total billed</span>
       <span class="value">&#8369;{{ number_format($totalBilled, 2) }}</span>

@@ -41,6 +41,31 @@
   $gcashQrUrl = $gcashSettings['qr_url'] ?? null;
   $gcashAvailable = filled($gcashNumber) || filled($gcashQrUrl);
   $selectedPaymentMethod = old('payment_method', 'cod');
+  $selectedDiscountBeneficiary = $canRequestDiscount ? old('discount_beneficiary', 'none') : 'none';
+  $vatRegistered = config('discounts.vat_registered');
+  $vatRatePercent = max(0, (int) config('discounts.vat_rate_percent', 12));
+  $cartItemCount = (int) ($cartSummary['cart_count'] ?? 0);
+  $cartSubtotal = (float) ($cartSummary['subtotal'] ?? 0);
+  $formatMoney = static fn (float $amount): string => rtrim(rtrim(number_format($amount, 2, '.', ','), '0'), '.');
+  $showVatBreakdown = $vatRegistered === true
+      && (bool) config('discounts.prices_include_vat', true)
+      && (bool) config('discounts.all_checkout_products_vatable', false)
+      && $vatRatePercent > 0;
+  $initialVatAmount = $showVatBreakdown
+      ? round($cartSubtotal * $vatRatePercent / (100 + $vatRatePercent), 2)
+      : 0;
+  $initialBeforeVat = $showVatBreakdown
+      ? round($cartSubtotal - $initialVatAmount, 2)
+      : $cartSubtotal;
+  $checkoutTaxNotice = $checkoutTaxModeUnsupported
+      ? 'Online checkout is paused because VAT-exclusive price calculation is not configured.'
+      : ($showVatBreakdown
+          ? 'Item prices already include VAT. Subtotal before VAT plus VAT equals your total.'
+          : ($vatRegistered === true
+              ? 'VAT is included in displayed prices where applicable. No extra VAT will be added at checkout.'
+              : ($vatRegistered === false
+                  ? 'Displayed prices are final. No additional VAT is added at checkout.'
+                  : 'No separate VAT is added at checkout. Ferosa’s VAT registration status is still being confirmed.')));
 @endphp
 <main class="customer-page">
   <a href="{{ route('shop') }}" class="mb-4 inline-flex items-center gap-1.5 text-xs font-bold text-surface-500 transition-colors hover:text-brand-700">
@@ -187,7 +212,7 @@
           <div class="space-y-3">
             <!-- COD -->
             <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-surface-200 p-4 transition-colors hover:border-brand-300 hover:bg-surface-50 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50">
-              <input type="radio" name="payment_method" value="cod" {{ $selectedPaymentMethod !== 'gcash' || ! $gcashAvailable ? 'checked' : '' }}
+              <input type="radio" name="payment_method" value="cod" {{ $selectedPaymentMethod !== 'gcash' || ! $gcashAvailable || $selectedDiscountBeneficiary !== 'none' ? 'checked' : '' }}
                 onchange="setPaymentMethod('cod')"
                 class="mt-0.5 h-4 w-4 border-surface-300 text-brand-600 focus:ring-brand-500">
               <div class="min-w-0 flex-1">
@@ -201,8 +226,8 @@
             <label class="flex items-start gap-3 rounded-xl border border-surface-200 p-4 transition-colors {{ $gcashAvailable ? 'cursor-pointer hover:border-brand-300 hover:bg-surface-50 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50' : 'cursor-not-allowed bg-surface-50 opacity-60' }}">
               <input type="radio" name="payment_method" value="gcash"
                 onchange="setPaymentMethod('gcash')"
-                {{ $selectedPaymentMethod === 'gcash' && $gcashAvailable ? 'checked' : '' }}
-                {{ $gcashAvailable ? '' : 'disabled' }}
+                {{ $selectedPaymentMethod === 'gcash' && $gcashAvailable && $selectedDiscountBeneficiary === 'none' ? 'checked' : '' }}
+                {{ $gcashAvailable && $selectedDiscountBeneficiary === 'none' ? '' : 'disabled' }}
                 class="mt-0.5 h-4 w-4 border-surface-300 text-brand-600 focus:ring-brand-500">
               <div class="min-w-0 flex-1">
                 <p class="text-sm font-bold text-surface-900">GCash</p>
@@ -268,20 +293,77 @@
           <h2 class="mb-5 font-display text-lg font-bold text-surface-900">Order summary</h2>
 
           <div class="mb-3 flex items-center justify-between text-sm text-surface-500">
-            <span>Subtotal (<span id="summary-items">0</span> items)</span>
-            <span id="summary-subtotal" class="font-bold text-surface-800">&#8369;0.00</span>
+            <span>{{ $showVatBreakdown ? 'Subtotal before VAT' : 'Subtotal' }} (<span id="summary-items">{{ $cartItemCount }}</span> items)</span>
+            <span id="summary-subtotal" class="font-bold text-surface-800">&#8369;{{ $formatMoney($initialBeforeVat) }}</span>
           </div>
+          @if($showVatBreakdown)
+            <div id="summary-vat-row" data-vat-rate="{{ $vatRatePercent }}" class="mb-3 flex items-center justify-between text-sm text-surface-500">
+              <span>VAT ({{ $vatRatePercent }}%)</span>
+              <span id="summary-vat-amount" class="font-bold text-surface-800" aria-live="polite">&#8369;{{ $formatMoney($initialVatAmount) }}</span>
+            </div>
+          @endif
           <div class="mb-5 flex items-center justify-between text-sm text-surface-500">
             <span>Delivery</span>
             <span class="font-bold text-brand-600">Free</span>
           </div>
 
+          <p class="mb-4 rounded-lg bg-surface-50 px-3 py-2 text-[11px] leading-5 text-surface-600" role="note">
+            {{ $checkoutTaxNotice }}
+          </p>
+
+            <fieldset class="mb-5 rounded-xl border border-brand-100 bg-brand-50/50 p-3.5">
+              <legend class="px-1 text-xs font-bold text-brand-900">Discount request</legend>
+              <p id="discount-request-help" class="text-[11px] leading-5 text-surface-600">
+                @if($canRequestDiscount)
+                  Request Senior Citizen or PWD review. The total stays unchanged unless an admin verifies your ID and eligible items, then approves the request. Eligibility and configured business rules still apply.
+                @elseif($hasPaidItems)
+                  Senior/PWD requests are unavailable until the business tax profile and an eligible item are configured.
+                @else
+                  Discount requests are available for paid orders only.
+                @endif
+              </p>
+              <div class="mt-2 grid gap-2 text-xs text-surface-700">
+                <label class="flex items-center gap-2">
+                  <input type="radio" name="discount_beneficiary" value="none" @checked($selectedDiscountBeneficiary === 'none') required class="h-4 w-4 text-brand-700 focus:ring-brand-500">
+                  No discount
+                </label>
+                <label class="flex items-center gap-2 {{ $canRequestDiscount ? 'cursor-pointer' : 'cursor-not-allowed text-surface-400' }}">
+                  <input type="radio" name="discount_beneficiary" value="senior" @checked($selectedDiscountBeneficiary === 'senior') @disabled(! $canRequestDiscount) class="h-4 w-4 text-brand-700 focus:ring-brand-500 disabled:cursor-not-allowed">
+                  Senior Citizen
+                </label>
+                <label class="flex items-center gap-2 {{ $canRequestDiscount ? 'cursor-pointer' : 'cursor-not-allowed text-surface-400' }}">
+                  <input type="radio" name="discount_beneficiary" value="pwd" @checked($selectedDiscountBeneficiary === 'pwd') @disabled(! $canRequestDiscount) class="h-4 w-4 text-brand-700 focus:ring-brand-500 disabled:cursor-not-allowed">
+                  PWD
+                </label>
+              </div>
+              @if($canRequestDiscount)
+                <div id="discount-id-evidence-wrap" class="mt-3 {{ $selectedDiscountBeneficiary === 'none' ? 'hidden' : '' }}">
+                  <label for="discount-id-evidence" class="block text-xs font-semibold text-surface-700">Upload ID image <span class="text-red-600">*</span></label>
+                  <input id="discount-id-evidence" type="file" name="discount_id_evidence" accept="image/jpeg,image/png,image/webp"
+                         {{ $selectedDiscountBeneficiary !== 'none' ? 'required' : '' }}
+                         class="mt-1.5 block w-full text-xs text-surface-600 file:mr-3 file:rounded-lg file:border-0 file:bg-white file:px-3 file:py-2 file:text-xs file:font-semibold file:text-brand-800">
+                  <p class="mt-1.5 text-[10px] leading-4 text-surface-500">JPG, PNG, or WebP up to 5 MB. Only an admin can view it. Please show your original ID when the order is delivered or picked up.</p>
+                </div>
+                <p id="discount-payment-hint" class="mt-2 hidden text-[10px] leading-4 text-amber-800" role="status">
+                  Cash payment is required while a discount request is being reviewed.
+                </p>
+              @else
+                <p class="mt-3 rounded-lg border border-amber-200 bg-white px-3 py-2 text-[11px] leading-5 text-amber-900" role="status">
+                  @if($hasPaidItems)
+                    No discount ID is requested. You can place the order without a discount while Ferosa configures eligible items and confirms its VAT status.
+                  @else
+                    No discount ID is requested for this cart because it contains no paid items.
+                  @endif
+                </p>
+              @endif
+            </fieldset>
+
           <div class="mb-6 flex items-center justify-between border-t border-surface-100 pt-4">
-            <span class="text-sm font-bold text-surface-900">Total</span>
-            <span id="summary-total" class="font-display text-2xl font-bold text-surface-900">&#8369;0.00</span>
+            <span id="summary-total-label" class="text-sm font-bold text-surface-900">Total</span>
+            <span id="summary-total" class="font-display text-2xl font-bold text-surface-900">&#8369;{{ $formatMoney($cartSubtotal) }}</span>
           </div>
 
-          <button type="submit" id="checkout-btn" data-loading-label="Placing order..." class="btn btn-primary btn-lg btn-block">
+          <button type="submit" id="checkout-btn" data-loading-label="Placing order..." @disabled($checkoutTaxModeUnsupported) class="btn btn-primary btn-lg btn-block">
             Place order
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
           </button>
@@ -312,8 +394,8 @@
          it picks up the existing global submit-loading spinner for free. --}}
     <div id="checkout-mobile-bar">
       <div class="min-w-0">
-        <p class="text-[10px] font-bold uppercase tracking-wide text-surface-400">Total</p>
-        <p id="mobile-summary-total" class="font-display text-lg font-bold text-surface-900 truncate">&#8369;0.00</p>
+        <p id="mobile-summary-total-label" class="text-[10px] font-bold uppercase tracking-wide text-surface-400">Total</p>
+        <p id="mobile-summary-total" class="font-display text-lg font-bold text-surface-900 truncate">&#8369;{{ $formatMoney($cartSubtotal) }}</p>
       </div>
       <button type="submit" id="mobile-checkout-btn" data-loading-label="Placing order..." class="btn btn-primary btn-lg flex-shrink-0">
         Place order
@@ -465,6 +547,34 @@
     }
   }
 
+  function syncDiscountRequest() {
+    const beneficiary = document.querySelector('input[name="discount_beneficiary"]:checked')?.value || 'none';
+    const requestPending = beneficiary !== 'none';
+    const evidenceWrap = document.getElementById('discount-id-evidence-wrap');
+    const evidenceInput = document.getElementById('discount-id-evidence');
+    const gcashOption = document.querySelector('input[name="payment_method"][value="gcash"]');
+    const codOption = document.querySelector('input[name="payment_method"][value="cod"]');
+    const paymentHint = document.getElementById('discount-payment-hint');
+    const totalLabel = document.getElementById('summary-total-label');
+    const mobileTotalLabel = document.getElementById('mobile-summary-total-label');
+
+    if (evidenceWrap) evidenceWrap.classList.toggle('hidden', !requestPending);
+    if (evidenceInput) {
+      evidenceInput.required = requestPending;
+      if (!requestPending) evidenceInput.value = '';
+    }
+    if (gcashOption) {
+      gcashOption.disabled = !@json($gcashAvailable) || requestPending;
+      if (requestPending && gcashOption.checked) {
+        if (codOption) codOption.checked = true;
+        setPaymentMethod('cod');
+      }
+    }
+    if (paymentHint) paymentHint.classList.toggle('hidden', !requestPending);
+    if (totalLabel) totalLabel.textContent = requestPending ? 'Total before review' : 'Total';
+    if (mobileTotalLabel) mobileTotalLabel.textContent = requestPending ? 'Before review' : 'Total';
+  }
+
   function openGcashQrPreview() {
     const modal = document.getElementById('gcash-qr-modal');
     if (!modal) return;
@@ -557,6 +667,7 @@
       document.getElementById('summary-subtotal').textContent = '\u20B10.00';
       document.getElementById('summary-total').textContent = '\u20B10.00';
       document.getElementById('mobile-summary-total').textContent = '\u20B10.00';
+      updateVatSummary(0);
       cartDataInput.value = '';
       return;
     }
@@ -610,10 +721,31 @@
     });
 
     document.getElementById('summary-items').textContent = totalItems;
-    document.getElementById('summary-subtotal').textContent = '\u20B1' + totalPrice.toLocaleString();
+    const beforeVat = updateVatSummary(totalPrice);
+    document.getElementById('summary-subtotal').textContent = '\u20B1' + beforeVat.toLocaleString('en-PH', {
+      maximumFractionDigits: 2,
+    });
     document.getElementById('summary-total').textContent = '\u20B1' + totalPrice.toLocaleString();
     document.getElementById('mobile-summary-total').textContent = '\u20B1' + totalPrice.toLocaleString();
     cartDataInput.value = JSON.stringify(cart);
+  }
+
+  function updateVatSummary(totalPrice) {
+    const row = document.getElementById('summary-vat-row');
+    const amount = document.getElementById('summary-vat-amount');
+    if (!row || !amount) return totalPrice;
+
+    const vatRate = Number(row.dataset.vatRate);
+    if (!Number.isFinite(vatRate) || vatRate <= 0) return totalPrice;
+
+    const totalCents = Math.round(totalPrice * 100);
+    const includedVatCents = Math.round(totalCents * vatRate / (100 + vatRate));
+    const includedVat = includedVatCents / 100;
+    amount.textContent = '\u20B1' + includedVat.toLocaleString('en-PH', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    return (totalCents - includedVatCents) / 100;
   }
 
   async function loadServerCart() {
@@ -629,9 +761,13 @@
     }
   }
 
+  document.querySelectorAll('input[name="discount_beneficiary"]').forEach((input) => {
+    input.addEventListener('change', syncDiscountRequest);
+  });
   setDeliveryMethod(@json(old('delivery_method') === 'pickup' ? 'pickup' : 'delivery'));
   restoreAddressSelection();
-  setPaymentMethod(@json($selectedPaymentMethod === 'gcash' && $gcashAvailable ? 'gcash' : 'cod'));
+  setPaymentMethod(@json($selectedPaymentMethod === 'gcash' && $gcashAvailable && $selectedDiscountBeneficiary === 'none' ? 'gcash' : 'cod'));
+  syncDiscountRequest();
   loadServerCart();
 </script>
 @include('partials.mobile-bottom-customer')

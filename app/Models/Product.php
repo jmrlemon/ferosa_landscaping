@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\PhilippineDiscountCalculator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -12,11 +13,19 @@ class Product extends Model
     /** @var list<string> */
     public const AREA_COVERAGE_CATEGORIES = ['grass', 'stones'];
 
+    /** @var list<string> */
+    public const DISCOUNT_SCHEMES = [
+        PhilippineDiscountCalculator::SCHEME_NONE,
+        PhilippineDiscountCalculator::SCHEME_STATUTORY_20,
+        PhilippineDiscountCalculator::SCHEME_BNPC_5,
+    ];
+
     protected $fillable = [
         'name',
         'description',
         'image_url',
         'price',
+        'discount_scheme',
         'stock_qty',
         'sale_unit',
         'coverage_sqm_per_unit',

@@ -125,6 +125,43 @@ class EstimatorBookingFlowTest extends TestCase
         });
     }
 
+    public function test_web_estimate_quotes_the_selected_material_quantity_without_area_calculation(): void
+    {
+        $customer = User::factory()->create(['role' => 'user']);
+        $this->mappedService('Garden Design Consultation', 1500);
+        $grass = Product::query()->create([
+            'name' => 'Carabao Grass',
+            'price' => 75,
+            'stock_qty' => 180,
+            'category' => 'grass',
+            'is_active' => true,
+            'sale_unit' => 'roll',
+            'coverage_sqm_per_unit' => 0.5,
+            'coverage_waste_percent' => 10,
+        ]);
+
+        $this->actingAs($customer)
+            ->post(route('estimator.prepare'), [
+                'project_type' => 'design',
+                'size' => 150,
+                'tier' => 'standard',
+                'products' => [
+                    ['id' => $grass->id, 'qty' => 2],
+                ],
+            ])
+            ->assertRedirect(route('schedule'))
+            ->assertSessionHasNoErrors();
+
+        $this->assertTrue(session()->has('estimator_booking'));
+        $draft = session('estimator_booking');
+        $product = $draft['snapshot']['products'][0] ?? [];
+
+        $this->assertArrayNotHasKey('coverage_area', $draft['snapshot']);
+        $this->assertNull($product['coverage'] ?? null);
+        $this->assertSame(2, $product['quantity']);
+        $this->assertSame(150.0, (float) $product['amount']);
+    }
+
     public function test_booking_uses_the_estimate_service_and_keeps_the_consultation_fee(): void
     {
         Mail::fake();

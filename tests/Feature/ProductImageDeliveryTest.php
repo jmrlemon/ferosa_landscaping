@@ -63,7 +63,7 @@ class ProductImageDeliveryTest extends TestCase
                 'category' => 'plants',
                 'is_active' => '1',
                 'redirect_to' => 'edit',
-                'image' => UploadedFile::fake()->image('replacement.webp', 600, 400),
+                'image' => UploadedFile::fake()->image('replacement.png', 600, 400),
             ]);
 
         $response->assertRedirect(route('admin.products.edit', $product));

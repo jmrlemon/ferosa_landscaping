@@ -6,6 +6,8 @@ use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Support\Carbon;
 
 /**
@@ -17,6 +19,8 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $cancelled_at
  * @property Carbon|null $archived_at
  * @property array<string, mixed>|null $estimate_snapshot
+ * @property-read DiscountApplication|null $activeDiscount
+ * @property-read DiscountRequest|null $discountRequest
  */
 class Appointment extends Model
 {
@@ -71,6 +75,7 @@ class Appointment extends Model
         'status',
         'payment_status',
         'appointment_amount',
+        'discount_scheme',
         'notes',
         'site_address',
         'scope_notes',
@@ -114,6 +119,26 @@ class Appointment extends Model
     public function feedback(): HasOne
     {
         return $this->hasOne(Feedback::class);
+    }
+
+    /** @return MorphMany<DiscountApplication, $this> */
+    public function discountApplications(): MorphMany
+    {
+        return $this->morphMany(DiscountApplication::class, 'discountable');
+    }
+
+    /** @return MorphOne<DiscountApplication, $this> */
+    public function activeDiscount(): MorphOne
+    {
+        return $this->morphOne(DiscountApplication::class, 'discountable')
+            ->where('status', DiscountApplication::STATUS_APPROVED)
+            ->latestOfMany();
+    }
+
+    /** @return MorphOne<DiscountRequest, $this> */
+    public function discountRequest(): MorphOne
+    {
+        return $this->morphOne(DiscountRequest::class, 'requestable');
     }
 
     public static function slotKey(int $serviceTypeId, mixed $appointmentAt): string

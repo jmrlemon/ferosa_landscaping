@@ -5,11 +5,14 @@ use App\Http\Controllers\AdminBusinessProfileController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminProjectController;
 use App\Http\Controllers\AdminReturnRequestController;
+use App\Http\Controllers\AppointmentDiscountController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BillingController;
+use App\Http\Controllers\DiscountRequestReviewController;
 use App\Http\Controllers\FeedbackController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\MessageController;
+use App\Http\Controllers\OrderDiscountController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\PasswordResetOtpController;
 use App\Http\Controllers\PhilippineAddressController;
@@ -201,6 +204,12 @@ Route::middleware('auth')->group(function () {
         // Billing: the payment ledger behind every invoice.
         Route::post('/orders/{order}/payments', [BillingController::class, 'storeOrderPayment'])->name('orders.payments.store');
         Route::post('/appointments/{appointment}/payments', [BillingController::class, 'storeAppointmentPayment'])->name('appointments.payments.store');
+        Route::post('/orders/{order}/discounts', [OrderDiscountController::class, 'store'])->name('orders.discounts.store');
+        Route::delete('/orders/{order}/discounts/{discount}', [OrderDiscountController::class, 'destroy'])->name('orders.discounts.destroy');
+        Route::delete('/appointments/{appointment}/discounts/{discount}', [AppointmentDiscountController::class, 'destroy'])->name('appointments.discounts.destroy');
+        Route::get('/discount-requests/{discountRequest}/evidence', [DiscountRequestReviewController::class, 'evidence'])->name('discount-requests.evidence');
+        Route::post('/discount-requests/{discountRequest}/approve', [DiscountRequestReviewController::class, 'approve'])->name('discount-requests.approve');
+        Route::post('/discount-requests/{discountRequest}/reject', [DiscountRequestReviewController::class, 'reject'])->name('discount-requests.reject');
         Route::put('/returns/{returnRequest}/decision', [AdminReturnRequestController::class, 'decision'])->name('returns.decision');
         Route::post('/returns/{returnRequest}/refunds', [AdminReturnRequestController::class, 'refund'])->name('returns.refunds.store');
         Route::post('/returns/{returnRequest}/items/{item}/restock', [AdminReturnRequestController::class, 'restock'])->name('returns.items.restock');

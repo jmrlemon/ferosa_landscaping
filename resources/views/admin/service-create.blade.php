@@ -56,6 +56,13 @@
               <label class="block text-sm font-medium text-surface-800">Default Fee (PHP) *
                 <input name="default_fee" type="number" step="0.01" min="0" value="{{ old('default_fee') }}" required class="mt-2 h-10 w-full rounded-lg border border-surface-200 px-3 text-base font-normal outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
               </label>
+              <label class="block text-sm font-medium text-surface-800 lg:col-span-2">Philippine discount eligibility
+                <select name="discount_scheme" required class="mt-2 h-10 w-full rounded-lg border border-surface-200 px-3 text-base font-normal outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
+                  <option value="none" @selected(old('discount_scheme', 'none') === 'none')>None — ordinary landscaping service</option>
+                  <option value="statutory_20_vat_exempt" @selected(old('discount_scheme') === 'statutory_20_vat_exempt')>20% + VAT exemption — confirmed qualifying service</option>
+                </select>
+                <span class="mt-1 block text-xs font-normal leading-5 text-surface-500">Only mark a service when it is covered by the statutory Senior/PWD rules. Landscaping services are not automatically eligible.</span>
+              </label>
               <label class="flex items-center gap-2 text-sm font-medium text-surface-700 lg:col-span-2">
                 <input type="checkbox" name="is_active" value="1" {{ old('is_active', true) ? 'checked' : '' }} class="h-4 w-4 rounded border-surface-300 text-brand-600 focus:ring-brand-500">
                 Active in Scheduling

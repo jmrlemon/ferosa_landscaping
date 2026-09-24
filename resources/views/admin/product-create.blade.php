@@ -107,35 +107,17 @@
                 <input type="checkbox" name="is_active" value="1" {{ old('is_active', true) ? 'checked' : '' }} class="h-4 w-4 rounded border-surface-300 text-brand-600 focus:ring-brand-500">
                 Active in Shop
               </label>
+              <label class="block text-sm font-medium text-surface-800 lg:col-span-3">Philippine discount eligibility
+                <select name="discount_scheme" class="mt-2 w-full rounded-lg border border-surface-200 px-3 py-2 text-base font-normal outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
+                  <option value="none" @selected(old('discount_scheme', 'none') === 'none')>None — normal Ferosa item</option>
+                  <option value="bnpc_5" @selected(old('discount_scheme') === 'bnpc_5')>5% BNPC — confirmed listed basic/prime commodity</option>
+                  <option value="statutory_20_vat_exempt" @selected(old('discount_scheme') === 'statutory_20_vat_exempt')>20% + VAT exemption — confirmed statutory item</option>
+                </select>
+                <span class="mt-1 block text-xs font-normal leading-5 text-amber-700">Do not mark an item eligible without accountant or BIR confirmation. Plants and landscaping materials are not automatically covered.</span>
+              </label>
             </div>
           </section>
 
-          @php($coverageCategoryAllowed = \App\Models\Product::categorySupportsAreaCoverage(old('category')))
-          <section id="estimator-coverage-section"
-                   data-allowed-categories='@json(\App\Models\Product::AREA_COVERAGE_CATEGORIES)'
-                   data-editable="true"
-                   class="overflow-hidden rounded-xl border border-surface-100 bg-white shadow-sm">
-            <div class="border-b border-surface-200 px-5 py-4">
-              <h3 id="coverage-title" class="font-semibold text-surface-900">Estimator Coverage</h3>
-              <p id="coverage-help" class="mt-1 text-xs leading-5 text-surface-500">Estimator coverage is available only for Grass and Stones. Use the normal quantity field for plants and all other categories.</p>
-              <p id="estimator-coverage-unavailable" role="status" class="mt-2 text-xs font-semibold text-amber-700" @hidden($coverageCategoryAllowed)>Choose Grass or Stones as the category to enable these fields.</p>
-            </div>
-            <fieldset id="estimator-coverage-fields"
-                      aria-labelledby="coverage-title"
-                      aria-describedby="coverage-help"
-                      @disabled(! $coverageCategoryAllowed)
-                      class="grid grid-cols-1 gap-4 p-5 transition-opacity md:grid-cols-3 {{ $coverageCategoryAllowed ? '' : 'opacity-50' }}">
-              <label class="block text-sm font-medium text-surface-800">Sale unit
-                <input name="sale_unit" value="{{ old('sale_unit') }}" maxlength="40" placeholder="e.g. sq m or roll" class="mt-2 h-10 w-full rounded-lg border border-surface-200 px-3 text-base font-normal outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
-              </label>
-              <label class="block text-sm font-medium text-surface-800">Coverage per unit (m²)
-                <input name="coverage_sqm_per_unit" type="number" min="0.0001" max="100000" step="0.0001" value="{{ old('coverage_sqm_per_unit') }}" placeholder="e.g. 0.5" class="mt-2 h-10 w-full rounded-lg border border-surface-200 px-3 text-base font-normal outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
-              </label>
-              <label class="block text-sm font-medium text-surface-800">Waste allowance (%)
-                <input name="coverage_waste_percent" type="number" min="0" max="100" step="0.01" value="{{ old('coverage_waste_percent', 10) }}" class="mt-2 h-10 w-full rounded-lg border border-surface-200 px-3 text-base font-normal outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
-              </label>
-            </fieldset>
-          </section>
         </form>
       </div>
 
@@ -246,7 +228,6 @@
       });
     })();
   </script>
-  @include('admin.partials.estimator-coverage-script')
   @include('admin.partials.product-image-preview-script')
 </body>
 </html>

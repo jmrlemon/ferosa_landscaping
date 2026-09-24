@@ -11,6 +11,7 @@ use App\Mail\OrderPlaced;
 use App\Mail\OrderStatusUpdated;
 use App\Models\Appointment;
 use App\Models\AppSetting;
+use App\Models\DiscountRequest;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Project;
@@ -22,6 +23,7 @@ use App\Services\CartService;
 use App\Services\EstimatorQuoteService;
 use App\Services\InventoryService;
 use App\Services\PhilippineAddressService;
+use App\Services\PhilippineDiscountRules;
 use App\Support\Audit;
 use App\Support\PasswordRules;
 use App\Support\PhoneNumber;
@@ -272,15 +274,27 @@ class PageController extends Controller
         ]);
     }
 
-    public function checkout(Request $request, PhilippineAddressService $addresses): View
-    {
+    public function checkout(
+        Request $request,
+        PhilippineAddressService $addresses,
+        CartService $cart,
+        PhilippineDiscountRules $discountRules
+    ): View {
         $checkoutToken = $request->session()->get('checkout_token') ?? (string) Str::uuid();
         $request->session()->put('checkout_token', $checkoutToken);
+        $summary = $cart->summary($request->user());
+        $hasPaidItems = collect($summary['items'])
+            ->contains(fn (array $item): bool => (float) ($item['price'] ?? 0) > 0);
+        $canRequestDiscount = $discountRules->orderHasAvailableScheme($summary['items']);
 
         return view('checkout', [
             'gcashSettings' => AppSetting::getGcashSettings(),
             'checkoutToken' => $checkoutToken,
             'addressArea' => $addresses->serviceArea(),
+            'cartSummary' => $summary,
+            'canRequestDiscount' => $canRequestDiscount,
+            'hasPaidItems' => $hasPaidItems,
+            'checkoutTaxModeUnsupported' => $discountRules->taxExclusivePricingUnsupported(),
         ]);
     }
 
@@ -288,8 +302,15 @@ class PageController extends Controller
         Request $request,
         CartService $cart,
         InventoryService $inventory,
-        PhilippineAddressService $addresses
+        PhilippineAddressService $addresses,
+        PhilippineDiscountRules $discountRules
     ): RedirectResponse {
+        if ($discountRules->taxExclusivePricingUnsupported()) {
+            throw ValidationException::withMessages([
+                'payment_method' => 'Online checkout is paused because VAT-exclusive price calculation is not configured.',
+            ]);
+        }
+
         $data = $request->validate([
             'checkout_token' => ['nullable', 'uuid'],
             'cart_data' => ['nullable', 'string'],
@@ -304,6 +325,14 @@ class PageController extends Controller
             'payment_method' => ['required', 'string', 'in:cod,gcash'],
             'payment_reference' => ['required_if:payment_method,gcash', 'nullable', 'string', 'min:8', 'max:100', 'regex:/^[A-Za-z0-9 -]+$/'],
             'payment_proof' => ['required_if:payment_method,gcash', 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'discount_beneficiary' => ['nullable', Rule::in(['none', ...DiscountRequest::BENEFICIARY_TYPES])],
+            'discount_id_evidence' => [
+                Rule::requiredIf(fn () => in_array($request->input('discount_beneficiary'), DiscountRequest::BENEFICIARY_TYPES, true)),
+                'nullable',
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120',
+            ],
         ]);
 
         if ($data['delivery_method'] === 'delivery') {
@@ -374,12 +403,32 @@ class PageController extends Controller
             return back()->withErrors(['Your cart is empty.']);
         }
 
-        $paymentProofPath = $data['payment_method'] === 'gcash'
-            ? $request->file('payment_proof')->store('payment-proofs', 'local')
-            : null;
+        $discountBeneficiary = $data['discount_beneficiary'] ?? 'none';
+        if ($discountBeneficiary !== 'none') {
+            if (! $discountRules->orderHasAvailableScheme($summary['items'])) {
+                throw ValidationException::withMessages([
+                    'discount_beneficiary' => 'Senior/PWD requests are unavailable until the business tax profile and an eligible item are configured.',
+                ]);
+            }
 
+            if ($data['payment_method'] === 'gcash') {
+                throw ValidationException::withMessages([
+                    'payment_method' => 'Choose Cash on Delivery until the discount request is resolved. The admin will confirm the final amount before payment.',
+                ]);
+            }
+        }
+
+        $paymentProofPath = null;
+        $discountEvidencePath = null;
         try {
-            $order = DB::transaction(function () use ($summary, $data, $request, $cart, $paymentProofPath, $inventory) {
+            $paymentProofPath = $data['payment_method'] === 'gcash'
+                ? $request->file('payment_proof')->store('payment-proofs', 'local')
+                : null;
+            $discountEvidencePath = $discountBeneficiary !== 'none'
+                ? $request->file('discount_id_evidence')->store('discount-id-evidence', 'local')
+                : null;
+
+            $order = DB::transaction(function () use ($summary, $data, $request, $cart, $paymentProofPath, $discountEvidencePath, $discountBeneficiary, $inventory) {
                 $lineItems = [];
                 $totalPrice = 0.0;
                 // Stock leaves once the order number exists, so the movement can
@@ -419,6 +468,7 @@ class PageController extends Controller
                         'product_id' => $product->id,
                         'name' => $product->name,
                         'price' => $price,
+                        'discount_scheme' => $product->discount_scheme,
                         'qty' => $qty,
                     ];
                     $totalPrice += $price * $qty;
@@ -451,7 +501,17 @@ class PageController extends Controller
                         'product_id' => $item['product_id'],
                         'name' => $item['name'],
                         'price' => $item['price'],
+                        'discount_scheme' => $item['discount_scheme'],
                         'qty' => $item['qty'],
+                    ]);
+                }
+
+                if ($discountBeneficiary !== 'none' && $discountEvidencePath) {
+                    $order->discountRequest()->create([
+                        'beneficiary_type' => $discountBeneficiary,
+                        'evidence_path' => $discountEvidencePath,
+                        'status' => DiscountRequest::STATUS_PENDING,
+                        'requested_by' => $request->user()->id,
                     ]);
                 }
 
@@ -467,11 +527,14 @@ class PageController extends Controller
             if ($paymentProofPath) {
                 Storage::disk('local')->delete($paymentProofPath);
             }
+            if ($discountEvidencePath) {
+                Storage::disk('local')->delete($discountEvidencePath);
+            }
 
             if ($e instanceof QueryException && $data['payment_method'] === 'gcash') {
                 return back()->withErrors([
                     'payment_reference' => 'This GCash reference number has already been submitted. Check your Orders page before trying again.',
-                ])->withInput($request->except('payment_proof'));
+                ])->withInput($request->except(['payment_proof', 'discount_id_evidence']));
             }
 
             throw $e;
@@ -519,7 +582,7 @@ class PageController extends Controller
     public function orderConfirmation(Order $order): View
     {
         abort_unless((int) $order->user_id === (int) auth()->id(), 403);
-        $order->load(['user', 'orderItems']);
+        $order->load(['user', 'orderItems', 'discountRequest', 'activeDiscount']);
 
         return view('order-confirmation', [
             'order' => $order,
@@ -535,7 +598,7 @@ class PageController extends Controller
         ]);
 
         $q = Order::query()
-            ->with(['feedback', 'returnRequests', 'activeRefunds'])
+            ->with(['feedback', 'returnRequests', 'activeRefunds', 'discountRequest', 'activeDiscount'])
             ->where('user_id', auth()->id())
             ->whereNull('archived_at')
             ->latest();
@@ -642,7 +705,8 @@ class PageController extends Controller
     public function schedule(
         Request $request,
         EstimatorQuoteService $estimator,
-        PhilippineAddressService $addresses
+        PhilippineAddressService $addresses,
+        PhilippineDiscountRules $discountRules
     ): View|RedirectResponse {
         // `?reschedule=<id>` re-uses this whole form to move an existing visit,
         // rather than maintaining a second calendar in a modal. The record is
@@ -693,6 +757,10 @@ class PageController extends Controller
             'bookingService' => $bookingService,
             'estimate' => $estimate,
             'addressArea' => $addresses->serviceArea(),
+            'canRequestDiscount' => ! $rescheduling
+                && $bookingService
+                && $discountRules->serviceHasAvailableScheme($bookingService),
+            'taxExclusivePricingUnsupported' => $discountRules->taxExclusivePricingUnsupported(),
         ]);
     }
 
@@ -773,8 +841,15 @@ class PageController extends Controller
     public function storeSchedule(
         StoreScheduleRequest $request,
         EstimatorQuoteService $estimator,
-        PhilippineAddressService $addresses
+        PhilippineAddressService $addresses,
+        PhilippineDiscountRules $discountRules
     ): RedirectResponse {
+        if ($discountRules->taxExclusivePricingUnsupported()) {
+            throw ValidationException::withMessages([
+                'discount_beneficiary' => 'Online booking is paused because VAT-exclusive price calculation is not configured.',
+            ]);
+        }
+
         $data = $request->validated();
 
         $draft = $estimator->current($request);
@@ -842,6 +917,12 @@ class PageController extends Controller
         }
 
         $serviceTypeId = $serviceType->id;
+        $discountBeneficiary = $data['discount_beneficiary'] ?? 'none';
+        if ($discountBeneficiary !== 'none' && ! $discountRules->serviceHasAvailableScheme($serviceType)) {
+            throw ValidationException::withMessages([
+                'discount_beneficiary' => 'Senior/PWD requests are unavailable until the business tax profile and this service are configured.',
+            ]);
+        }
 
         // Prevent double booking (server-side)
         $appointmentAt = Carbon::parse($data['appointment_at'])->seconds(0);
@@ -857,19 +938,45 @@ class PageController extends Controller
             ]);
         }
 
+        $discountEvidencePath = null;
         try {
-            $appointment = Appointment::create([
-                'user_id' => auth()->id(),
-                'service_type_id' => $serviceTypeId,
-                'appointment_at' => $appointmentAt,
-                'slot_key' => Appointment::slotKey($serviceTypeId, $appointmentAt),
-                'appointment_amount' => $serviceType->default_fee ?? 0,
-                'estimate_snapshot' => $draft['snapshot'],
-                'status' => 'scheduled',
-                'notes' => $data['notes'] ?? null,
-                'site_address' => $siteAddress,
-            ]);
-        } catch (QueryException) {
+            if ($discountBeneficiary !== 'none') {
+                $discountEvidencePath = $request->file('discount_id_evidence')->store('discount-id-evidence', 'local');
+            }
+
+            $appointment = DB::transaction(function () use ($request, $serviceType, $serviceTypeId, $appointmentAt, $draft, $data, $siteAddress, $discountBeneficiary, $discountEvidencePath) {
+                $appointment = Appointment::create([
+                    'user_id' => auth()->id(),
+                    'service_type_id' => $serviceTypeId,
+                    'appointment_at' => $appointmentAt,
+                    'slot_key' => Appointment::slotKey($serviceTypeId, $appointmentAt),
+                    'appointment_amount' => $serviceType->default_fee ?? 0,
+                    'discount_scheme' => $serviceType->discount_scheme,
+                    'estimate_snapshot' => $draft['snapshot'],
+                    'status' => 'scheduled',
+                    'notes' => $data['notes'] ?? null,
+                    'site_address' => $siteAddress,
+                ]);
+
+                if ($discountBeneficiary !== 'none' && $discountEvidencePath) {
+                    $appointment->discountRequest()->create([
+                        'beneficiary_type' => $discountBeneficiary,
+                        'evidence_path' => $discountEvidencePath,
+                        'status' => DiscountRequest::STATUS_PENDING,
+                        'requested_by' => $request->user()->id,
+                    ]);
+                }
+
+                return $appointment;
+            }, 3);
+        } catch (\Throwable $exception) {
+            if ($discountEvidencePath) {
+                Storage::disk('local')->delete($discountEvidencePath);
+            }
+            if (! $exception instanceof QueryException) {
+                throw $exception;
+            }
+
             return back()->withErrors([
                 'appointment_at' => 'That time slot was just booked. Please choose another time.',
             ]);
@@ -1020,7 +1127,7 @@ class PageController extends Controller
     {
         abort_unless((int) $order->user_id === (int) auth()->id(), 403);
         abort_unless($order->hasFinalReceipt(), 404);
-        $order->load(['user', 'orderItems']);
+        $order->load(['user', 'orderItems', 'activeDiscount']);
 
         return view('order-receipt', compact('order'));
     }
@@ -1082,7 +1189,7 @@ class PageController extends Controller
         abort_unless((int) $appointment->user_id === (int) auth()->id(), 403);
         abort_unless(($appointment->payment_status ?? 'unpaid') === 'paid', 404);
 
-        $appointment->load(['user', 'serviceType']);
+        $appointment->load(['user', 'serviceType', 'activeDiscount']);
 
         return view('appointment-receipt', compact('appointment'));
     }
@@ -1107,8 +1214,6 @@ class PageController extends Controller
                     'price',
                     'stock_qty',
                     'sale_unit',
-                    'coverage_sqm_per_unit',
-                    'coverage_waste_percent',
                 ]),
         ]);
     }
@@ -1126,7 +1231,7 @@ class PageController extends Controller
         $user = auth()->user();
 
         $query = Appointment::query()
-            ->with(['serviceType', 'feedback'])
+            ->with(['serviceType', 'feedback', 'discountRequest', 'activeDiscount'])
             ->where('user_id', $user->id)
             ->whereNull('archived_at');
 

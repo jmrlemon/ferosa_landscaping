@@ -29,8 +29,26 @@ class BillingService
     public function record(Model $payable, array $attributes): Payment
     {
         return DB::transaction(function () use ($payable, $attributes): Payment {
-            $payment = $payable->payments()->create([
-                'amount' => round((float) $attributes['amount'], 2),
+            $lockedPayable = $payable instanceof Order
+                ? Order::query()->lockForUpdate()->findOrFail($payable->getKey())
+                : Appointment::query()->lockForUpdate()->findOrFail($payable->getKey());
+
+            if ($lockedPayable->discountRequest()->where('status', 'pending')->exists()) {
+                throw ValidationException::withMessages([
+                    'discount_request' => 'Resolve the customer discount request before recording payment.',
+                ]);
+            }
+
+            $amount = round((float) $attributes['amount'], 2);
+            $balance = $this->balanceDue($lockedPayable);
+            if ($amount <= 0 || $amount > $balance) {
+                throw ValidationException::withMessages([
+                    'amount' => 'Payment amount cannot exceed the current balance of PHP '.number_format($balance, 2).'.',
+                ]);
+            }
+
+            $payment = $lockedPayable->payments()->create([
+                'amount' => $amount,
                 'method' => $attributes['method'] ?? 'cash',
                 'reference' => $attributes['reference'] ?? null,
                 'notes' => $attributes['notes'] ?? null,
@@ -38,7 +56,7 @@ class BillingService
                 'recorded_by' => $attributes['recorded_by'] ?? null,
             ]);
 
-            $this->syncPaymentStatus($payable);
+            $this->syncPaymentStatus($lockedPayable);
 
             return $payment;
         }, 3);

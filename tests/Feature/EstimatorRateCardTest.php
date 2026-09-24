@@ -88,7 +88,7 @@ class EstimatorRateCardTest extends TestCase
             ->assertJsonPath('estimate_products.0.coverage_waste_percent', 10);
     }
 
-    public function test_the_web_estimator_renders_an_area_based_material_recommendation(): void
+    public function test_the_web_estimator_uses_simple_material_quantities_without_area_calculation(): void
     {
         $customer = User::factory()->create(['role' => 'user']);
         Product::query()->create([
@@ -104,15 +104,16 @@ class EstimatorRateCardTest extends TestCase
 
         $html = $this->actingAs($customer)->get('/estimator')->assertOk()->getContent();
 
-        $this->assertStringContainsString('id="coverage-area-input"', $html);
-        $this->assertStringContainsString('id="coverage-area-error"', $html);
-        $this->assertStringContainsString('id="material-recommendation"', $html);
+        $this->assertStringNotContainsString('id="coverage-area-input"', $html);
+        $this->assertStringNotContainsString('id="coverage-area-error"', $html);
+        $this->assertStringNotContainsString('id="material-recommendation"', $html);
         $this->assertStringContainsString('data-sale-unit="sq m"', $html);
-        $this->assertStringContainsString('data-coverage-sqm="1"', $html);
-        $this->assertStringContainsString('data-waste-percent="10"', $html);
-        $this->assertStringContainsString('Recommended order', $html);
-        $this->assertStringContainsString('function applyAreaRecommendation', $html);
-        $this->assertStringContainsString('function updateCoverageAreaUI', $html);
+        $this->assertStringNotContainsString('data-coverage-sqm="1"', $html);
+        $this->assertStringNotContainsString('data-waste-percent="10"', $html);
+        $this->assertStringNotContainsString('Recommended order', $html);
+        $this->assertStringNotContainsString('function applyAreaRecommendation', $html);
+        $this->assertStringNotContainsString('function updateCoverageAreaUI', $html);
+        $this->assertStringContainsString('max="150"', $html);
     }
 
     public function test_non_grass_and_non_stone_products_never_expose_area_coverage(): void

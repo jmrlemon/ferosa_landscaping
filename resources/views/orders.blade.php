@@ -217,6 +217,20 @@
               <p class="mt-1 text-xs font-medium text-surface-500">
                 Placed {{ optional($order->created_at)->format('M d, Y h:i A') }}
               </p>
+              @if($order->discountRequest)
+                <p class="mt-2 max-w-xl text-xs leading-5 {{ $order->discountRequest->status === \App\Models\DiscountRequest::STATUS_REJECTED ? 'text-red-700' : 'text-amber-800' }}">
+                  {{ $order->discountRequest->beneficiaryLabel() }} discount request: {{ ucfirst($order->discountRequest->status) }}.
+                  @if($status === 'cancelled')
+                    The order was cancelled, so the discount cannot be applied.
+                  @elseif($order->discountRequest->status === \App\Models\DiscountRequest::STATUS_PENDING)
+                    The total will change only after verification.
+                  @elseif($order->discountRequest->status === \App\Models\DiscountRequest::STATUS_REJECTED)
+                    {{ $order->discountRequest->rejection_reason }}
+                  @elseif($order->activeDiscount)
+                    Approved savings: &#8369;{{ number_format((float) $order->activeDiscount->discount_amount, 2) }}.
+                  @endif
+                </p>
+              @endif
               @if(!$isPickupOrder && $order->estimated_delivery_date && in_array($status, ['pending', 'confirmed', 'out_for_delivery'], true))
                 <p class="mt-1 text-xs font-semibold text-brand-700">
                   Estimated delivery: {{ $order->estimated_delivery_date->format('M d, Y') }}

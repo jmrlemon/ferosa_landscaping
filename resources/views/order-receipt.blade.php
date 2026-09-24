@@ -39,6 +39,9 @@
   </style>
 </head>
 <body>
+@php
+  $vatBreakdown = \App\Support\VatBreakdown::forAmount($order->total_amount);
+@endphp
 
 <div class="receipt">
   <div class="logo">Ferosa</div>
@@ -111,6 +114,16 @@
         <td>₱{{ number_format((float) $line->price * $line->qty, 2) }}</td>
       </tr>
       @endforeach
+      @if($vatBreakdown['show'] && ! $order->activeDiscount)
+      <tr>
+        <td colspan="3">Subtotal before VAT</td>
+        <td>₱{{ number_format($vatBreakdown['before_vat'], 2) }}</td>
+      </tr>
+      <tr>
+        <td colspan="3">VAT included ({{ $vatBreakdown['rate_percent'] }}%)</td>
+        <td>₱{{ number_format($vatBreakdown['vat_amount'], 2) }}</td>
+      </tr>
+      @endif
       <tr class="total-row">
         <td colspan="3">Total</td>
         <td>₱{{ number_format((float) $order->total_amount, 2) }}</td>
