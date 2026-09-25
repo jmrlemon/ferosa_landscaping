@@ -191,8 +191,10 @@ class OrderDiscountService
 
     private function legalBasis(string $scheme): string
     {
-        return $scheme === PhilippineDiscountCalculator::SCHEME_BNPC_5
-            ? 'JAO 24-02 / JMC 01-2022'
-            : 'RA 9994 / RA 10754 / RR 5-2017';
+        return match ($scheme) {
+            PhilippineDiscountCalculator::SCHEME_BNPC_5 => 'JAO 24-02 / JMC 01-2022',
+            PhilippineDiscountCalculator::SCHEME_VOLUNTARY_20 => 'Ferosa promotional policy',
+            default => 'RA 9994 / RA 10754 / RR 5-2017',
+        };
     }
 }

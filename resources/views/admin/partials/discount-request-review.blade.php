@@ -29,14 +29,18 @@
               <select name="scheme" required class="mt-1.5 w-full rounded-lg border border-surface-200 px-3 py-2 text-sm font-normal outline-none focus:border-brand-500">
                 @foreach($eligibleDiscountSchemes as $scheme)
                   <option value="{{ $scheme }}">
-                    {{ $scheme === \App\Services\PhilippineDiscountCalculator::SCHEME_STATUTORY_20 ? '20% + VAT exemption' : '5% BNPC discount' }}
+                    {{ match($scheme) {
+                      'statutory_20_vat_exempt' => '20% + VAT exemption',
+                      'bnpc_5' => '5% BNPC discount',
+                      default => 'Ferosa-funded 20% promotion (no VAT exemption)',
+                    } }}
                   </option>
                 @endforeach
               </select>
             </label>
             <label class="mt-3 flex items-start gap-2 text-xs leading-5 text-surface-700">
               <input type="checkbox" name="eligibility_confirmed" value="1" required class="mt-0.5 h-4 w-4 rounded border-surface-300 text-brand-600 focus:ring-brand-500">
-              I verified the customer’s ID and confirmed the selected goods or service qualify.
+              I verified the customer’s ID and confirmed the selected discount is applicable.
             </label>
             <button type="submit" class="mt-3 rounded-lg bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800">Approve request and recalculate total</button>
           </form>

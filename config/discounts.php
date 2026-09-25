@@ -10,6 +10,8 @@ return [
     'enabled' => (bool) env('PH_DISCOUNTS_ENABLED', false),
     'statutory_20_enabled' => (bool) env('PH_DISCOUNT_STATUTORY_20_ENABLED', false),
     'bnpc_5_enabled' => (bool) env('PH_DISCOUNT_BNPC_5_ENABLED', false),
+    // Ferosa funds this promotion, so it does not change the sale's VAT treatment.
+    'voluntary_20_enabled' => (bool) env('FEROSA_PROMOTIONAL_SENIOR_PWD_ENABLED', true),
     // Keep BNPC unavailable until booklet, four-item-kind, and cross-channel weekly-spend checks exist.
     'bnpc_5_workflow_complete' => false,
 

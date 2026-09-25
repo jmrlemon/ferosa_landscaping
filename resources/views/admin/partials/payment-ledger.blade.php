@@ -15,7 +15,8 @@
   $activeDiscount = $payable->activeDiscount()->with('verifiedBy')->first();
   $discountRequest = $payable->discountRequest()->with(['requestedBy', 'reviewedBy'])->first();
   $discountRules = app(\App\Services\PhilippineDiscountRules::class);
-  $discountsEnabled = (bool) config('discounts.enabled', false) && $discountRules->businessTaxProfileReady();
+  $discountsEnabled = $discountRules->schemeEnabled(\App\Services\PhilippineDiscountCalculator::SCHEME_VOLUNTARY_20)
+      || ((bool) config('discounts.enabled', false) && $discountRules->businessTaxProfileReady());
   $lineSchemes = $isOrderPayable
       ? ($payable->orderItems->isNotEmpty()
           ? $payable->orderItems->pluck('discount_scheme')
@@ -29,8 +30,13 @@
           ->values()
           ->all()
       : [];
+  if ($canApplyDiscount && $isOrderPayable && $discountRules->schemeEnabled('ferosa_voluntary_20')) {
+      $eligibleDiscountSchemes[] = 'ferosa_voluntary_20';
+      $eligibleDiscountSchemes = array_values(array_unique($eligibleDiscountSchemes));
+  }
   $hasEnabledDiscountScheme = $discountRules->schemeEnabled(\App\Services\PhilippineDiscountCalculator::SCHEME_STATUTORY_20)
-      || ($isOrderPayable && $discountRules->schemeEnabled(\App\Services\PhilippineDiscountCalculator::SCHEME_BNPC_5));
+      || ($isOrderPayable && $discountRules->schemeEnabled(\App\Services\PhilippineDiscountCalculator::SCHEME_BNPC_5))
+      || ($isOrderPayable && $discountRules->schemeEnabled(\App\Services\PhilippineDiscountCalculator::SCHEME_VOLUNTARY_20));
   $ledgerEntries = $payable->paymentHistory()->with(['recordedBy', 'voidedBy'])->get();
   $balanceTone = match (true) {
       $payable->payment_status === 'refunded' => 'border-surface-200 bg-surface-50 text-surface-700',
@@ -92,8 +98,10 @@
         @if($activeDiscount->scheme === \App\Services\PhilippineDiscountCalculator::SCHEME_STATUTORY_20)
           <div><dt class="text-surface-500">VAT removed from eligible items</dt><dd class="font-semibold">PHP {{ number_format((float) $activeDiscount->vat_removed, 2) }}</dd></div>
           <div><dt class="text-surface-500">20% eligible discount base</dt><dd class="font-semibold">PHP {{ number_format((float) $activeDiscount->discount_base, 2) }}</dd></div>
-        @else
+        @elseif($activeDiscount->scheme === 'bnpc_5')
           <div><dt class="text-surface-500">BNPC eligible base</dt><dd class="font-semibold">PHP {{ number_format((float) $activeDiscount->discount_base, 2) }}</dd></div>
+        @else
+          <div><dt class="text-surface-500">Promotional discount base</dt><dd class="font-semibold">PHP {{ number_format((float) $activeDiscount->discount_base, 2) }}</dd></div>
         @endif
         <div><dt class="text-surface-500">New total</dt><dd class="font-semibold">PHP {{ number_format((float) $activeDiscount->net_total, 2) }}</dd></div>
       </dl>
@@ -112,7 +120,7 @@
       <form method="POST" action="{{ route('admin.orders.discounts.store', $payable) }}" class="mt-4 rounded-lg border border-amber-200 bg-amber-50/60 p-4">
         @csrf
         <p class="text-xs font-bold uppercase tracking-wider text-amber-800">Apply Senior/PWD discount</p>
-        <p class="mt-1 text-xs leading-5 text-amber-700">Use only for verified customers and product lines explicitly marked eligible. VAT is removed before the 20% discount for a qualifying statutory sale.</p>
+        <p class="mt-1 text-xs leading-5 text-amber-700">Verify the customer before applying a benefit. For a qualifying statutory sale, VAT is removed before the 20% discount. The Ferosa-funded promotion covers ordinary products without a VAT exemption.</p>
         <div class="mt-3 grid gap-3 sm:grid-cols-2">
           <label class="block text-xs font-semibold text-surface-700">Benefit *
             <select name="scheme" required class="mt-1.5 w-full rounded-lg border border-surface-200 px-3 py-2 text-sm font-normal outline-none focus:border-brand-500">
@@ -121,6 +129,9 @@
               @endif
               @if(in_array(\App\Services\PhilippineDiscountCalculator::SCHEME_BNPC_5, $eligibleDiscountSchemes, true))
                 <option value="bnpc_5">5% BNPC discount</option>
+              @endif
+              @if(in_array('ferosa_voluntary_20', $eligibleDiscountSchemes, true))
+                <option value="ferosa_voluntary_20">Ferosa-funded 20% promotion (no VAT exemption)</option>
               @endif
             </select>
           </label>
@@ -133,7 +144,7 @@
         </div>
         <label class="mt-3 flex items-start gap-2 text-xs leading-5 text-surface-700">
           <input type="checkbox" name="eligibility_confirmed" value="1" required class="mt-0.5 h-4 w-4 rounded border-surface-300 text-brand-600 focus:ring-brand-500">
-          I checked the customer's valid ID and confirmed that the selected product lines are legally eligible. Senior and PWD benefits are not stacked.
+          I checked the customer's valid ID and confirmed that the selected benefit is applicable. Senior and PWD benefits are not stacked.
         </label>
         <button type="submit" class="mt-3 rounded-lg bg-amber-700 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-800">Verify and apply discount</button>
       </form>

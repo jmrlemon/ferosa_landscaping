@@ -83,6 +83,7 @@ class DiscountApplication extends Model
         return match ($this->scheme) {
             PhilippineDiscountCalculator::SCHEME_STATUTORY_20 => '20% Senior/PWD statutory discount',
             PhilippineDiscountCalculator::SCHEME_BNPC_5 => '5% BNPC special discount',
+            PhilippineDiscountCalculator::SCHEME_VOLUNTARY_20 => 'Ferosa-funded 20% promotional discount',
             default => 'Discount',
         };
     }

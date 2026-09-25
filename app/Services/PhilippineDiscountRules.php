@@ -26,7 +26,15 @@ class PhilippineDiscountRules
 
     public function schemeEnabled(string $scheme): bool
     {
-        if (! (bool) config('discounts.enabled', false) || ! $this->businessTaxProfileReady()) {
+        if ($scheme === PhilippineDiscountCalculator::SCHEME_VOLUNTARY_20) {
+            return (bool) config('discounts.voluntary_20_enabled', true);
+        }
+
+        if (! (bool) config('discounts.enabled', false)) {
+            return false;
+        }
+
+        if (! $this->businessTaxProfileReady()) {
             return false;
         }
 
@@ -44,6 +52,11 @@ class PhilippineDiscountRules
     public function orderHasAvailableScheme(array $lines): bool
     {
         foreach ($lines as $line) {
+            if ((float) ($line['price'] ?? 0) > 0
+                && $this->schemeEnabled(PhilippineDiscountCalculator::SCHEME_VOLUNTARY_20)) {
+                return true;
+            }
+
             $scheme = (string) ($line['discount_scheme'] ?? PhilippineDiscountCalculator::SCHEME_NONE);
             if ((float) ($line['price'] ?? 0) > 0 && $this->schemeEnabled($scheme)) {
                 return true;
@@ -61,9 +74,19 @@ class PhilippineDiscountRules
 
     public function assertSchemeEnabled(string $scheme): void
     {
+        if ($scheme === PhilippineDiscountCalculator::SCHEME_VOLUNTARY_20) {
+            if (! $this->schemeEnabled($scheme)) {
+                throw ValidationException::withMessages([
+                    'discount' => 'The Ferosa-funded promotional discount is disabled.',
+                ]);
+            }
+
+            return;
+        }
+
         if (! (bool) config('discounts.enabled', false)) {
             throw ValidationException::withMessages([
-                'discount' => 'Discounts are disabled pending compliance approval.',
+                'discount' => 'Statutory discounts are disabled pending compliance approval.',
             ]);
         }
 

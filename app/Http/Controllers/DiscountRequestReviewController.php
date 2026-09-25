@@ -25,10 +25,11 @@ class DiscountRequestReviewController extends Controller
             'scheme' => ['required', Rule::in([
                 PhilippineDiscountCalculator::SCHEME_STATUTORY_20,
                 PhilippineDiscountCalculator::SCHEME_BNPC_5,
+                PhilippineDiscountCalculator::SCHEME_VOLUNTARY_20,
             ])],
             'eligibility_confirmed' => ['accepted'],
         ], [
-            'eligibility_confirmed.accepted' => 'Confirm that the customer and eligible goods or service were checked.',
+            'eligibility_confirmed.accepted' => 'Confirm that the customer ID and selected discount were checked.',
         ]);
 
         $before = Audit::snapshot($discountRequest, ['beneficiary_type', 'status']);

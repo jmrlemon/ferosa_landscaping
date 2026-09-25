@@ -150,7 +150,7 @@
         @if($discountVatRegistered)
           <p class="muted">VAT exemption applies only to eligible items. Other items remain at their listed price and retain their applicable VAT treatment.</p>
         @endif
-      @else
+      @elseif($discount->scheme === 'bnpc_5')
         <div class="row">
           <span class="label">Eligible BNPC purchase amount</span>
           <span class="value">&#8369;{{ number_format((float) $discount->discount_base, 2) }}</span>
@@ -159,6 +159,16 @@
           <span class="label">Less: {{ $discount->beneficiaryLabel() }} 5% BNPC discount</span>
           <span class="value">-&#8369;{{ number_format((float) $discount->discount_amount, 2) }}</span>
         </div>
+      @else
+        <div class="row">
+          <span class="label">Ferosa promotional discount base</span>
+          <span class="value">&#8369;{{ number_format((float) $discount->discount_base, 2) }}</span>
+        </div>
+        <div class="row">
+          <span class="label">Less: Ferosa-funded {{ number_format((float) $discount->discount_rate, 0) }}% promotion</span>
+          <span class="value">-&#8369;{{ number_format((float) $discount->discount_amount, 2) }}</span>
+        </div>
+        <p class="muted">This is a Ferosa-funded promotional discount. It does not claim a statutory VAT exemption.</p>
       @endif
       <div class="row">
         <span class="label">ID number</span>

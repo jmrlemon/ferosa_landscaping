@@ -315,7 +315,7 @@
               <legend class="px-1 text-xs font-bold text-brand-900">Discount request</legend>
               <p id="discount-request-help" class="text-[11px] leading-5 text-surface-600">
                 @if($canRequestDiscount)
-                  Request Senior Citizen or PWD review. The total stays unchanged unless an admin verifies your ID and eligible items, then approves the request. Eligibility and configured business rules still apply.
+                  Request Senior Citizen or PWD review. The total stays unchanged until an admin verifies your ID and approves the request. Ordinary items may receive the Ferosa-funded 20% promotional discount; this does not include a VAT exemption.
                 @elseif($hasPaidItems)
                   Senior/PWD requests are unavailable until the business tax profile and an eligible item are configured.
                 @else

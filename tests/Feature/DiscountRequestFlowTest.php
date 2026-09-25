@@ -55,6 +55,79 @@ class DiscountRequestFlowTest extends TestCase
             ->assertSee('id="discount-id-evidence"', false);
     }
 
+    public function test_customer_can_request_a_ferosa_funded_discount_for_an_ordinary_cart(): void
+    {
+        Storage::fake('local');
+        Mail::fake();
+        Notification::fake();
+        config([
+            'discounts.enabled' => false,
+            'discounts.voluntary_20_enabled' => true,
+            'discounts.vat_registered' => null,
+        ]);
+
+        $customer = User::factory()->create(['role' => 'user']);
+        $product = Product::query()->create([
+            'name' => 'Ordinary Garden Plant',
+            'price' => '100.00',
+            'stock_qty' => 5,
+            'category' => 'plants',
+            'is_active' => true,
+            'discount_scheme' => PhilippineDiscountCalculator::SCHEME_NONE,
+        ]);
+
+        $this->actingAs($customer)
+            ->postJson('/api/cart/items', [
+                'product_id' => $product->id,
+                'quantity' => 1,
+            ])
+            ->assertOk();
+
+        $this->actingAs($customer)
+            ->get(route('checkout'))
+            ->assertOk()
+            ->assertSee('Request Senior Citizen or PWD review.', false)
+            ->assertSee('name="discount_beneficiary" value="senior"', false)
+            ->assertSee('Ferosa-funded 20% promotional discount', false);
+
+        $this->actingAs($customer)
+            ->post(route('checkout.store'), [
+                'delivery_method' => 'pickup',
+                'payment_method' => 'cod',
+                'discount_beneficiary' => 'senior',
+                'discount_id_evidence' => UploadedFile::fake()->create('senior-card.png', 64, 'image/png'),
+            ])
+            ->assertRedirect();
+
+        $order = Order::query()->latest('id')->firstOrFail();
+        $discountRequest = $order->discountRequest()->firstOrFail();
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($admin)
+            ->get(route('admin.orders.show', $order))
+            ->assertOk()
+            ->assertSee('Ferosa-funded 20% promotion (no VAT exemption)');
+
+        $this->actingAs($admin)
+            ->post(route('admin.discount-requests.approve', $discountRequest), [
+                'scheme' => PhilippineDiscountCalculator::SCHEME_VOLUNTARY_20,
+                'eligibility_confirmed' => '1',
+            ])
+            ->assertRedirect(route('admin.orders.show', $order));
+
+        $application = DiscountApplication::query()->firstOrFail();
+        $this->assertSame(PhilippineDiscountCalculator::SCHEME_VOLUNTARY_20, $application->scheme);
+        $this->assertSame('0.00', $application->vat_removed);
+        $this->assertSame('20.00', $application->discount_amount);
+        $this->assertSame('80.00', $order->refresh()->total_amount);
+
+        $this->actingAs($customer)
+            ->get(route('orders.invoice', $order))
+            ->assertOk()
+            ->assertSee('Ferosa-funded 20% promotion')
+            ->assertSee('does not claim a statutory VAT exemption.');
+    }
+
     public function test_customer_request_keeps_original_total_until_an_admin_approves_it(): void
     {
         Storage::fake('local');
@@ -134,7 +207,10 @@ class DiscountRequestFlowTest extends TestCase
     public function test_customer_cannot_submit_id_when_business_vat_status_is_unknown(): void
     {
         Storage::fake('local');
-        config(['discounts.vat_registered' => null]);
+        config([
+            'discounts.vat_registered' => null,
+            'discounts.voluntary_20_enabled' => false,
+        ]);
         $customer = User::factory()->create(['role' => 'user']);
         $product = $this->eligibleProduct();
 

@@ -5,11 +5,11 @@ namespace App\Services;
 use InvalidArgumentException;
 
 /**
- * Pure, side-effect-free calculation rules for Philippine statutory discounts.
+ * Pure, side-effect-free calculation rules for statutory and Ferosa-funded discounts.
  *
  * All arithmetic is performed in centavos. The caller is responsible for
- * deciding whether a person and product are legally eligible; this class only
- * calculates explicitly tagged line items.
+ * deciding whether a person and product are eligible. Statutory schemes use
+ * explicitly tagged lines; the Ferosa-funded promotion uses all paid lines.
  */
 class PhilippineDiscountCalculator
 {
@@ -18,6 +18,8 @@ class PhilippineDiscountCalculator
     public const SCHEME_STATUTORY_20 = 'statutory_20_vat_exempt';
 
     public const SCHEME_BNPC_5 = 'bnpc_5';
+
+    public const SCHEME_VOLUNTARY_20 = 'ferosa_voluntary_20';
 
     /**
      * @param  list<array{price: float|int|string, qty?: int, discount_scheme?: string}>  $lines
@@ -40,7 +42,7 @@ class PhilippineDiscountCalculator
         string $bnpcWeeklyRemaining = '2500.00',
         int $vatRatePercent = 12,
     ): array {
-        if (! in_array($scheme, [self::SCHEME_STATUTORY_20, self::SCHEME_BNPC_5], true)) {
+        if (! in_array($scheme, [self::SCHEME_STATUTORY_20, self::SCHEME_BNPC_5, self::SCHEME_VOLUNTARY_20], true)) {
             throw new InvalidArgumentException('Unsupported discount scheme.');
         }
 
@@ -56,7 +58,8 @@ class PhilippineDiscountCalculator
             $lineTotal = $this->toCentavos($line['price']) * $quantity;
             $grossTotal += $lineTotal;
 
-            if (($line['discount_scheme'] ?? self::SCHEME_NONE) === $scheme) {
+            if ($scheme === self::SCHEME_VOLUNTARY_20
+                || ($line['discount_scheme'] ?? self::SCHEME_NONE) === $scheme) {
                 $eligibleGross += $lineTotal;
             }
         }
@@ -71,10 +74,14 @@ class PhilippineDiscountCalculator
                 : 0;
             $discountBase = $eligibleGross - $vatRemoved;
             $discountRateBasisPoints = 2000;
-        } else {
+        } elseif ($scheme === self::SCHEME_BNPC_5) {
             $vatRemoved = 0;
             $discountBase = min($eligibleGross, max(0, $this->toCentavos($bnpcWeeklyRemaining)));
             $discountRateBasisPoints = 500;
+        } else {
+            $vatRemoved = 0;
+            $discountBase = $eligibleGross;
+            $discountRateBasisPoints = 2000;
         }
 
         $discountAmount = $this->percentage($discountBase, $discountRateBasisPoints);

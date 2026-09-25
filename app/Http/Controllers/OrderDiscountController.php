@@ -27,11 +27,12 @@ class OrderDiscountController extends Controller
             'scheme' => ['required', Rule::in([
                 PhilippineDiscountCalculator::SCHEME_STATUTORY_20,
                 PhilippineDiscountCalculator::SCHEME_BNPC_5,
+                PhilippineDiscountCalculator::SCHEME_VOLUNTARY_20,
             ])],
             'beneficiary_type' => ['required', Rule::in(DiscountApplication::BENEFICIARY_TYPES)],
             'eligibility_confirmed' => ['accepted'],
         ], [
-            'eligibility_confirmed.accepted' => 'Confirm that the customer and selected product lines were checked for legal eligibility.',
+            'eligibility_confirmed.accepted' => 'Confirm that the customer ID and selected discount were checked.',
         ]);
 
         $discount = $this->discounts->apply($order, $data, (int) $request->user()->id);

@@ -393,7 +393,10 @@ class OrderDiscountWorkflowTest extends TestCase
 
     public function test_feature_is_fail_closed_when_compliance_switch_is_disabled(): void
     {
-        config(['discounts.enabled' => false]);
+        config([
+            'discounts.enabled' => false,
+            'discounts.voluntary_20_enabled' => false,
+        ]);
 
         $admin = User::factory()->create(['role' => 'admin']);
         $order = $this->order(
